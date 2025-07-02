@@ -66,9 +66,18 @@ class ASHRAEComplianceSensor(AdaptiveClimateBinarySensorBase):
     @property
     def is_on(self) -> bool | None:
         """Return true if ASHRAE compliant."""
-        if self.coordinator.data:
+        if self.coordinator.data and self.coordinator.data.get("ashrae_compliant") is not None:
             return self.coordinator.data.get("ashrae_compliant", False)
-        return None
+        return False  # Default to non-compliant when no data
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return (
+            self.coordinator.last_update_success and
+            self.coordinator.data is not None and
+            self.coordinator.data.get("status") != "entities_unavailable"
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -98,9 +107,18 @@ class NaturalVentilationSensor(AdaptiveClimateBinarySensorBase):
     @property
     def is_on(self) -> bool | None:
         """Return true if natural ventilation is optimal."""
-        if self.coordinator.data:
+        if self.coordinator.data and self.coordinator.data.get("natural_ventilation_active") is not None:
             return self.coordinator.data.get("natural_ventilation_active", False)
-        return None
+        return False  # Default to not active when no data
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return (
+            self.coordinator.last_update_success and
+            self.coordinator.data is not None and
+            self.coordinator.data.get("status") != "entities_unavailable"
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

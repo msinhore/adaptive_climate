@@ -113,5 +113,53 @@
         }
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "comfort_temperature": {
+        "name": "Comfort Temperature",
+        "description": "ASHRAE 55 adaptive comfort temperature based on outdoor conditions"
+      },
+      "outdoor_running_mean": {
+        "name": "Outdoor Running Mean",
+        "description": "7-day running mean of outdoor temperature used in ASHRAE calculations"
+      }
+    },
+    "binary_sensor": {
+      "ashrae_compliance": {
+        "name": "ASHRAE Compliance",
+        "description": "Whether current indoor conditions meet ASHRAE 55 comfort standards"
+      },
+      "natural_ventilation_optimal": {
+        "name": "Natural Ventilation Optimal",
+        "description": "Whether natural ventilation is recommended based on indoor/outdoor conditions"
+      }
+    },
+    "number": {
+      "comfort_range_min_offset": {
+        "name": "Comfort Range Min Offset",
+        "description": "Temperature offset below adaptive comfort temperature for minimum comfort range"
+      },
+      "comfort_range_max_offset": {
+        "name": "Comfort Range Max Offset", 
+        "description": "Temperature offset above adaptive comfort temperature for maximum comfort range"
+      },
+      "temperature_change_threshold": {
+        "name": "Temperature Change Threshold",
+        "description": "Minimum temperature difference required to trigger HVAC adjustments"
+      },
+      "setback_temperature_offset": {
+        "name": "Setback Temperature Offset",
+        "description": "Temperature offset applied when space is unoccupied"
+      },
+      "natural_ventilation_threshold": {
+        "name": "Natural Ventilation Threshold",
+        "description": "Temperature difference threshold for recommending natural ventilation"
+      },
+      "air_velocity": {
+        "name": "Air Velocity",
+        "description": "Indoor air velocity used in comfort calculations"
+      }
+    }
   }
 }

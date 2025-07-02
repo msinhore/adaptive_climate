@@ -113,5 +113,53 @@
         }
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "comfort_temperature": {
+        "name": "Temperatura de Conforto",
+        "description": "Temperatura de conforto adaptativo ASHRAE 55 baseada nas condições externas"
+      },
+      "outdoor_running_mean": {
+        "name": "Média Móvel Externa",
+        "description": "Média móvel de 7 dias da temperatura externa usada nos cálculos ASHRAE"
+      }
+    },
+    "binary_sensor": {
+      "ashrae_compliance": {
+        "name": "Conformidade ASHRAE",
+        "description": "Se as condições internas atuais atendem aos padrões de conforto ASHRAE 55"
+      },
+      "natural_ventilation_optimal": {
+        "name": "Ventilação Natural Ótima",
+        "description": "Se ventilação natural é recomendada baseada nas condições internas/externas"
+      }
+    },
+    "number": {
+      "comfort_range_min_offset": {
+        "name": "Offset Mín. Faixa de Conforto",
+        "description": "Offset de temperatura abaixo da temperatura de conforto adaptativo para faixa mínima"
+      },
+      "comfort_range_max_offset": {
+        "name": "Offset Máx. Faixa de Conforto", 
+        "description": "Offset de temperatura acima da temperatura de conforto adaptativo para faixa máxima"
+      },
+      "temperature_change_threshold": {
+        "name": "Limite de Mudança de Temperatura",
+        "description": "Diferença mínima de temperatura necessária para acionar ajustes do HVAC"
+      },
+      "setback_temperature_offset": {
+        "name": "Offset de Temperatura Setback",
+        "description": "Offset de temperatura aplicado quando o espaço está desocupado"
+      },
+      "natural_ventilation_threshold": {
+        "name": "Limite Ventilação Natural",
+        "description": "Limite de diferença de temperatura para recomendar ventilação natural"
+      },
+      "air_velocity": {
+        "name": "Velocidade do Ar",
+        "description": "Velocidade do ar interno usada nos cálculos de conforto"
+      }
+    }
   }
 }

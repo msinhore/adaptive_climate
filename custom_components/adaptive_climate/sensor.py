@@ -32,8 +32,6 @@ async def async_setup_entry(
     
     entities = [
         AdaptiveComfortTemperatureSensor(coordinator, config_entry),
-        ComfortRangeMinSensor(coordinator, config_entry),
-        ComfortRangeMaxSensor(coordinator, config_entry),
         OutdoorRunningMeanSensor(coordinator, config_entry),
     ]
     
@@ -73,9 +71,18 @@ class AdaptiveComfortTemperatureSensor(AdaptiveClimateSensorBase):
     @property
     def native_value(self) -> float | None:
         """Return the state of the sensor."""
-        if self.coordinator.data:
+        if self.coordinator.data and self.coordinator.data.get("adaptive_comfort_temp") is not None:
             return self.coordinator.data.get("adaptive_comfort_temp")
-        return None
+        return 22.0  # Default fallback value
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return (
+            self.coordinator.last_update_success and
+            self.coordinator.data is not None and
+            self.coordinator.data.get("status") != "entities_unavailable"
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -89,48 +96,6 @@ class AdaptiveComfortTemperatureSensor(AdaptiveClimateSensorBase):
             "calculation_method": "ASHRAE 55-2020",
             "formula": "18.9 + 0.255 × Outdoor Temperature",
         }
-
-
-class ComfortRangeMinSensor(AdaptiveClimateSensorBase):
-    """Sensor for comfort zone minimum temperature."""
-
-    def __init__(self, coordinator: AdaptiveClimateCoordinator, config_entry: ConfigEntry) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator, config_entry)
-        self._attr_unique_id = f"{config_entry.entry_id}_comfort_range_min"
-        self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} Comfort Range Min"
-        self._attr_device_class = SensorDeviceClass.TEMPERATURE
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        self._attr_icon = "mdi:thermometer-low"
-
-    @property
-    def native_value(self) -> float | None:
-        """Return the state of the sensor."""
-        if self.coordinator.data:
-            return self.coordinator.data.get("comfort_temp_min")
-        return None
-
-
-class ComfortRangeMaxSensor(AdaptiveClimateSensorBase):
-    """Sensor for comfort zone maximum temperature."""
-
-    def __init__(self, coordinator: AdaptiveClimateCoordinator, config_entry: ConfigEntry) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator, config_entry)
-        self._attr_unique_id = f"{config_entry.entry_id}_comfort_range_max"
-        self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} Comfort Range Max"
-        self._attr_device_class = SensorDeviceClass.TEMPERATURE
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        self._attr_icon = "mdi:thermometer-high"
-
-    @property
-    def native_value(self) -> float | None:
-        """Return the state of the sensor."""
-        if self.coordinator.data:
-            return self.coordinator.data.get("comfort_temp_max")
-        return None
 
 
 class OutdoorRunningMeanSensor(AdaptiveClimateSensorBase):
@@ -149,9 +114,19 @@ class OutdoorRunningMeanSensor(AdaptiveClimateSensorBase):
     @property
     def native_value(self) -> float | None:
         """Return the state of the sensor."""
-        if self.coordinator.data:
+        if self.coordinator.data and self.coordinator.data.get("outdoor_running_mean") is not None:
             return self.coordinator.data.get("outdoor_running_mean")
-        return None
+        return None  # This one can be None as it needs data to be meaningful
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return (
+            self.coordinator.last_update_success and
+            self.coordinator.data is not None and
+            self.coordinator.data.get("status") != "entities_unavailable" and
+            self.coordinator.data.get("outdoor_running_mean") is not None
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

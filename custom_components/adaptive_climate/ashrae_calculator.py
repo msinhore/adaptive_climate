@@ -141,15 +141,17 @@ class AdaptiveComfortCalculator:
     @property
     def comfort_temp_min(self) -> float:
         """Calculate minimum comfort temperature."""
-        min_adaptive = self.adaptive_comfort_temp - self.comfort_tolerance
-        min_absolute = self.config.get("min_comfort_temp", 18.0)
+        min_offset = self.config.get("comfort_range_min_offset", -2.0)
+        min_adaptive = self.adaptive_comfort_temp + min_offset  # offset is negative
+        min_absolute = self.config.get("min_comfort_temp", 16.0)
         return max(min_adaptive, min_absolute)
 
     @property
     def comfort_temp_max(self) -> float:
         """Calculate maximum comfort temperature."""
-        max_adaptive = self.adaptive_comfort_temp + self.comfort_tolerance
-        max_absolute = self.config.get("max_comfort_temp", 28.0)
+        max_offset = self.config.get("comfort_range_max_offset", 2.0)
+        max_adaptive = self.adaptive_comfort_temp + max_offset  # offset is positive
+        max_absolute = self.config.get("max_comfort_temp", 30.0)
         return min(max_adaptive, max_absolute)
 
     @property

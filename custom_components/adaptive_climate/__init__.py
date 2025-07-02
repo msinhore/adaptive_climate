@@ -13,7 +13,7 @@ from .coordinator import AdaptiveClimateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.NUMBER, Platform.SWITCH]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -33,8 +33,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
     
-    # Perform initial data fetch
-    await coordinator.async_config_entry_first_refresh()
+    # Perform initial data fetch with retry logic
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except Exception as err:
+        _LOGGER.warning("Initial data fetch failed, will retry on next update: %s", err)
+        # Don't fail setup, just log and continue - sensors will show as unavailable until data is available
     
     # Set up platforms (sensors only, no climate entity)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -51,13 +55,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Update listener for options flow."""
     _LOGGER.debug("Updating Adaptive Climate coordinator with new options")
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    
-    # Update coordinator configuration
-    await coordinator.update_config({**entry.data, **entry.options})
-    
-    # Request refresh to apply new configuration
-    await coordinator.async_request_refresh()
+    try:
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        
+        # Update coordinator configuration
+        await coordinator.update_config({**entry.data, **entry.options})
+        
+        # Request refresh to apply new configuration
+        await coordinator.async_request_refresh()
+    except Exception as err:
+        _LOGGER.error("Error updating coordinator configuration: %s", err)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
