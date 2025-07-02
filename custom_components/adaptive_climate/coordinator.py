@@ -68,6 +68,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         self._occupied = True
         self._natural_ventilation_active = False
         
+        # Temperature history for running mean (last 7 days)
+        self._outdoor_temp_history: list[tuple[datetime, float]] = []
+        self._running_mean_outdoor_temp: float | None = None
+        
         # Entity IDs from config
         self.climate_entity_id = config_entry_data["climate_entity"]
         self.indoor_temp_entity_id = config_entry_data["indoor_temp_sensor"]
@@ -97,6 +101,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 _LOGGER.warning("Invalid temperature values")
                 return {}
             
+            # Update outdoor temperature history and running mean
+            self._update_outdoor_temp_history(outdoor_temp)
+            
             # Update occupancy
             self._update_occupancy()
             
@@ -112,6 +119,15 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 mean_radiant_temp=self._get_mean_radiant_temp(),
             )
             
+            # Update natural ventilation status
+            self._update_natural_ventilation_status(outdoor_temp, indoor_temp, comfort_data)
+            
+            # Update outdoor temperature history and running mean
+            self._update_outdoor_temp_history(outdoor_temp)
+            
+            # Update natural ventilation status
+            self._update_natural_ventilation_status(outdoor_temp, indoor_temp, comfort_data)
+
             # Determine control actions
             control_actions = self._determine_control_actions(
                 climate_state, indoor_temp, comfort_data
@@ -127,6 +143,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 "climate_state": climate_state.state,
                 "indoor_temperature": indoor_temp,
                 "outdoor_temperature": outdoor_temp,
+                "outdoor_running_mean": self._running_mean_outdoor_temp,
                 "occupancy": "occupied" if self._occupied else "unoccupied",
                 "manual_override": self._manual_override,
                 "natural_ventilation_active": self._natural_ventilation_active,
@@ -435,3 +452,64 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             "Temporary override set: temp=%s, mode=%s, duration=%dh",
             temperature, hvac_mode, duration_hours
         )
+
+    def _update_outdoor_temp_history(self, outdoor_temp: float) -> None:
+        """Update outdoor temperature history and calculate running mean."""
+        now = datetime.now()
+        
+        # Add current temperature
+        self._outdoor_temp_history.append((now, outdoor_temp))
+        
+        # Remove entries older than 7 days
+        seven_days_ago = now - timedelta(days=7)
+        self._outdoor_temp_history = [
+            (timestamp, temp) for timestamp, temp in self._outdoor_temp_history
+            if timestamp > seven_days_ago
+        ]
+        
+        # Calculate running mean (ASHRAE 55 uses 7-day running mean)
+        if len(self._outdoor_temp_history) >= 7:  # Need at least 7 data points
+            total_temp = sum(temp for _, temp in self._outdoor_temp_history)
+            self._running_mean_outdoor_temp = total_temp / len(self._outdoor_temp_history)
+        else:
+            # If we don't have enough history, use current temperature
+            self._running_mean_outdoor_temp = outdoor_temp
+
+    def _update_natural_ventilation_status(self, outdoor_temp: float, indoor_temp: float, comfort_data: dict[str, Any]) -> None:
+        """Update natural ventilation status based on conditions."""
+        # Natural ventilation is beneficial if:
+        # 1. Indoor temp is above comfort zone
+        # 2. Outdoor temp is lower than indoor temp
+        # 3. The difference is significant (threshold)
+        
+        comfort_max = comfort_data.get("comfort_temp_max", 28.0)
+        natural_vent_threshold = self.config.get("natural_ventilation_threshold", 2.0)
+        
+        if (indoor_temp > comfort_max and 
+            outdoor_temp < indoor_temp and 
+            (indoor_temp - outdoor_temp) >= natural_vent_threshold):
+            self._natural_ventilation_active = True
+        else:
+            self._natural_ventilation_active = False
+
+    async def update_config(self, config_updates: dict[str, Any]) -> None:
+        """Update configuration dynamically."""
+        # Update local config
+        self.config.update(config_updates)
+        
+        # Update calculator config
+        self.calculator.update_config(self.config)
+        
+        _LOGGER.info("Configuration updated: %s", config_updates)
+        
+        # Trigger immediate update
+        await self.async_request_refresh()
+
+    async def reset_outdoor_history(self) -> None:
+        """Reset outdoor temperature history."""
+        self._outdoor_temp_history.clear()
+        self._running_mean_outdoor_temp = None
+        _LOGGER.info("Outdoor temperature history reset")
+        
+        # Trigger immediate update
+        await self.async_request_refresh()

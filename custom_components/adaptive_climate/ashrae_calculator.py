@@ -259,6 +259,13 @@ class AdaptiveComfortCalculator:
 
     def get_status_summary(self) -> dict[str, Any]:
         """Get comprehensive status summary."""
+        # Calculate effective comfort range considering all offsets
+        effective_comfort_min = self.comfort_temp_min + self.air_velocity_offset + self.humidity_offset
+        effective_comfort_max = self.comfort_temp_max + self.air_velocity_offset + self.humidity_offset
+        
+        # Determine compliance based on effective range
+        is_compliant = effective_comfort_min <= self._indoor_temp <= effective_comfort_max
+        
         return {
             "outdoor_temp": self._outdoor_temp,
             "indoor_temp": self._indoor_temp,
@@ -266,6 +273,8 @@ class AdaptiveComfortCalculator:
             "adaptive_comfort_temp": self.adaptive_comfort_temp,
             "comfort_temp_min": self.comfort_temp_min,
             "comfort_temp_max": self.comfort_temp_max,
+            "effective_comfort_min": effective_comfort_min,
+            "effective_comfort_max": effective_comfort_max,
             "target_temp": self.target_temperature,
             "comfort_tolerance": self.comfort_tolerance,
             "comfort_category": self.config.get("comfort_category", "II"),
@@ -277,7 +286,7 @@ class AdaptiveComfortCalculator:
             "humidity_offset": self.humidity_offset,
             "compliance_notes": self.compliance_notes,
             "outdoor_temp_valid": self.outdoor_temp_valid,
-            "ashrae_compliant": self.comfort_temp_min <= self._indoor_temp <= self.comfort_temp_max,
+            "ashrae_compliant": is_compliant,
         }
 
     def calculate_comfort_parameters(

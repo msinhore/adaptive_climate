@@ -84,3 +84,71 @@ set_temporary_override:
           max: 24
           step: 1
           unit_of_measurement: "hours"
+
+update_config:
+  name: Update Configuration
+  description: Update adaptive climate configuration parameters
+  fields:
+    config_entry_id:
+      name: Config Entry ID
+      description: Adaptive Climate configuration entry to update
+      required: true
+      selector:
+        text:
+    air_velocity:
+      name: Air Velocity
+      description: Indoor air velocity (m/s)
+      required: false
+      selector:
+        number:
+          min: 0.0
+          max: 2.0
+          step: 0.1
+          unit_of_measurement: "m/s"
+    natural_ventilation_threshold:
+      name: Natural Ventilation Threshold
+      description: Temperature difference threshold for natural ventilation (°C)
+      required: false
+      selector:
+        number:
+          min: 0.5
+          max: 5.0
+          step: 0.5
+          unit_of_measurement: "°C"
+    temperature_change_threshold:
+      name: Temperature Change Threshold
+      description: Minimum temperature change to trigger HVAC adjustment (°C)
+      required: false
+      selector:
+        number:
+          min: 0.1
+          max: 3.0
+          step: 0.1
+          unit_of_measurement: "°C"
+    setback_temperature_offset:
+      name: Setback Temperature Offset
+      description: Temperature offset when unoccupied (°C)
+      required: false
+      selector:
+        number:
+          min: 0.5
+          max: 5.0
+          step: 0.5
+          unit_of_measurement: "°C"
+    adaptive_air_velocity:
+      name: Adaptive Air Velocity
+      description: Enable adaptive fan speed control
+      required: false
+      selector:
+        boolean:
+
+reset_outdoor_history:
+  name: Reset Outdoor History
+  description: Reset outdoor temperature history and running mean
+  fields:
+    config_entry_id:
+      name: Config Entry ID
+      description: Adaptive Climate configuration entry to reset
+      required: true
+      selector:
+        text:

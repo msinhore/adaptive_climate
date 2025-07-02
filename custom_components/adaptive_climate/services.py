@@ -18,6 +18,8 @@ SERVICE_CLEAR_OVERRIDE = "clear_override"
 SERVICE_SET_COMFORT_CATEGORY = "set_comfort_category"
 SERVICE_UPDATE_CALCULATIONS = "update_calculations"
 SERVICE_SET_TEMPORARY_OVERRIDE = "set_temporary_override"
+SERVICE_UPDATE_CONFIG = "update_config"
+SERVICE_RESET_OUTDOOR_HISTORY = "reset_outdoor_history"
 
 CLEAR_OVERRIDE_SCHEMA = vol.Schema(
     {
@@ -44,6 +46,23 @@ SET_TEMPORARY_OVERRIDE_SCHEMA = vol.Schema(
         vol.Optional("temperature"): vol.All(vol.Coerce(float), vol.Range(min=10, max=40)),
         vol.Optional("hvac_mode"): vol.In(["heat", "cool", "auto", "fan_only", "off"]),
         vol.Optional("duration_hours"): vol.All(vol.Coerce(int), vol.Range(min=1, max=24)),
+    }
+)
+
+UPDATE_CONFIG_SCHEMA = vol.Schema(
+    {
+        vol.Required("config_entry_id"): cv.string,
+        vol.Optional("air_velocity"): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
+        vol.Optional("natural_ventilation_threshold"): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=5.0)),
+        vol.Optional("temperature_change_threshold"): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=3.0)),
+        vol.Optional("setback_temperature_offset"): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=5.0)),
+        vol.Optional("adaptive_air_velocity"): cv.boolean,
+    }
+)
+
+RESET_OUTDOOR_HISTORY_SCHEMA = vol.Schema(
+    {
+        vol.Required("config_entry_id"): cv.string,
     }
 )
 
@@ -106,6 +125,30 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         else:
             _LOGGER.error("Coordinator not found for config entry %s", config_entry_id)
 
+    async def async_update_config(call: ServiceCall) -> None:
+        """Update configuration for specified config entry."""
+        config_entry_id = call.data.get("config_entry_id")
+        coordinator: AdaptiveClimateCoordinator = hass.data[DOMAIN].get(config_entry_id)
+        
+        if coordinator:
+            # Update config with new values (excluding config_entry_id)
+            config_updates = {k: v for k, v in call.data.items() if k != "config_entry_id"}
+            await coordinator.update_config(config_updates)
+            _LOGGER.info("Configuration updated for config entry %s: %s", config_entry_id, config_updates)
+        else:
+            _LOGGER.error("Coordinator not found for config entry %s", config_entry_id)
+
+    async def async_reset_outdoor_history(call: ServiceCall) -> None:
+        """Reset outdoor temperature history for specified config entry."""
+        config_entry_id = call.data.get("config_entry_id")
+        coordinator: AdaptiveClimateCoordinator = hass.data[DOMAIN].get(config_entry_id)
+        
+        if coordinator:
+            await coordinator.reset_outdoor_history()
+            _LOGGER.info("Outdoor temperature history reset for config entry %s", config_entry_id)
+        else:
+            _LOGGER.error("Coordinator not found for config entry %s", config_entry_id)
+
     # Register services
     hass.services.async_register(
         DOMAIN, SERVICE_CLEAR_OVERRIDE, async_clear_override, schema=CLEAR_OVERRIDE_SCHEMA
@@ -125,6 +168,16 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         DOMAIN, SERVICE_SET_TEMPORARY_OVERRIDE, async_set_temporary_override,
         schema=SET_TEMPORARY_OVERRIDE_SCHEMA
     )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_UPDATE_CONFIG, async_update_config,
+        schema=UPDATE_CONFIG_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_RESET_OUTDOOR_HISTORY, async_reset_outdoor_history,
+        schema=RESET_OUTDOOR_HISTORY_SCHEMA
+    )
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
@@ -133,3 +186,5 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_SET_COMFORT_CATEGORY)
     hass.services.async_remove(DOMAIN, SERVICE_UPDATE_CALCULATIONS)
     hass.services.async_remove(DOMAIN, SERVICE_SET_TEMPORARY_OVERRIDE)
+    hass.services.async_remove(DOMAIN, SERVICE_UPDATE_CONFIG)
+    hass.services.async_remove(DOMAIN, SERVICE_RESET_OUTDOOR_HISTORY)
