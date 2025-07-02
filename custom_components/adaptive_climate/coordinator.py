@@ -37,7 +37,7 @@ from .const import (
     DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
     DEFAULT_SETBACK_TEMPERATURE_OFFSET,
 )
-from .ashrae_calculator import ASHRAECalculator
+from .ashrae_calculator import AdaptiveComfortCalculator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         )
         
         self.config = config_entry_data
-        self.calculator = ASHRAECalculator(config_entry_data)
+        self.calculator = AdaptiveComfortCalculator(config_entry_data)
         
         # State tracking
         self._manual_override = False

@@ -278,3 +278,38 @@ class AdaptiveComfortCalculator:
             "compliance_notes": self.compliance_notes,
             "outdoor_temp_valid": self.outdoor_temp_valid,
         }
+
+    def calculate_comfort_parameters(
+        self,
+        outdoor_temp: float,
+        indoor_temp: float,
+        indoor_humidity: float | None = None,
+        air_velocity: float | None = None,
+        mean_radiant_temp: float | None = None,
+    ) -> dict[str, Any]:
+        """Calculate adaptive comfort parameters based on current conditions."""
+        # Update sensor values
+        self.update_sensors(
+            outdoor_temp=outdoor_temp,
+            indoor_temp=indoor_temp,
+            indoor_humidity=indoor_humidity,
+            mean_radiant_temp=mean_radiant_temp,
+        )
+        
+        # Update air velocity if provided
+        if air_velocity is not None:
+            self._air_velocity = air_velocity
+        
+        # Return comprehensive status
+        return self.get_status_summary()
+
+    def get_comfort_tolerance(self) -> float:
+        """Get comfort tolerance value."""
+        return self.comfort_tolerance
+    
+    def update_config(self, config: dict[str, Any]) -> None:
+        """Update configuration."""
+        self.config = config
+        # Update air velocity if specified in config
+        if "air_velocity" in config:
+            self._air_velocity = config["air_velocity"]
