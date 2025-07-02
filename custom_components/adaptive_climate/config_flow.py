@@ -123,6 +123,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Adaptive Climate."""
 
     VERSION = 1
+    MINOR_VERSION = 0
 
     def __init__(self):
         """Initialize config flow."""

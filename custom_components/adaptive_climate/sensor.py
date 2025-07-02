@@ -53,7 +53,6 @@ class AdaptiveClimateSensorBase(CoordinatorEntity, SensorEntity):
             "manufacturer": "ASHRAE",
             "model": "Adaptive Climate Controller",
             "sw_version": "0.1.3",
-            "configuration_url": None,
         }
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
