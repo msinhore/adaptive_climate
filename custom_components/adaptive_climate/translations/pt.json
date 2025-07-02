@@ -53,25 +53,54 @@
   "options": {
     "step": {
       "init": {
-        "title": "Configurar Clima Adaptativo",
-        "description": "Atualize suas configurações de clima adaptativo.",
+        "title": "Configuração do Clima Adaptativo",
+        "description": "Escolha o que deseja configurar",
+        "menu_options": {
+          "parameters": "Parâmetros Principais",
+          "thresholds": "Limites e Configurações", 
+          "features": "Recursos e Opções",
+          "reset": "Reset e Manutenção"
+        }
+      },
+      "parameters": {
+        "title": "Parâmetros Principais",
+        "description": "Configure os parâmetros principais do clima adaptativo. Categoria I: {category_i}, Categoria II: {category_ii}, Categoria III: {category_iii}",
         "data": {
           "comfort_category": "Categoria de Conforto ASHRAE 55",
-          "energy_save_mode": "Modo de Economia de Energia",
+          "air_velocity": "Velocidade do Ar (m/s)",
+          "use_operative_temperature": "Usar Temperatura Operativa",
+          "energy_save_mode": "Modo de Economia de Energia"
+        }
+      },
+      "thresholds": {
+        "title": "Limites e Configurações",
+        "description": "Configure limites de temperatura e sensibilidade do controle",
+        "data": {
+          "temperature_change_threshold": "Limite de Mudança de Temperatura (°C)",
+          "natural_ventilation_threshold": "Limite para Ventilação Natural (°C)",
+          "setback_temperature_offset": "Offset de Temperatura para Setback (°C)",
+          "min_comfort_temp": "Temperatura Mínima de Conforto (°C)",
+          "max_comfort_temp": "Temperatura Máxima de Conforto (°C)"
+        }
+      },
+      "features": {
+        "title": "Recursos e Opções",
+        "description": "Ativar ou desativar recursos avançados",
+        "data": {
+          "adaptive_air_velocity": "Controle Adaptativo de Velocidade do Ar",
+          "natural_ventilation_enable": "Detecção de Ventilação Natural",
+          "humidity_comfort_enable": "Correção de Conforto por Umidade",
           "comfort_precision_mode": "Modo de Precisão de Conforto",
           "use_occupancy_features": "Usar Recursos de Ocupação",
-          "natural_ventilation_enable": "Detecção de Ventilação Natural",
-          "adaptive_air_velocity": "Controle Adaptativo de Velocidade do Ar",
-          "humidity_comfort_enable": "Correção de Conforto por Umidade",
-          "auto_shutdown_enable": "Desligamento Automático por Ausência Prolongada",
-          "min_comfort_temp": "Temperatura Mínima de Conforto",
-          "max_comfort_temp": "Temperatura Máxima de Conforto",
-          "temperature_change_threshold": "Limite de Mudança de Temperatura",
-          "air_velocity": "Velocidade do Ar (m/s)",
-          "natural_ventilation_threshold": "Limite para Ventilação Natural",
-          "setback_temperature_offset": "Offset de Temperatura para Setback",
-          "prolonged_absence_minutes": "Tempo de Ausência Prolongada (minutos)",
-          "auto_shutdown_minutes": "Tempo para Desligamento Automático (minutos)"
+          "auto_shutdown_enable": "Desligamento Automático por Ausência Prolongada"
+        }
+      },
+      "reset": {
+        "title": "Reset e Manutenção",
+        "description": "Opções de reset e tarefas de manutenção. {warning}",
+        "data": {
+          "reset_outdoor_history": "Resetar Histórico de Temperatura Externa",
+          "reset_to_defaults": "Resetar Todas as Configurações para o Padrão"
         }
       }
     }

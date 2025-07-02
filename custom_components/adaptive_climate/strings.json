@@ -53,25 +53,54 @@
   "options": {
     "step": {
       "init": {
-        "title": "Configure Adaptive Climate",
-        "description": "Update your adaptive climate settings.",
+        "title": "Adaptive Climate Configuration",
+        "description": "Choose what you want to configure",
+        "menu_options": {
+          "parameters": "Main Parameters",
+          "thresholds": "Thresholds & Limits", 
+          "features": "Features & Options",
+          "reset": "Reset & Maintenance"
+        }
+      },
+      "parameters": {
+        "title": "Main Parameters",
+        "description": "Configure core adaptive climate parameters. Category I: {category_i}, Category II: {category_ii}, Category III: {category_iii}",
         "data": {
           "comfort_category": "ASHRAE 55 Comfort Category",
-          "energy_save_mode": "Energy Save Mode",
+          "air_velocity": "Air Velocity (m/s)",
+          "use_operative_temperature": "Use Operative Temperature",
+          "energy_save_mode": "Energy Save Mode"
+        }
+      },
+      "thresholds": {
+        "title": "Thresholds & Limits",
+        "description": "Configure temperature limits and control sensitivity",
+        "data": {
+          "temperature_change_threshold": "Temperature Change Threshold (°C)",
+          "natural_ventilation_threshold": "Natural Ventilation Threshold (°C)",
+          "setback_temperature_offset": "Setback Temperature Offset (°C)",
+          "min_comfort_temp": "Minimum Comfort Temperature (°C)",
+          "max_comfort_temp": "Maximum Comfort Temperature (°C)"
+        }
+      },
+      "features": {
+        "title": "Features & Options",
+        "description": "Enable or disable advanced features",
+        "data": {
+          "adaptive_air_velocity": "Adaptive Air Velocity Control",
+          "natural_ventilation_enable": "Natural Ventilation Detection",
+          "humidity_comfort_enable": "Humidity Comfort Correction",
           "comfort_precision_mode": "Precision Comfort Mode",
           "use_occupancy_features": "Use Occupancy Features",
-          "natural_ventilation_enable": "Natural Ventilation Detection",
-          "adaptive_air_velocity": "Adaptive Air Velocity Control",
-          "humidity_comfort_enable": "Humidity Comfort Correction",
-          "auto_shutdown_enable": "Auto Shutdown on Prolonged Absence",
-          "min_comfort_temp": "Minimum Comfort Temperature",
-          "max_comfort_temp": "Maximum Comfort Temperature",
-          "temperature_change_threshold": "Temperature Change Threshold",
-          "air_velocity": "Air Velocity (m/s)",
-          "natural_ventilation_threshold": "Natural Ventilation Threshold",
-          "setback_temperature_offset": "Setback Temperature Offset",
-          "prolonged_absence_minutes": "Prolonged Absence Time (minutes)",
-          "auto_shutdown_minutes": "Auto Shutdown Time (minutes)"
+          "auto_shutdown_enable": "Auto Shutdown on Prolonged Absence"
+        }
+      },
+      "reset": {
+        "title": "Reset & Maintenance",
+        "description": "Reset options and maintenance tasks. {warning}",
+        "data": {
+          "reset_outdoor_history": "Reset Outdoor Temperature History",
+          "reset_to_defaults": "Reset All Settings to Defaults"
         }
       }
     }
