@@ -90,14 +90,25 @@ class ASHRAEComplianceSensor(AdaptiveClimateBinarySensorBase):
         effective_max = self.coordinator.data.get("effective_comfort_max", self.coordinator.data.get("comfort_temp_max"))
         
         return {
+            # Current conditions
             "indoor_temperature": self.coordinator.data.get("indoor_temperature"),
+            
+            # Comfort ranges (diagnostic values)
             "comfort_range_min": round(self.coordinator.data.get("comfort_temp_min", 0), 1),
             "comfort_range_max": round(self.coordinator.data.get("comfort_temp_max", 0), 1),
             "effective_comfort_min": round(effective_min, 1) if effective_min else None,
             "effective_comfort_max": round(effective_max, 1) if effective_max else None,
-            "comfort_category": self.coordinator.config.get("comfort_category"),
+            
+            # Configuration values (user-configurable)
+            "comfort_category": self.coordinator.config.get("comfort_category", "II"),
+            "min_comfort_temp_limit": self.coordinator.config.get("min_comfort_temp", 18.0),
+            "max_comfort_temp_limit": self.coordinator.config.get("max_comfort_temp", 28.0),
+            
+            # Offset diagnostics  
             "air_velocity_offset": round(self.coordinator.data.get("air_velocity_offset", 0), 2),
             "humidity_offset": round(self.coordinator.data.get("humidity_offset", 0), 2),
+            
+            # Compliance calculation explanation
             "compliance_calculation": f"{self.coordinator.data.get('indoor_temperature', 0):.1f}°C in range [{round(effective_min, 1) if effective_min else 0}°C - {round(effective_max, 1) if effective_max else 0}°C]",
         }
 
