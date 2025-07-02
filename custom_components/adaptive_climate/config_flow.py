@@ -423,14 +423,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 )
             ),
 
-            # === TEMPERATURE SLIDERS ===
+            # === TEMPERATURE INPUT BOXES ===
             vol.Optional(
                 "min_comfort_temp",
                 default=current_config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
                     min=15.0, max=22.0, step=0.5, 
-                    mode=selector.NumberSelectorMode.SLIDER,
+                    mode=selector.NumberSelectorMode.BOX,
                     unit_of_measurement="°C"
                 )
             ),
@@ -441,7 +441,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
                     min=25.0, max=32.0, step=0.5, 
-                    mode=selector.NumberSelectorMode.SLIDER,
+                    mode=selector.NumberSelectorMode.BOX,
                     unit_of_measurement="°C"
                 )
             ),
@@ -452,43 +452,43 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
                     min=0.1, max=3.0, step=0.1, 
-                    mode=selector.NumberSelectorMode.SLIDER,
+                    mode=selector.NumberSelectorMode.BOX,
                     unit_of_measurement="°C"
                 )
             ),
 
-            # === AIR VELOCITY SLIDER ===
+            # === AIR VELOCITY INPUT BOX ===
             vol.Optional(
                 "air_velocity", 
                 default=current_config.get("air_velocity", DEFAULT_AIR_VELOCITY)
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
                     min=0.0, max=2.0, step=0.1, 
-                    mode=selector.NumberSelectorMode.SLIDER,
+                    mode=selector.NumberSelectorMode.BOX,
                     unit_of_measurement="m/s"
                 )
             ),
 
-            # === NATURAL VENTILATION SLIDER ===
+            # === NATURAL VENTILATION INPUT BOX ===
             vol.Optional(
                 "natural_ventilation_threshold",
                 default=current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
                     min=0.5, max=10.0, step=0.5, 
-                    mode=selector.NumberSelectorMode.SLIDER,
+                    mode=selector.NumberSelectorMode.BOX,
                     unit_of_measurement="°C"
                 )
             ),
 
-            # === SETBACK TEMPERATURE SLIDER ===
+            # === SETBACK TEMPERATURE INPUT BOX ===
             vol.Optional(
                 "setback_temperature_offset",
                 default=current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
                     min=0.5, max=5.0, step=0.5, 
-                    mode=selector.NumberSelectorMode.SLIDER,
+                    mode=selector.NumberSelectorMode.BOX,
                     unit_of_measurement="°C"
                 )
             ),

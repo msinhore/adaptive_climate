@@ -85,12 +85,20 @@ class ASHRAEComplianceSensor(AdaptiveClimateBinarySensorBase):
         if not self.coordinator.data:
             return {}
         
+        # Use effective comfort range for accurate diagnosis
+        effective_min = self.coordinator.data.get("effective_comfort_min", self.coordinator.data.get("comfort_temp_min"))
+        effective_max = self.coordinator.data.get("effective_comfort_max", self.coordinator.data.get("comfort_temp_max"))
+        
         return {
             "indoor_temperature": self.coordinator.data.get("indoor_temperature"),
-            "comfort_range_min": self.coordinator.data.get("comfort_temp_min"),
-            "comfort_range_max": self.coordinator.data.get("comfort_temp_max"),
+            "comfort_range_min": round(self.coordinator.data.get("comfort_temp_min", 0), 1),
+            "comfort_range_max": round(self.coordinator.data.get("comfort_temp_max", 0), 1),
+            "effective_comfort_min": round(effective_min, 1) if effective_min else None,
+            "effective_comfort_max": round(effective_max, 1) if effective_max else None,
             "comfort_category": self.coordinator.config.get("comfort_category"),
-            "compliance_notes": self.coordinator.data.get("compliance_notes", ""),
+            "air_velocity_offset": round(self.coordinator.data.get("air_velocity_offset", 0), 2),
+            "humidity_offset": round(self.coordinator.data.get("humidity_offset", 0), 2),
+            "compliance_calculation": f"{self.coordinator.data.get('indoor_temperature', 0):.1f}°C in range [{round(effective_min, 1) if effective_min else 0}°C - {round(effective_max, 1) if effective_max else 0}°C]",
         }
 
 
@@ -126,12 +134,28 @@ class NaturalVentilationSensor(AdaptiveClimateBinarySensorBase):
         if not self.coordinator.data:
             return {}
         
+        outdoor_temp = self.coordinator.data.get("outdoor_temperature", 0) or 0
+        indoor_temp = self.coordinator.data.get("indoor_temperature", 0) or 0
+        comfort_max = self.coordinator.data.get("comfort_temp_max", 28.0) or 28.0
+        threshold = self.coordinator.config.get("natural_ventilation_threshold", 2.0)
+        temp_diff = indoor_temp - outdoor_temp
+        
+        # Determine why natural ventilation is on/off
+        conditions = {
+            "indoor_above_comfort_max": indoor_temp > comfort_max,
+            "outdoor_cooler_than_indoor": outdoor_temp < indoor_temp,  
+            "temp_difference_sufficient": temp_diff >= threshold,
+        }
+        
+        all_conditions_met = all(conditions.values())
+        
         return {
-            "outdoor_temperature": self.coordinator.data.get("outdoor_temperature"),
-            "indoor_temperature": self.coordinator.data.get("indoor_temperature"),
-            "temperature_difference": abs(
-                (self.coordinator.data.get("outdoor_temperature", 0) or 0) - 
-                (self.coordinator.data.get("indoor_temperature", 0) or 0)
-            ),
-            "natural_ventilation_threshold": self.coordinator.config.get("natural_ventilation_threshold", 2.0),
+            "outdoor_temperature": round(outdoor_temp, 2),
+            "indoor_temperature": round(indoor_temp, 2),
+            "temperature_difference": round(temp_diff, 2),
+            "natural_ventilation_threshold": threshold,
+            "comfort_temp_max": round(comfort_max, 1),
+            "conditions_met": conditions,
+            "all_conditions_met": all_conditions_met,
+            "diagnostic_summary": f"Indoor {indoor_temp:.1f}°C {'>' if conditions['indoor_above_comfort_max'] else '≤'} {comfort_max:.1f}°C, Outdoor {outdoor_temp:.1f}°C {'<' if conditions['outdoor_cooler_than_indoor'] else '≥'} Indoor, Diff {temp_diff:.1f}°C {'≥' if conditions['temp_difference_sufficient'] else '<'} {threshold}°C",
         }
