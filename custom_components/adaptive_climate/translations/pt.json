@@ -54,53 +54,62 @@
     "step": {
       "init": {
         "title": "Configuração do Clima Adaptativo",
-        "description": "Escolha o que deseja configurar",
-        "menu_options": {
-          "parameters": "Parâmetros Principais",
-          "thresholds": "Limites e Configurações", 
-          "features": "Recursos e Opções",
-          "reset": "Reset e Manutenção"
-        }
-      },
-      "parameters": {
-        "title": "Parâmetros Principais",
-        "description": "Configure os parâmetros principais do clima adaptativo. Categoria I: {category_i}, Categoria II: {category_ii}, Categoria III: {category_iii}",
+        "description": "Configure todas as opções em um painel unificado. Use chaves para recursos, controles deslizantes para parâmetros e menus suspensos para seleções. {warning}",
         "data": {
-          "comfort_category": "Categoria de Conforto ASHRAE 55",
-          "air_velocity": "Velocidade do Ar (m/s)",
+          "energy_save_mode": "Modo de Economia de Energia",
+          "natural_ventilation_enable": "Ativar Ventilação Natural",
+          "adaptive_air_velocity": "Velocidade do Ar Adaptativa",
+          "humidity_comfort_enable": "Conforto com Umidade",
+          "comfort_precision_mode": "Modo de Precisão",
+          "use_occupancy_features": "Recursos de Ocupação",
+          "auto_shutdown_enable": "Desligamento Automático",
           "use_operative_temperature": "Usar Temperatura Operativa",
-          "energy_save_mode": "Modo de Economia de Energia"
-        }
-      },
-      "thresholds": {
-        "title": "Limites e Configurações",
-        "description": "Configure limites de temperatura e sensibilidade do controle",
-        "data": {
-          "temperature_change_threshold": "Limite de Mudança de Temperatura (°C)",
-          "natural_ventilation_threshold": "Limite para Ventilação Natural (°C)",
-          "setback_temperature_offset": "Offset de Temperatura para Setback (°C)",
-          "min_comfort_temp": "Temperatura Mínima de Conforto (°C)",
-          "max_comfort_temp": "Temperatura Máxima de Conforto (°C)"
-        }
-      },
-      "features": {
-        "title": "Recursos e Opções",
-        "description": "Ativar ou desativar recursos avançados",
-        "data": {
-          "adaptive_air_velocity": "Controle Adaptativo de Velocidade do Ar",
-          "natural_ventilation_enable": "Detecção de Ventilação Natural",
-          "humidity_comfort_enable": "Correção de Conforto por Umidade",
-          "comfort_precision_mode": "Modo de Precisão de Conforto",
-          "use_occupancy_features": "Usar Recursos de Ocupação",
-          "auto_shutdown_enable": "Desligamento Automático por Ausência Prolongada"
-        }
-      },
-      "reset": {
-        "title": "Reset e Manutenção",
-        "description": "Opções de reset e tarefas de manutenção. {warning}",
-        "data": {
-          "reset_outdoor_history": "Resetar Histórico de Temperatura Externa",
-          "reset_to_defaults": "Resetar Todas as Configurações para o Padrão"
+          "comfort_category": "Categoria de Conforto",
+          "min_comfort_temp": "Temperatura Mínima de Conforto",
+          "max_comfort_temp": "Temperatura Máxima de Conforto",
+          "temperature_change_threshold": "Limite de Mudança de Temperatura",
+          "air_velocity": "Velocidade do Ar",
+          "natural_ventilation_threshold": "Limite para Ventilação Natural",
+          "setback_temperature_offset": "Offset de Temperatura Setback", 
+          "prolonged_absence_minutes": "Período de Ausência Prolongada",
+          "auto_shutdown_minutes": "Atraso do Desligamento Automático",
+          "climate_entity": "Entidade do Clima",
+          "indoor_temp_sensor": "Sensor de Temperatura Interna",
+          "outdoor_temp_sensor": "Sensor de Temperatura Externa",
+          "occupancy_sensor": "Sensor de Ocupação",
+          "mean_radiant_temp_sensor": "Sensor de Temperatura Radiante Média",
+          "indoor_humidity_sensor": "Sensor de Umidade Interna",
+          "outdoor_humidity_sensor": "Sensor de Umidade Externa",
+          "reset_outdoor_history": "Resetar Histórico Externo",
+          "reset_to_defaults": "Resetar para Padrões"
+        },
+        "data_description": {
+          "energy_save_mode": "Ativar otimizações de economia de energia",
+          "natural_ventilation_enable": "Ativar controle de ventilação natural quando as condições externas são favoráveis",
+          "adaptive_air_velocity": "Ajustar automaticamente a velocidade do ar baseado nas necessidades de conforto",
+          "humidity_comfort_enable": "Considerar níveis de umidade nos cálculos de conforto",
+          "comfort_precision_mode": "Usar cálculos de conforto de alta precisão (pode usar mais recursos)",
+          "use_occupancy_features": "Ativar setback de temperatura baseado em ocupação",
+          "auto_shutdown_enable": "Desligar automaticamente o HVAC quando o espaço está desocupado por períodos prolongados",
+          "use_operative_temperature": "Usar temperatura operativa ao invés de temperatura do ar para cálculos de conforto",
+          "comfort_category": "Categoria de conforto ASHRAE 55 - afeta a faixa de temperatura aceitável",
+          "min_comfort_temp": "Temperatura mínima aceitável de conforto",
+          "max_comfort_temp": "Temperatura máxima aceitável de conforto",
+          "temperature_change_threshold": "Diferença mínima de temperatura para acionar ajuste do HVAC",
+          "air_velocity": "Velocidade do ar interno para cálculos de conforto",
+          "natural_ventilation_threshold": "Limite de diferença de temperatura para ativar ventilação natural",
+          "setback_temperature_offset": "Offset de temperatura para setback baseado em ocupação",
+          "prolonged_absence_minutes": "Minutos para aguardar antes de considerar o espaço desocupado",
+          "auto_shutdown_minutes": "Minutos de ausência antes de desligar automaticamente o HVAC",
+          "climate_entity": "A entidade do clima a controlar",
+          "indoor_temp_sensor": "Sensor para leituras de temperatura interna",
+          "outdoor_temp_sensor": "Sensor para leituras de temperatura externa",
+          "occupancy_sensor": "Sensor binário para detecção de ocupação",
+          "mean_radiant_temp_sensor": "Sensor opcional para temperatura radiante média",
+          "indoor_humidity_sensor": "Sensor opcional para umidade interna",
+          "outdoor_humidity_sensor": "Sensor opcional para umidade externa",
+          "reset_outdoor_history": "Limpar o histórico de temperatura externa usado para cálculo da média móvel",
+          "reset_to_defaults": "Resetar todos os parâmetros de configuração para seus valores padrão"
         }
       }
     }

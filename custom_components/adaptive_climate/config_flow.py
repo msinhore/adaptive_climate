@@ -285,143 +285,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
-        """Manage the options main menu."""
-        return self.async_show_menu(
-            step_id="init",
-            menu_options=["parameters", "thresholds", "features", "reset"]
-        )
-
-    async def async_step_parameters(self, user_input=None):
-        """Handle main parameters configuration."""
+        """Handle unified configuration panel with modern UI components."""
         if user_input is not None:
-            # Update coordinator with new options
-            coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
-            await coordinator.update_config(user_input)
-            
-            # Merge with existing options
-            new_options = {**self.config_entry.options, **user_input}
-            return self.async_create_entry(title="", data=new_options)
-
-        # Get current values from coordinator
-        coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
-        current_config = coordinator.config
-
-        return self.async_show_form(
-            step_id="parameters",
-            data_schema=vol.Schema({
-                vol.Optional(
-                    "comfort_category", 
-                    default=current_config.get("comfort_category", "II")
-                ): vol.In(["I", "II", "III"]),
-                vol.Optional(
-                    "air_velocity", 
-                    default=current_config.get("air_velocity", 0.1)
-                ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
-                vol.Optional(
-                    "use_operative_temperature",
-                    default=current_config.get("use_operative_temperature", False)
-                ): bool,
-                vol.Optional(
-                    "energy_save_mode",
-                    default=current_config.get("energy_save_mode", True)
-                ): bool,
-            }),
-            description_placeholders={
-                "category_i": "±2°C (90% satisfaction)",
-                "category_ii": "±3°C (80% satisfaction)", 
-                "category_iii": "±4°C (65% satisfaction)",
-            }
-        )
-
-    async def async_step_thresholds(self, user_input=None):
-        """Handle thresholds configuration."""
-        if user_input is not None:
-            # Update coordinator with new options
-            coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
-            await coordinator.update_config(user_input)
-            
-            # Merge with existing options
-            new_options = {**self.config_entry.options, **user_input}
-            return self.async_create_entry(title="", data=new_options)
-
-        # Get current values from coordinator
-        coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
-        current_config = coordinator.config
-
-        return self.async_show_form(
-            step_id="thresholds",
-            data_schema=vol.Schema({
-                vol.Optional(
-                    "temperature_change_threshold",
-                    default=current_config.get("temperature_change_threshold", 1.0)
-                ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=3.0)),
-                vol.Optional(
-                    "natural_ventilation_threshold",
-                    default=current_config.get("natural_ventilation_threshold", 2.0)
-                ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
-                vol.Optional(
-                    "setback_temperature_offset",
-                    default=current_config.get("setback_temperature_offset", 2.0)
-                ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=5.0)),
-                vol.Optional(
-                    "min_comfort_temp",
-                    default=current_config.get("min_comfort_temp", 18.0)
-                ): vol.All(vol.Coerce(float), vol.Range(min=15.0, max=22.0)),
-                vol.Optional(
-                    "max_comfort_temp",
-                    default=current_config.get("max_comfort_temp", 28.0)
-                ): vol.All(vol.Coerce(float), vol.Range(min=25.0, max=32.0)),
-            })
-        )
-
-    async def async_step_features(self, user_input=None):
-        """Handle features configuration."""
-        if user_input is not None:
-            # Update coordinator with new options
-            coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
-            await coordinator.update_config(user_input)
-            
-            # Merge with existing options
-            new_options = {**self.config_entry.options, **user_input}
-            return self.async_create_entry(title="", data=new_options)
-
-        # Get current values from coordinator
-        coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
-        current_config = coordinator.config
-
-        return self.async_show_form(
-            step_id="features",
-            data_schema=vol.Schema({
-                vol.Optional(
-                    "adaptive_air_velocity",
-                    default=current_config.get("adaptive_air_velocity", False)
-                ): bool,
-                vol.Optional(
-                    "natural_ventilation_enable",
-                    default=current_config.get("natural_ventilation_enable", True)
-                ): bool,
-                vol.Optional(
-                    "humidity_comfort_enable",
-                    default=current_config.get("humidity_comfort_enable", True)
-                ): bool,
-                vol.Optional(
-                    "comfort_precision_mode",
-                    default=current_config.get("comfort_precision_mode", False)
-                ): bool,
-                vol.Optional(
-                    "use_occupancy_features",
-                    default=current_config.get("use_occupancy_features", False)
-                ): bool,
-                vol.Optional(
-                    "auto_shutdown_enable",
-                    default=current_config.get("auto_shutdown_enable", False)
-                ): bool,
-            })
-        )
-
-    async def async_step_reset(self, user_input=None):
-        """Handle reset options."""
-        if user_input is not None:
+            # Handle reset actions first
             coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
             
             if user_input.get("reset_outdoor_history", False):
@@ -430,14 +296,16 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             if user_input.get("reset_to_defaults", False):
                 # Reset to default values
                 default_config = {
-                    "comfort_category": "II",
-                    "air_velocity": 0.1,
-                    "temperature_change_threshold": 1.0,
-                    "natural_ventilation_threshold": 2.0,
-                    "setback_temperature_offset": 2.0,
-                    "min_comfort_temp": 18.0,
-                    "max_comfort_temp": 28.0,
-                    "adaptive_air_velocity": False,
+                    "comfort_category": DEFAULT_COMFORT_CATEGORY,
+                    "air_velocity": DEFAULT_AIR_VELOCITY,
+                    "temperature_change_threshold": DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
+                    "natural_ventilation_threshold": DEFAULT_NATURAL_VENTILATION_THRESHOLD,
+                    "setback_temperature_offset": DEFAULT_SETBACK_TEMPERATURE_OFFSET,
+                    "min_comfort_temp": DEFAULT_MIN_COMFORT_TEMP,
+                    "max_comfort_temp": DEFAULT_MAX_COMFORT_TEMP,
+                    "prolonged_absence_minutes": DEFAULT_PROLONGED_ABSENCE_MINUTES,
+                    "auto_shutdown_minutes": DEFAULT_AUTO_SHUTDOWN_MINUTES,
+                    "adaptive_air_velocity": True,
                     "natural_ventilation_enable": True,
                     "humidity_comfort_enable": True,
                     "comfort_precision_mode": False,
@@ -449,15 +317,260 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 await coordinator.update_config(default_config)
                 return self.async_create_entry(title="", data=default_config)
             
+            # Update coordinator with new configuration
+            config_update = {k: v for k, v in user_input.items() 
+                           if not k.startswith("reset_")}
+            if config_update:
+                await coordinator.update_config(config_update)
+                # Merge with existing options
+                new_options = {**self.config_entry.options, **config_update}
+                return self.async_create_entry(title="", data=new_options)
+            
             return self.async_create_entry(title="", data=self.config_entry.options)
 
+        # Get current values from coordinator
+        coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
+        current_config = coordinator.config
+        current_data = self.config_entry.data
+
+        # Build entity selectors with area filter if area is selected
+        selected_area = current_data.get("area")
+        entity_filter = {}
+        if selected_area:
+            entity_filter["area"] = selected_area
+
+        # Create unified configuration schema with modern selectors
+        unified_schema = vol.Schema({
+            # === FEATURE TOGGLES (Using BooleanSelector for modern toggle switches) ===
+            vol.Optional(
+                "energy_save_mode",
+                default=current_config.get("energy_save_mode", True)
+            ): selector.BooleanSelector(),
+            
+            vol.Optional(
+                "natural_ventilation_enable",
+                default=current_config.get("natural_ventilation_enable", True)
+            ): selector.BooleanSelector(),
+            
+            vol.Optional(
+                "adaptive_air_velocity",
+                default=current_config.get("adaptive_air_velocity", True)
+            ): selector.BooleanSelector(),
+            
+            vol.Optional(
+                "humidity_comfort_enable",
+                default=current_config.get("humidity_comfort_enable", True)
+            ): selector.BooleanSelector(),
+            
+            vol.Optional(
+                "comfort_precision_mode",
+                default=current_config.get("comfort_precision_mode", False)
+            ): selector.BooleanSelector(),
+            
+            vol.Optional(
+                "use_occupancy_features",
+                default=current_config.get("use_occupancy_features", False)
+            ): selector.BooleanSelector(),
+            
+            vol.Optional(
+                "auto_shutdown_enable",
+                default=current_config.get("auto_shutdown_enable", False)
+            ): selector.BooleanSelector(),
+            
+            vol.Optional(
+                "use_operative_temperature",
+                default=current_config.get("use_operative_temperature", False)
+            ): selector.BooleanSelector(),
+
+            # === COMFORT CATEGORY DROPDOWN ===
+            vol.Optional(
+                "comfort_category", 
+                default=current_config.get("comfort_category", DEFAULT_COMFORT_CATEGORY)
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"value": "I", "label": f"Category I - {COMFORT_CATEGORIES['I']['description']}"},
+                        {"value": "II", "label": f"Category II - {COMFORT_CATEGORIES['II']['description']}"},
+                        {"value": "III", "label": f"Category III - {COMFORT_CATEGORIES['III']['description']}"},
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+
+            # === TEMPERATURE SLIDERS ===
+            vol.Optional(
+                "min_comfort_temp",
+                default=current_config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=15.0, max=22.0, step=0.5, 
+                    mode=selector.NumberSelectorMode.SLIDER,
+                    unit_of_measurement="°C"
+                )
+            ),
+            
+            vol.Optional(
+                "max_comfort_temp",
+                default=current_config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=25.0, max=32.0, step=0.5, 
+                    mode=selector.NumberSelectorMode.SLIDER,
+                    unit_of_measurement="°C"
+                )
+            ),
+
+            vol.Optional(
+                "temperature_change_threshold",
+                default=current_config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.1, max=3.0, step=0.1, 
+                    mode=selector.NumberSelectorMode.SLIDER,
+                    unit_of_measurement="°C"
+                )
+            ),
+
+            # === AIR VELOCITY SLIDER ===
+            vol.Optional(
+                "air_velocity", 
+                default=current_config.get("air_velocity", DEFAULT_AIR_VELOCITY)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.0, max=2.0, step=0.1, 
+                    mode=selector.NumberSelectorMode.SLIDER,
+                    unit_of_measurement="m/s"
+                )
+            ),
+
+            # === NATURAL VENTILATION SLIDER ===
+            vol.Optional(
+                "natural_ventilation_threshold",
+                default=current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.5, max=10.0, step=0.5, 
+                    mode=selector.NumberSelectorMode.SLIDER,
+                    unit_of_measurement="°C"
+                )
+            ),
+
+            # === SETBACK TEMPERATURE SLIDER ===
+            vol.Optional(
+                "setback_temperature_offset",
+                default=current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.5, max=5.0, step=0.5, 
+                    mode=selector.NumberSelectorMode.SLIDER,
+                    unit_of_measurement="°C"
+                )
+            ),
+
+            # === TIME PERIODS (MINUTES) - Using BOX mode for precise values ===
+            vol.Optional(
+                "prolonged_absence_minutes",
+                default=current_config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=10, max=240, step=5, 
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="min"
+                )
+            ),
+
+            vol.Optional(
+                "auto_shutdown_minutes",
+                default=current_config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=15, max=480, step=15, 
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="min"
+                )
+            ),
+
+            # === ENTITY SELECTORS ===
+            vol.Optional(
+                "climate_entity",
+                default=current_data.get("climate_entity")
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain="climate",
+                    **entity_filter
+                )
+            ),
+
+            vol.Optional(
+                "indoor_temp_sensor",
+                default=current_data.get("indoor_temp_sensor")
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain=["sensor", "input_number", "weather"],
+                    **entity_filter
+                )
+            ),
+
+            vol.Optional(
+                "outdoor_temp_sensor", 
+                default=current_data.get("outdoor_temp_sensor")
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain=["sensor", "input_number", "weather"]
+                )
+            ),
+
+            vol.Optional(
+                "occupancy_sensor",
+                default=current_data.get("occupancy_sensor")
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain="binary_sensor",
+                    device_class=["motion", "occupancy", "presence"],
+                    **entity_filter
+                )
+            ),
+
+            vol.Optional(
+                "mean_radiant_temp_sensor",
+                default=current_data.get("mean_radiant_temp_sensor")
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain=["sensor", "input_number"],
+                    **entity_filter
+                )
+            ),
+
+            vol.Optional(
+                "indoor_humidity_sensor",
+                default=current_data.get("indoor_humidity_sensor")
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain=["sensor", "input_number"],
+                    **entity_filter
+                )
+            ),
+
+            vol.Optional(
+                "outdoor_humidity_sensor",
+                default=current_data.get("outdoor_humidity_sensor")
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain=["sensor", "input_number", "weather"]
+                )
+            ),
+
+            # === RESET ACTIONS ===
+            vol.Optional("reset_outdoor_history", default=False): selector.BooleanSelector(),
+            vol.Optional("reset_to_defaults", default=False): selector.BooleanSelector(),
+        })
+
         return self.async_show_form(
-            step_id="reset",
-            data_schema=vol.Schema({
-                vol.Optional("reset_outdoor_history", default=False): bool,
-                vol.Optional("reset_to_defaults", default=False): bool,
-            }),
+            step_id="init",
+            data_schema=unified_schema,
             description_placeholders={
                 "warning": "Reset operations cannot be undone!"
             }
         )
+
+

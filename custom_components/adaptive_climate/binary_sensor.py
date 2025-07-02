@@ -99,7 +99,7 @@ class NaturalVentilationSensor(AdaptiveClimateBinarySensorBase):
     def is_on(self) -> bool | None:
         """Return true if natural ventilation is optimal."""
         if self.coordinator.data:
-            return self.coordinator.data.get("natural_ventilation_optimal", False)
+            return self.coordinator.data.get("natural_ventilation_active", False)
         return None
 
     @property

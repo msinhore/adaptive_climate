@@ -260,8 +260,14 @@ class AdaptiveComfortCalculator:
     def get_status_summary(self) -> dict[str, Any]:
         """Get comprehensive status summary."""
         # Calculate effective comfort range considering all offsets
-        effective_comfort_min = self.comfort_temp_min + self.air_velocity_offset + self.humidity_offset
-        effective_comfort_max = self.comfort_temp_max + self.air_velocity_offset + self.humidity_offset
+        # Air velocity offset is negative (expands upper range)
+        # Humidity offset adjusts the range based on humidity levels
+        air_vel_offset = self.air_velocity_offset
+        humidity_off = self.humidity_offset
+        
+        # Air velocity allows higher temperatures (negative offset expands upper range)
+        effective_comfort_min = self.comfort_temp_min + humidity_off
+        effective_comfort_max = self.comfort_temp_max - air_vel_offset + humidity_off
         
         # Determine compliance based on effective range
         is_compliant = effective_comfort_min <= self._indoor_temp <= effective_comfort_max

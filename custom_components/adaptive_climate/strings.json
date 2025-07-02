@@ -54,53 +54,62 @@
     "step": {
       "init": {
         "title": "Adaptive Climate Configuration",
-        "description": "Choose what you want to configure",
-        "menu_options": {
-          "parameters": "Main Parameters",
-          "thresholds": "Thresholds & Limits", 
-          "features": "Features & Options",
-          "reset": "Reset & Maintenance"
-        }
-      },
-      "parameters": {
-        "title": "Main Parameters",
-        "description": "Configure core adaptive climate parameters. Category I: {category_i}, Category II: {category_ii}, Category III: {category_iii}",
+        "description": "Configure all settings in one unified panel. Use toggles for features, sliders for parameters, and dropdowns for selections. {warning}",
         "data": {
-          "comfort_category": "ASHRAE 55 Comfort Category",
-          "air_velocity": "Air Velocity (m/s)",
+          "energy_save_mode": "Energy Save Mode",
+          "natural_ventilation_enable": "Enable Natural Ventilation",
+          "adaptive_air_velocity": "Adaptive Air Velocity",
+          "humidity_comfort_enable": "Humidity Comfort",
+          "comfort_precision_mode": "Precision Mode",
+          "use_occupancy_features": "Occupancy Features",
+          "auto_shutdown_enable": "Auto Shutdown",
           "use_operative_temperature": "Use Operative Temperature",
-          "energy_save_mode": "Energy Save Mode"
-        }
-      },
-      "thresholds": {
-        "title": "Thresholds & Limits",
-        "description": "Configure temperature limits and control sensitivity",
-        "data": {
-          "temperature_change_threshold": "Temperature Change Threshold (°C)",
-          "natural_ventilation_threshold": "Natural Ventilation Threshold (°C)",
-          "setback_temperature_offset": "Setback Temperature Offset (°C)",
-          "min_comfort_temp": "Minimum Comfort Temperature (°C)",
-          "max_comfort_temp": "Maximum Comfort Temperature (°C)"
-        }
-      },
-      "features": {
-        "title": "Features & Options",
-        "description": "Enable or disable advanced features",
-        "data": {
-          "adaptive_air_velocity": "Adaptive Air Velocity Control",
-          "natural_ventilation_enable": "Natural Ventilation Detection",
-          "humidity_comfort_enable": "Humidity Comfort Correction",
-          "comfort_precision_mode": "Precision Comfort Mode",
-          "use_occupancy_features": "Use Occupancy Features",
-          "auto_shutdown_enable": "Auto Shutdown on Prolonged Absence"
-        }
-      },
-      "reset": {
-        "title": "Reset & Maintenance",
-        "description": "Reset options and maintenance tasks. {warning}",
-        "data": {
-          "reset_outdoor_history": "Reset Outdoor Temperature History",
-          "reset_to_defaults": "Reset All Settings to Defaults"
+          "comfort_category": "Comfort Category",
+          "min_comfort_temp": "Minimum Comfort Temperature",
+          "max_comfort_temp": "Maximum Comfort Temperature",
+          "temperature_change_threshold": "Temperature Change Threshold",
+          "air_velocity": "Air Velocity",
+          "natural_ventilation_threshold": "Natural Ventilation Threshold",
+          "setback_temperature_offset": "Setback Temperature Offset", 
+          "prolonged_absence_minutes": "Prolonged Absence Period",
+          "auto_shutdown_minutes": "Auto Shutdown Delay",
+          "climate_entity": "Climate Entity",
+          "indoor_temp_sensor": "Indoor Temperature Sensor",
+          "outdoor_temp_sensor": "Outdoor Temperature Sensor",
+          "occupancy_sensor": "Occupancy Sensor",
+          "mean_radiant_temp_sensor": "Mean Radiant Temperature Sensor",
+          "indoor_humidity_sensor": "Indoor Humidity Sensor",
+          "outdoor_humidity_sensor": "Outdoor Humidity Sensor",
+          "reset_outdoor_history": "Reset Outdoor History",
+          "reset_to_defaults": "Reset to Defaults"
+        },
+        "data_description": {
+          "energy_save_mode": "Enable energy-saving optimizations",
+          "natural_ventilation_enable": "Enable natural ventilation control when outdoor conditions are favorable",
+          "adaptive_air_velocity": "Automatically adjust air velocity based on comfort needs",
+          "humidity_comfort_enable": "Consider humidity levels in comfort calculations",
+          "comfort_precision_mode": "Use high-precision comfort calculations (may use more resources)",
+          "use_occupancy_features": "Enable occupancy-based temperature setback",
+          "auto_shutdown_enable": "Automatically shutdown HVAC when space is unoccupied for extended periods",
+          "use_operative_temperature": "Use operative temperature instead of air temperature for comfort calculations",
+          "comfort_category": "ASHRAE 55 comfort category - affects acceptable temperature range",
+          "min_comfort_temp": "Minimum acceptable comfort temperature",
+          "max_comfort_temp": "Maximum acceptable comfort temperature",
+          "temperature_change_threshold": "Minimum temperature difference to trigger HVAC adjustment",
+          "air_velocity": "Indoor air velocity for comfort calculations",
+          "natural_ventilation_threshold": "Temperature difference threshold for enabling natural ventilation",
+          "setback_temperature_offset": "Temperature offset for occupancy-based setback",
+          "prolonged_absence_minutes": "Minutes to wait before considering space unoccupied",
+          "auto_shutdown_minutes": "Minutes of absence before automatically shutting down HVAC",
+          "climate_entity": "The climate entity to control",
+          "indoor_temp_sensor": "Sensor for indoor temperature readings",
+          "outdoor_temp_sensor": "Sensor for outdoor temperature readings",
+          "occupancy_sensor": "Binary sensor for occupancy detection",
+          "mean_radiant_temp_sensor": "Optional sensor for mean radiant temperature",
+          "indoor_humidity_sensor": "Optional sensor for indoor humidity",
+          "outdoor_humidity_sensor": "Optional sensor for outdoor humidity",
+          "reset_outdoor_history": "Clear the outdoor temperature history used for running mean calculation",
+          "reset_to_defaults": "Reset all configuration parameters to their default values"
         }
       }
     }
