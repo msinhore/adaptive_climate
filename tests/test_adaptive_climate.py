@@ -7,7 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.setup import async_setup_component
 
 from custom_components.adaptive_climate.const import DOMAIN
-from custom_components.adaptive_climate.ashrae_calculator import ASHRAECalculator
+from custom_components.adaptive_climate.ashrae_calculator import AdaptiveComfortCalculator
 
 
 @pytest.fixture
@@ -52,7 +52,7 @@ class TestAdaptiveClimate:
             assert await async_setup_component(hass, DOMAIN, {})
 
 
-class TestASHRAECalculator:
+class TestAdaptiveComfortCalculator:
     """Test ASHRAE 55 calculations."""
     
     def test_base_adaptive_comfort_temp(self):
