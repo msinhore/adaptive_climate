@@ -6,13 +6,13 @@
 [![hacs](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
 [![Community Forum](https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge)](https://community.home-assistant.io)
 
-A Home Assistant custom component that implements ASHRAE 55 adaptive comfort model for intelligent climate control with energy-saving features and natural ventilation detection.
+A Home Assistant custom component that acts as an intelligent controller for your existing climate entities using the ASHRAE 55 adaptive comfort model. It provides energy-saving features, natural ventilation detection, and comprehensive diagnostic sensors.
 
-**Development Version: 0.1.0**
+**Development Version: 0.1.1**
 
 ## Overview
 
-This component transforms your Home Assistant into an intelligent climate control system based on the ASHRAE 55 adaptive comfort standard. It automatically adjusts target temperatures based on outdoor conditions, detects optimal natural ventilation opportunities, and implements occupancy-based energy-saving strategies.
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
 
 ## Key Features
 
@@ -23,10 +23,12 @@ This component transforms your Home Assistant into an intelligent climate contro
 - Uses operative temperature when radiant temperature sensors are available
 
 ### Intelligent Climate Control
-- Automatic HVAC mode optimization based on outdoor conditions
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
 - Natural ventilation detection and recommendation  
 - Adaptive fan speed control based on comfort requirements
 - Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
 
 ### Energy Efficiency
 - Occupancy-based setback with configurable temperature offsets
@@ -34,10 +36,12 @@ This component transforms your Home Assistant into an intelligent climate contro
 - Dynamic comfort zones that adapt to seasonal changes
 - Natural ventilation prioritization when conditions are suitable
 
-### Advanced Monitoring
+### Rich Diagnostic Sensors
 - Real-time ASHRAE 55 compliance monitoring
-- Diagnostic sensors for comfort temperature, ranges, and outdoor running mean
-- Comprehensive logging for system optimization
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
 - Rich attributes for integration with Home Assistant automations
 
 ## Installation
@@ -90,12 +94,13 @@ The component uses a modern UI-based configuration flow accessible through **Set
 
 ### Basic Smart Thermostat Control
 
-The component automatically adjusts your thermostat based on outdoor temperature:
+The component automatically adjusts your existing thermostat based on outdoor temperature:
 
 ```yaml
 # When outdoor temp = 20°C, comfort temp = 24.0°C
 # When outdoor temp = 25°C, comfort temp = 25.3°C
 # When outdoor temp = 30°C, comfort temp = 26.6°C
+# The component automatically sets these temperatures on your climate entity
 ```
 
 ### Energy-Saving Automations
@@ -118,11 +123,9 @@ automation:
         entity_id: binary_sensor.adaptive_climate_ashrae_compliance
         to: "off"
     action:
-      - service: climate.set_temperature
-        target:
-          entity_id: climate.adaptive_climate
+      - service: notify.mobile_app
         data:
-          temperature: "{{ state_attr('climate.adaptive_climate', 'comfort_temperature') }}"
+          message: "Climate is outside comfort zone. Adjusting automatically."
 ```
 
 ### Dashboard Integration
@@ -130,7 +133,7 @@ automation:
 ```yaml
 type: entities
 entities:
-  - entity: climate.adaptive_climate
+  - entity: climate.your_existing_thermostat  # Your actual climate entity
   - entity: sensor.adaptive_climate_comfort_temperature
     name: "Optimal Temperature"
   - entity: sensor.adaptive_climate_comfort_range_min
@@ -161,28 +164,38 @@ The component automatically creates diagnostic sensors:
 ### `adaptive_climate.clear_override`
 Clears any manual temperature override and returns to adaptive control.
 
+```yaml
+service: adaptive_climate.clear_override
+data:
+  config_entry_id: "your_config_entry_id"
+```
+
 ### `adaptive_climate.set_comfort_category`
 Changes the ASHRAE 55 comfort category.
 
 ```yaml
 service: adaptive_climate.set_comfort_category
-target:
-  entity_id: climate.adaptive_climate
 data:
+  config_entry_id: "your_config_entry_id"
   category: "I"  # I, II, or III
 ```
 
 ### `adaptive_climate.update_calculations`
 Forces immediate recalculation of comfort parameters.
 
+```yaml
+service: adaptive_climate.update_calculations
+data:
+  config_entry_id: "your_config_entry_id"
+```
+
 ### `adaptive_climate.set_temporary_override`
 Sets a temporary manual override with automatic expiration.
 
 ```yaml
 service: adaptive_climate.set_temporary_override
-target:
-  entity_id: climate.adaptive_climate
 data:
+  config_entry_id: "your_config_entry_id"
   temperature: 22
   duration: 3600  # seconds
 ```
@@ -236,4 +249,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Development Version**: 0.1.0
+**Development Version**: 0.1.1

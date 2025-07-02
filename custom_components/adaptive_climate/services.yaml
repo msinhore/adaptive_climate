@@ -2,25 +2,23 @@ clear_override:
   name: Clear Manual Override
   description: Clear manual override and resume adaptive control
   fields:
-    entity_id:
-      name: Entity ID
-      description: Climate entity to clear override from
+    config_entry_id:
+      name: Config Entry ID
+      description: Adaptive Climate configuration entry to clear override from
       required: true
       selector:
-        entity:
-          domain: climate
+        text:
 
 set_comfort_category:
   name: Set Comfort Category
   description: Change the ASHRAE 55 comfort category
   fields:
-    entity_id:
-      name: Entity ID
-      description: Climate entity to configure
+    config_entry_id:
+      name: Config Entry ID
+      description: Adaptive Climate configuration entry to configure
       required: true
       selector:
-        entity:
-          domain: climate
+        text:
     category:
       name: Comfort Category
       description: ASHRAE 55 comfort category
@@ -39,25 +37,23 @@ update_calculations:
   name: Update Calculations
   description: Force update of adaptive comfort calculations
   fields:
-    entity_id:
-      name: Entity ID
-      description: Climate entity to update
+    config_entry_id:
+      name: Config Entry ID
+      description: Adaptive Climate configuration entry to update
       required: true
       selector:
-        entity:
-          domain: climate
+        text:
 
 set_temporary_override:
   name: Set Temporary Override
   description: Set temporary manual control with automatic resume
   fields:
-    entity_id:
-      name: Entity ID
-      description: Climate entity to override
+    config_entry_id:
+      name: Config Entry ID
+      description: Adaptive Climate configuration entry to override
       required: true
       selector:
-        entity:
-          domain: climate
+        text:
     temperature:
       name: Temperature
       description: Target temperature (optional)

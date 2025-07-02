@@ -9,51 +9,92 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
+from .coordinator import AdaptiveClimateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.CLIMATE]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Adaptive Climate component."""
-    # Set up the component data
     hass.data.setdefault(DOMAIN, {})
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Adaptive Climate from a config entry."""
-    _LOGGER.debug("Setting up Adaptive Climate integration")
+    _LOGGER.debug("Setting up Adaptive Climate coordinator")
     
+    # Create coordinator
+    coordinator = AdaptiveClimateCoordinator(hass, entry.data)
+    
+    # Store coordinator
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = entry.data
+    hass.data[DOMAIN][entry.entry_id] = coordinator
     
+    # Perform initial data fetch
+    await coordinator.async_config_entry_first_refresh()
+    
+    # Set up platforms (sensors only, no climate entity)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
-    # Set up reload service for development
-    async def async_reload_entry(call):
-        """Reload config entry."""
-        await hass.config_entries.async_reload(entry.entry_id)
-    
-    hass.services.async_register(
-        DOMAIN, "reload", async_reload_entry
-    )
+    # Set up services
+    await _async_setup_services(hass, coordinator)
     
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    _LOGGER.debug("Unloading Adaptive Climate integration")
+    _LOGGER.debug("Unloading Adaptive Climate coordinator")
     
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
+        coordinator = hass.data[DOMAIN].pop(entry.entry_id)
+        
+        # Clean up coordinator
+        if hasattr(coordinator, 'async_shutdown'):
+            await coordinator.async_shutdown()
         
         # Remove services if this was the last entry
         if not hass.data[DOMAIN]:
-            hass.services.async_remove(DOMAIN, "reload")
+            hass.services.async_remove(DOMAIN, "clear_override")
+            hass.services.async_remove(DOMAIN, "set_comfort_category")
+            hass.services.async_remove(DOMAIN, "update_calculations")
+            hass.services.async_remove(DOMAIN, "set_temporary_override")
     
     return unload_ok
+
+
+async def _async_setup_services(hass: HomeAssistant, coordinator: AdaptiveClimateCoordinator) -> None:
+    """Set up services for the coordinator."""
+    
+    async def clear_override_service(call):
+        """Clear manual override."""
+        await coordinator.clear_manual_override()
+    
+    async def set_comfort_category_service(call):
+        """Set comfort category."""
+        category = call.data.get("category")
+        if category:
+            await coordinator.update_comfort_category(category)
+    
+    async def update_calculations_service(call):
+        """Force update calculations."""
+        await coordinator.async_request_refresh()
+    
+    async def set_temporary_override_service(call):
+        """Set temporary override."""
+        temperature = call.data.get("temperature")
+        duration = call.data.get("duration")
+        if temperature:
+            await coordinator.set_manual_override(temperature, duration)
+    
+    # Register services (only once for the domain)
+    if not hass.services.has_service(DOMAIN, "clear_override"):
+        hass.services.async_register(DOMAIN, "clear_override", clear_override_service)
+        hass.services.async_register(DOMAIN, "set_comfort_category", set_comfort_category_service)
+        hass.services.async_register(DOMAIN, "update_calculations", update_calculations_service)
+        hass.services.async_register(DOMAIN, "set_temporary_override", set_temporary_override_service)

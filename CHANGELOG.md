@@ -38,6 +38,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**: Complete compatibility documentation
 - **Migration**: Seamless upgrade path from v1.x
 
+## [0.1.1] - 2025-01-27
+
+### 🔧 Architecture Refactor: Controller Pattern
+
+#### Changed
+- **BREAKING**: Refactored from climate entity to controller/coordinator pattern
+- Component now acts as an intelligent controller that manages existing climate entities
+- No longer creates a new climate entity, works with your existing thermostats/HVAC systems
+- Updated integration type to "service" in manifest.json
+- Removed climate.py file and related climate entity code
+
+#### Added
+- **AdaptiveClimateCoordinator**: New coordinator class that manages control logic
+- **Diagnostic Sensors**: Rich sensor platform with comfort temperature, ranges, and compliance
+- **Binary Sensors**: ASHRAE compliance and natural ventilation recommendation sensors
+- **Enhanced Monitoring**: All ASHRAE calculations now exposed as separate sensors
+- **Better Integration**: Works seamlessly with any existing Home Assistant climate entity
+
+#### Improved
+- **Service Architecture**: More robust service-based approach for better integration
+- **Entity Management**: Cleaner entity lifecycle management
+- **Performance**: Reduced overhead by not creating unnecessary climate entities
+- **Compatibility**: Better compatibility with existing climate setups
+
+#### Developer Notes
+- Updated README.md to reflect new architecture
+- All diagnostic data now available through dedicated sensor entities
+- Services now operate on config entry level rather than entity level
+
 ## [1.0.0] - 2025-01-02
 
 ### Added
