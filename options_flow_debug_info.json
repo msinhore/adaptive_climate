@@ -1,0 +1,23 @@
+{
+  "files_checked": [
+    "custom_components/adaptive_climate/config_flow.py",
+    "custom_components/adaptive_climate/manifest.json",
+    "custom_components/adaptive_climate/coordinator.py",
+    "custom_components/adaptive_climate/__init__.py"
+  ],
+  "common_issues": [
+    "1. Check if Home Assistant has been restarted after installing the integration",
+    "2. Verify that the integration is properly loaded in HA logs",
+    "3. Check if there are any import errors in the logs",
+    "4. Ensure the config entry is not in a 'disabled' state",
+    "5. Try removing and re-adding the integration",
+    "6. Check Developer Tools > States for any error states"
+  ],
+  "troubleshooting_steps": [
+    "1. Go to Settings > Devices & Services",
+    "2. Find 'Adaptive Climate' integration",
+    "3. Click on the integration name (not the device)",
+    "4. Look for 'Configure' button or three-dot menu",
+    "5. If not visible, check HA logs for config flow errors"
+  ]
+}

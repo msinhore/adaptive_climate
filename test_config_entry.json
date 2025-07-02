@@ -1,0 +1,28 @@
+{
+  "data": {
+    "name": "Adaptive Climate Test",
+    "climate_entity": "climate.test_hvac",
+    "indoor_temp_sensor": "sensor.indoor_temperature",
+    "outdoor_temp_sensor": "sensor.outdoor_temperature",
+    "occupancy_sensor": "binary_sensor.motion_sensor",
+    "comfort_category": "II"
+  },
+  "options": {
+    "energy_save_mode": true,
+    "natural_ventilation_enable": true,
+    "adaptive_air_velocity": false,
+    "humidity_comfort_enable": true,
+    "comfort_precision_mode": false,
+    "use_occupancy_features": true,
+    "auto_shutdown_enable": false,
+    "use_operative_temperature": false,
+    "min_comfort_temp": 18.0,
+    "max_comfort_temp": 28.0,
+    "temperature_change_threshold": 0.5,
+    "air_velocity": 0.1,
+    "natural_ventilation_threshold": 2.0,
+    "setback_temperature_offset": 2.0,
+    "prolonged_absence_minutes": 60,
+    "auto_shutdown_minutes": 120
+  }
+}

@@ -119,7 +119,7 @@ STEP_THRESHOLDS_DATA_SCHEMA = vol.Schema(
 )
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Adaptive Climate."""
 
     VERSION = 1
@@ -292,6 +292,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             
             if user_input.get("reset_outdoor_history", False):
                 await coordinator.reset_outdoor_history()
+                # Remove reset flag before saving
+                user_input = {k: v for k, v in user_input.items() if k != "reset_outdoor_history"}
             
             if user_input.get("reset_to_defaults", False):
                 # Reset to default values
@@ -317,20 +319,44 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 await coordinator.update_config(default_config)
                 return self.async_create_entry(title="", data=default_config)
             
-            # Update coordinator with new configuration
-            config_update = {k: v for k, v in user_input.items() 
-                           if not k.startswith("reset_")}
+            # Filter out reset actions and None values
+            config_update = {
+                k: v for k, v in user_input.items() 
+                if not k.startswith("reset_") and v is not None
+            }
+            
             if config_update:
+                # Update coordinator with new configuration
                 await coordinator.update_config(config_update)
-                # Merge with existing options
+                
+                # Merge with existing options and data for entities
                 new_options = {**self.config_entry.options, **config_update}
+                
+                # Update config entry data if entity selections changed
+                entity_keys = ["climate_entity", "indoor_temp_sensor", "outdoor_temp_sensor", 
+                              "occupancy_sensor", "mean_radiant_temp_sensor", 
+                              "indoor_humidity_sensor", "outdoor_humidity_sensor"]
+                
+                entity_updates = {k: v for k, v in config_update.items() if k in entity_keys}
+                if entity_updates:
+                    # Update the config entry data as well
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, 
+                        data={**self.config_entry.data, **entity_updates}
+                    )
+                
                 return self.async_create_entry(title="", data=new_options)
             
             return self.async_create_entry(title="", data=self.config_entry.options)
 
-        # Get current values from coordinator
-        coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
-        current_config = coordinator.config
+        # Get current values from coordinator and config entry
+        try:
+            coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
+            current_config = coordinator.config
+        except KeyError:
+            # Fallback if coordinator not available
+            current_config = {**self.config_entry.data, **self.config_entry.options}
+        
         current_data = self.config_entry.data
 
         # Build entity selectors with area filter if area is selected
