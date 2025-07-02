@@ -11,9 +11,6 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.const import (
     ATTR_TEMPERATURE,
-    SERVICE_SET_TEMPERATURE,
-    SERVICE_SET_HVAC_MODE,
-    SERVICE_SET_FAN_MODE,
     STATE_ON,
     STATE_OFF,
     STATE_UNKNOWN,
@@ -21,13 +18,18 @@ from homeassistant.const import (
 )
 from homeassistant.components.climate.const import (
     DOMAIN as CLIMATE_DOMAIN,
-    HVAC_MODE_COOL,
-    HVAC_MODE_HEAT,
-    HVAC_MODE_OFF,
-    HVAC_MODE_AUTO,
     ATTR_HVAC_MODE,
     ATTR_FAN_MODE,
 )
+from homeassistant.components.climate import (
+    HVACMode,
+    HVACAction,
+)
+
+# Service constants - define as strings since they may not be in const anymore
+SERVICE_SET_TEMPERATURE = "set_temperature"
+SERVICE_SET_HVAC_MODE = "set_hvac_mode"
+SERVICE_SET_FAN_MODE = "set_fan_mode"
 
 from .const import (
     DOMAIN,
@@ -254,18 +256,18 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         
         if indoor_temp > comfort_max:
             # Too hot - cooling needed
-            if current_hvac_mode != HVAC_MODE_COOL:
-                actions["set_hvac_mode"] = HVAC_MODE_COOL
+            if current_hvac_mode != HVACMode.COOL:
+                actions["set_hvac_mode"] = HVACMode.COOL
                 actions["reason"] += f" (above comfort zone)" if actions["reason"] else "above comfort zone"
         elif indoor_temp < comfort_min:
             # Too cold - heating needed
-            if current_hvac_mode != HVAC_MODE_HEAT:
-                actions["set_hvac_mode"] = HVAC_MODE_HEAT
+            if current_hvac_mode != HVACMode.HEAT:
+                actions["set_hvac_mode"] = HVACMode.HEAT
                 actions["reason"] += f" (below comfort zone)" if actions["reason"] else "below comfort zone"
         else:
             # In comfort zone - could turn off or use auto
-            if current_hvac_mode in [HVAC_MODE_COOL, HVAC_MODE_HEAT]:
-                actions["set_hvac_mode"] = HVAC_MODE_AUTO
+            if current_hvac_mode in [HVACMode.COOL, HVACMode.HEAT]:
+                actions["set_hvac_mode"] = HVACMode.AUTO
                 actions["reason"] += f" (in comfort zone)" if actions["reason"] else "in comfort zone"
         
         # Determine fan mode if adaptive air velocity is enabled
