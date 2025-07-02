@@ -33,7 +33,7 @@ SERVICE_SET_FAN_MODE = "set_fan_mode"
 
 from .const import (
     DOMAIN,
-    DEFAULT_UPDATE_INTERVAL,
+    UPDATE_INTERVAL_MEDIUM,
     DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
     DEFAULT_SETBACK_TEMPERATURE_OFFSET,
 )
@@ -55,7 +55,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(minutes=DEFAULT_UPDATE_INTERVAL),
+            update_interval=timedelta(minutes=UPDATE_INTERVAL_MEDIUM),
         )
         
         self.config = config_entry_data
