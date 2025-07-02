@@ -128,11 +128,19 @@
     "binary_sensor": {
       "ashrae_compliance": {
         "name": "Conformidade ASHRAE",
-        "description": "Se as condições internas atuais atendem aos padrões de conforto ASHRAE 55"
+        "description": "Se as condições internas atuais atendem aos padrões de conforto ASHRAE 55",
+        "state": {
+          "on": "Sim",
+          "off": "Não"
+        }
       },
       "natural_ventilation_optimal": {
         "name": "Ventilação Natural Ótima",
-        "description": "Se ventilação natural é recomendada baseada nas condições internas/externas"
+        "description": "Se ventilação natural é recomendada baseada nas condições internas/externas",
+        "state": {
+          "on": "Sim",
+          "off": "Não"
+        }
       }
     },
     "number": {

@@ -128,11 +128,19 @@
     "binary_sensor": {
       "ashrae_compliance": {
         "name": "ASHRAE Compliance",
-        "description": "Whether current indoor conditions meet ASHRAE 55 comfort standards"
+        "description": "Whether current indoor conditions meet ASHRAE 55 comfort standards",
+        "state": {
+          "on": "Yes",
+          "off": "No"
+        }
       },
       "natural_ventilation_optimal": {
         "name": "Natural Ventilation Optimal",
-        "description": "Whether natural ventilation is recommended based on indoor/outdoor conditions"
+        "description": "Whether natural ventilation is recommended based on indoor/outdoor conditions",
+        "state": {
+          "on": "Yes",
+          "off": "No"
+        }
       }
     },
     "number": {
