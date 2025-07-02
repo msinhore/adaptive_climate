@@ -1,7 +1,7 @@
 # Adaptive Climate - ASHRAE 55 Custom Component
 
-[![GitHub Release](https://img.shields.io/github/release/msinhore/adaptive-climate.svg?style=for-the-badge)](https://github.com/msinhore/adaptive-climate/releases)
-[![GitHub Activity](https://img.shields.io/github/commit-activity/y/msinhore/adaptive-climate.svg?style=for-the-badge)](https://github.com/msinhore/adaptive-climate/commits/main)
+[![GitHub Release](https://img.shields.io/github/v/release/msinhore/adaptive-climate?style=for-the-badge)](https://github.com/msinhore/adaptive-climate/releases)
+[![GitHub Activity](https://img.shields.io/github/commit-activity/y/msinhore/adaptive-climate?style=for-the-badge)](https://github.com/msinhore/adaptive-climate/commits/main)
 [![License](https://img.shields.io/github/license/msinhore/adaptive-climate.svg?style=for-the-badge)](LICENSE)
 [![hacs](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
 [![Community Forum](https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge)](https://community.home-assistant.io)
