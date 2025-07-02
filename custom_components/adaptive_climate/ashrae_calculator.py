@@ -277,6 +277,7 @@ class AdaptiveComfortCalculator:
             "humidity_offset": self.humidity_offset,
             "compliance_notes": self.compliance_notes,
             "outdoor_temp_valid": self.outdoor_temp_valid,
+            "ashrae_compliant": self.comfort_temp_min <= self._indoor_temp <= self.comfort_temp_max,
         }
 
     def calculate_comfort_parameters(
