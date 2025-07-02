@@ -121,12 +121,6 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             
             # Update natural ventilation status
             self._update_natural_ventilation_status(outdoor_temp, indoor_temp, comfort_data)
-            
-            # Update outdoor temperature history and running mean
-            self._update_outdoor_temp_history(outdoor_temp)
-            
-            # Update natural ventilation status
-            self._update_natural_ventilation_status(outdoor_temp, indoor_temp, comfort_data)
 
             # Determine control actions
             control_actions = self._determine_control_actions(
