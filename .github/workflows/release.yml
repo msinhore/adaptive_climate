@@ -1,0 +1,102 @@
+# Release workflow for Adaptive Climate Custom Component
+
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release'
+        required: true
+        default: '0.1.0'
+
+jobs:
+  validate_release:
+    runs-on: ubuntu-latest
+    name: Validate Release
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION=${{ github.event.release.tag_name }}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+          
+      - name: Validate version format
+        run: |
+          if [[ ! "${{ steps.version.outputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version format. Must be x.y.z"
+            exit 1
+          fi
+
+  build:
+    needs: validate_release
+    runs-on: ubuntu-latest
+    name: Build Release Package
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          
+      - name: Update version in manifest
+        run: |
+          sed -i 's/"version": ".*"/"version": "${{ needs.validate_release.outputs.version }}"/' custom_components/adaptive_climate/manifest.json
+          
+      - name: Create release package
+        run: |
+          mkdir -p release
+          cp -r custom_components release/
+          cd release
+          zip -r adaptive_climate_${{ needs.validate_release.outputs.version }}.zip custom_components/
+          
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive_climate_${{ needs.validate_release.outputs.version }}
+          path: release/adaptive_climate_${{ needs.validate_release.outputs.version }}.zip
+          
+  publish:
+    needs: [validate_release, build]
+    runs-on: ubuntu-latest
+    name: Publish Release
+    if: github.event_name == 'release'
+    steps:
+      - name: Download release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: adaptive_climate_${{ needs.validate_release.outputs.version }}
+          
+      - name: Attach to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: adaptive_climate_${{ needs.validate_release.outputs.version }}.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+  update_hacs:
+    needs: [validate_release, build]
+    runs-on: ubuntu-latest
+    name: Update HACS info
+    if: github.event_name == 'release'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Update HACS info
+        run: |
+          echo "HACS integration updated to version ${{ needs.validate_release.outputs.version }}"
+        # Add any HACS-specific update logic here

@@ -1,0 +1,79 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Adaptive Climate Setup",
+        "description": "Configure your ASHRAE 55 adaptive climate control system. Select an area to filter entities by location, making it easier to find relevant sensors and devices.",
+        "data": {
+          "name": "Name",
+          "area": "Area (Optional)",
+          "climate_entity": "Climate Entity",
+          "indoor_temp_sensor": "Indoor Temperature Sensor",
+          "outdoor_temp_sensor": "Outdoor Temperature Sensor",
+          "comfort_category": "ASHRAE 55 Comfort Category"
+        }
+      },
+      "advanced": {
+        "title": "Advanced Options",
+        "description": "Configure advanced features and optional sensors.",
+        "data": {
+          "occupancy_sensor": "Occupancy Sensor (Optional)",
+          "mean_radiant_temp_sensor": "Mean Radiant Temperature Sensor (Optional)",
+          "indoor_humidity_sensor": "Indoor Humidity Sensor (Optional)",
+          "outdoor_humidity_sensor": "Outdoor Humidity Sensor (Optional)",
+          "use_operative_temperature": "Use Operative Temperature",
+          "energy_save_mode": "Energy Save Mode",
+          "comfort_precision_mode": "Precision Comfort Mode",
+          "use_occupancy_features": "Use Occupancy Features",
+          "natural_ventilation_enable": "Natural Ventilation Detection",
+          "adaptive_air_velocity": "Adaptive Air Velocity Control",
+          "humidity_comfort_enable": "Humidity Comfort Correction",
+          "auto_shutdown_enable": "Auto Shutdown on Prolonged Absence"
+        }
+      },
+      "thresholds": {
+        "title": "Thresholds & Limits",
+        "description": "Configure temperature limits and control thresholds.",
+        "data": {
+          "min_comfort_temp": "Minimum Comfort Temperature",
+          "max_comfort_temp": "Maximum Comfort Temperature",
+          "temperature_change_threshold": "Temperature Change Threshold",
+          "air_velocity": "Air Velocity (m/s)",
+          "natural_ventilation_threshold": "Natural Ventilation Threshold",
+          "setback_temperature_offset": "Setback Temperature Offset",
+          "prolonged_absence_minutes": "Prolonged Absence Time (minutes)",
+          "auto_shutdown_minutes": "Auto Shutdown Time (minutes)"
+        }
+      }
+    },
+    "error": {
+      "entity_not_found": "Entity not found. Please check that the entity exists and is available."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Adaptive Climate",
+        "description": "Update your adaptive climate settings.",
+        "data": {
+          "comfort_category": "ASHRAE 55 Comfort Category",
+          "energy_save_mode": "Energy Save Mode",
+          "comfort_precision_mode": "Precision Comfort Mode",
+          "use_occupancy_features": "Use Occupancy Features",
+          "natural_ventilation_enable": "Natural Ventilation Detection",
+          "adaptive_air_velocity": "Adaptive Air Velocity Control",
+          "humidity_comfort_enable": "Humidity Comfort Correction",
+          "auto_shutdown_enable": "Auto Shutdown on Prolonged Absence",
+          "min_comfort_temp": "Minimum Comfort Temperature",
+          "max_comfort_temp": "Maximum Comfort Temperature",
+          "temperature_change_threshold": "Temperature Change Threshold",
+          "air_velocity": "Air Velocity (m/s)",
+          "natural_ventilation_threshold": "Natural Ventilation Threshold",
+          "setback_temperature_offset": "Setback Temperature Offset",
+          "prolonged_absence_minutes": "Prolonged Absence Time (minutes)",
+          "auto_shutdown_minutes": "Auto Shutdown Time (minutes)"
+        }
+      }
+    }
+  }
+}

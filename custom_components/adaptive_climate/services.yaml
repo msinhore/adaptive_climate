@@ -1,0 +1,90 @@
+clear_override:
+  name: Clear Manual Override
+  description: Clear manual override and resume adaptive control
+  fields:
+    entity_id:
+      name: Entity ID
+      description: Climate entity to clear override from
+      required: true
+      selector:
+        entity:
+          domain: climate
+
+set_comfort_category:
+  name: Set Comfort Category
+  description: Change the ASHRAE 55 comfort category
+  fields:
+    entity_id:
+      name: Entity ID
+      description: Climate entity to configure
+      required: true
+      selector:
+        entity:
+          domain: climate
+    category:
+      name: Comfort Category
+      description: ASHRAE 55 comfort category
+      required: true
+      selector:
+        select:
+          options:
+            - value: "I"
+              label: "Category I (±2°C - 90% satisfaction)"
+            - value: "II"
+              label: "Category II (±3°C - 80% satisfaction)"
+            - value: "III"
+              label: "Category III (±4°C - 65% satisfaction)"
+
+update_calculations:
+  name: Update Calculations
+  description: Force update of adaptive comfort calculations
+  fields:
+    entity_id:
+      name: Entity ID
+      description: Climate entity to update
+      required: true
+      selector:
+        entity:
+          domain: climate
+
+set_temporary_override:
+  name: Set Temporary Override
+  description: Set temporary manual control with automatic resume
+  fields:
+    entity_id:
+      name: Entity ID
+      description: Climate entity to override
+      required: true
+      selector:
+        entity:
+          domain: climate
+    temperature:
+      name: Temperature
+      description: Target temperature (optional)
+      selector:
+        number:
+          min: 10
+          max: 40
+          step: 0.5
+          unit_of_measurement: "°C"
+    hvac_mode:
+      name: HVAC Mode
+      description: HVAC mode to set (optional)
+      selector:
+        select:
+          options:
+            - "heat"
+            - "cool"
+            - "auto"
+            - "fan_only"
+            - "off"
+    duration_hours:
+      name: Duration
+      description: Override duration in hours
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 24
+          step: 1
+          unit_of_measurement: "hours"

@@ -1,0 +1,79 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configuração do Clima Adaptativo",
+        "description": "Configure seu sistema de controle climático adaptativo ASHRAE 55. Selecione uma área para filtrar entidades por localização, facilitando encontrar sensores e dispositivos relevantes.",
+        "data": {
+          "name": "Nome",
+          "area": "Área (Opcional)",
+          "climate_entity": "Entidade Climática",
+          "indoor_temp_sensor": "Sensor de Temperatura Interna",
+          "outdoor_temp_sensor": "Sensor de Temperatura Externa",
+          "comfort_category": "Categoria de Conforto ASHRAE 55"
+        }
+      },
+      "advanced": {
+        "title": "Opções Avançadas",
+        "description": "Configure recursos avançados e sensores opcionais.",
+        "data": {
+          "occupancy_sensor": "Sensor de Ocupação (Opcional)",
+          "mean_radiant_temp_sensor": "Sensor de Temperatura Radiante Média (Opcional)",
+          "indoor_humidity_sensor": "Sensor de Umidade Interna (Opcional)",
+          "outdoor_humidity_sensor": "Sensor de Umidade Externa (Opcional)",
+          "use_operative_temperature": "Usar Temperatura Operativa",
+          "energy_save_mode": "Modo de Economia de Energia",
+          "comfort_precision_mode": "Modo de Precisão de Conforto",
+          "use_occupancy_features": "Usar Recursos de Ocupação",
+          "natural_ventilation_enable": "Detecção de Ventilação Natural",
+          "adaptive_air_velocity": "Controle Adaptativo de Velocidade do Ar",
+          "humidity_comfort_enable": "Correção de Conforto por Umidade",
+          "auto_shutdown_enable": "Desligamento Automático por Ausência Prolongada"
+        }
+      },
+      "thresholds": {
+        "title": "Limites e Configurações",
+        "description": "Configure limites de temperatura e configurações de controle.",
+        "data": {
+          "min_comfort_temp": "Temperatura Mínima de Conforto",
+          "max_comfort_temp": "Temperatura Máxima de Conforto",
+          "temperature_change_threshold": "Limite de Mudança de Temperatura",
+          "air_velocity": "Velocidade do Ar (m/s)",
+          "natural_ventilation_threshold": "Limite para Ventilação Natural",
+          "setback_temperature_offset": "Offset de Temperatura para Setback",
+          "prolonged_absence_minutes": "Tempo de Ausência Prolongada (minutos)",
+          "auto_shutdown_minutes": "Tempo para Desligamento Automático (minutos)"
+        }
+      }
+    },
+    "error": {
+      "entity_not_found": "Entidade não encontrada. Verifique se a entidade existe e está disponível."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configurar Clima Adaptativo",
+        "description": "Atualize suas configurações de clima adaptativo.",
+        "data": {
+          "comfort_category": "Categoria de Conforto ASHRAE 55",
+          "energy_save_mode": "Modo de Economia de Energia",
+          "comfort_precision_mode": "Modo de Precisão de Conforto",
+          "use_occupancy_features": "Usar Recursos de Ocupação",
+          "natural_ventilation_enable": "Detecção de Ventilação Natural",
+          "adaptive_air_velocity": "Controle Adaptativo de Velocidade do Ar",
+          "humidity_comfort_enable": "Correção de Conforto por Umidade",
+          "auto_shutdown_enable": "Desligamento Automático por Ausência Prolongada",
+          "min_comfort_temp": "Temperatura Mínima de Conforto",
+          "max_comfort_temp": "Temperatura Máxima de Conforto",
+          "temperature_change_threshold": "Limite de Mudança de Temperatura",
+          "air_velocity": "Velocidade do Ar (m/s)",
+          "natural_ventilation_threshold": "Limite para Ventilação Natural",
+          "setback_temperature_offset": "Offset de Temperatura para Setback",
+          "prolonged_absence_minutes": "Tempo de Ausência Prolongada (minutos)",
+          "auto_shutdown_minutes": "Tempo para Desligamento Automático (minutos)"
+        }
+      }
+    }
+  }
+}

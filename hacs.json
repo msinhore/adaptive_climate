@@ -1,0 +1,6 @@
+{
+  "name": "Adaptive Climate",
+  "hacs": "2.0.0",
+  "domains": ["climate"],
+  "homeassistant": "2025.6.0"
+}

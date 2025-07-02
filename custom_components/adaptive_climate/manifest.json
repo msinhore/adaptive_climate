@@ -1,0 +1,15 @@
+{
+  "domain": "adaptive_climate",
+  "name": "Adaptive Climate",
+  "codeowners": ["@msinhore"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/msinhore/adaptive-climate",
+  "homeassistant": "2025.6.0",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/msinhore/adaptive-climate/issues",
+  "quality_scale": "silver",
+  "requirements": [],
+  "version": "0.1.0",
+  "integration_type": "device"
+}

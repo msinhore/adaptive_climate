@@ -1,0 +1,129 @@
+# GitHub Actions workflow for Adaptive Climate Custom Component
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Test Python ${{ matrix.python-version }} with HA ${{ matrix.home-assistant-version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+        home-assistant-version: ["2025.6.0", "2025.7.0", "dev"]
+        exclude:
+          # Python 3.13 may not be fully supported in older HA versions
+          - python-version: "3.13"
+            home-assistant-version: "2025.6.0"
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+        
+    - name: Install Home Assistant ${{ matrix.home-assistant-version }}
+      run: |
+        python -m pip install --upgrade pip wheel setuptools
+        if [ "${{ matrix.home-assistant-version }}" = "dev" ]; then
+          pip install --pre homeassistant
+        else
+          pip install homeassistant==${{ matrix.home-assistant-version }}
+        fi
+        
+    - name: Install development dependencies
+      run: |
+        pip install -r requirements_dev.txt
+        
+    - name: Lint with ruff (fast)
+      run: |
+        ruff check custom_components/adaptive_climate/ --output-format=github
+        
+    - name: Check code formatting with black
+      run: |
+        black --check --diff custom_components/adaptive_climate/
+        
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only --diff custom_components/adaptive_climate/
+        
+    - name: Type checking with mypy
+      run: |
+        mypy custom_components/adaptive_climate/ --show-error-codes
+        
+    - name: Run tests with pytest
+      run: |
+        pytest tests/ -v --cov=custom_components/adaptive_climate --cov-report=xml --cov-report=term-missing
+        
+    - name: Upload coverage to Codecov
+      if: matrix.python-version == '3.12' && matrix.home-assistant-version == '2025.6.0'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: adaptive-climate-coverage
+  validate:
+    runs-on: ubuntu-latest
+    name: Validate with Home Assistant
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Validate integration with hassfest
+        uses: home-assistant/actions/hassfest@master
+        with:
+          path: "./custom_components/adaptive_climate"
+          
+  hacs:
+    runs-on: ubuntu-latest
+    name: HACS Validation
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Validate HACS requirements
+        uses: hacs/action@main
+        with:
+          category: integration
+          
+  quality:
+    runs-on: ubuntu-latest
+    name: Code Quality Checks
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+          
+      - name: Install quality tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff bandit safety
+          
+      - name: Security check with bandit
+        run: |
+          bandit -r custom_components/adaptive_climate/ -f json -o bandit-report.json
+          bandit -r custom_components/adaptive_climate/
+          
+      - name: Check dependencies for security vulnerabilities
+        run: |
+          safety check --file requirements_dev.txt
+          
+      - name: Additional ruff checks
+        run: |
+          ruff check custom_components/adaptive_climate/ --select=ALL --ignore=D,ANN,COM,ERA,T20,FIX,TD,FBT,ARG
