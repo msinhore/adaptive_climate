@@ -16,7 +16,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import EntityCategory
 
-from .const import DOMAIN
+from .const import DOMAIN, VERSION
 from .coordinator import AdaptiveClimateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class AdaptiveClimateSensorBase(CoordinatorEntity, SensorEntity):
             "name": config_entry.data.get("name", "Adaptive Climate"),
             "manufacturer": "ASHRAE",
             "model": "Adaptive Climate Controller",
-            "sw_version": "0.1.3",
+            "sw_version": VERSION,
         }
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 

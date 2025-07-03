@@ -274,13 +274,34 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
     def _create_logbook_entry(self, message: str, entity_id: str | None = None) -> None:
         """Create a logbook entry for important events."""
         try:
+            # Se não foi fornecido um entity_id específico, use o ID da entidade de climate
+            if entity_id is None:
+                entity_id = self.climate_entity_id
+                
+            # Obter o device_id associado à entidade
+            device_info = None
+            if hasattr(self, "device_info") and self.device_info:
+                device_info = self.device_info
+            else:
+                # Tenta determinar o device_info a partir da configuração
+                device_info = {
+                    "identifiers": {(DOMAIN, self.config_entry.entry_id)},
+                    "name": self.config.get("name", "Adaptive Climate"),
+                }
+                
+            # Nome do componente para visualização no logbook
+            name = f"Adaptive Climate ({self.config.get('name', 'Controller')})"
+                
+            # Criar a entrada no logbook
             self.hass.bus.async_fire(
                 "logbook_entry",
                 {
-                    LOGBOOK_ENTRY_NAME: "Adaptive Climate",
+                    LOGBOOK_ENTRY_NAME: name,
                     LOGBOOK_ENTRY_MESSAGE: message,
                     "domain": DOMAIN,
-                    "entity_id": entity_id or f"{DOMAIN}.{self.config.get('name', 'adaptive_climate')}",
+                    "entity_id": entity_id,
+                    # Incluir identificadores de dispositivo se disponíveis
+                    "device_id": next(iter(device_info["identifiers"]))[1] if device_info and "identifiers" in device_info else None,
                 }
             )
         except Exception as err:
@@ -393,6 +414,25 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         # Determine target temperature
         target_temp = comfort_temp
         
+        # Verificar se desligamento automático está ativo e se não está ocupado
+        auto_shutdown_enable = self.config.get("auto_shutdown_enable", False)
+        prolonged_absence_minutes = self.config.get("prolonged_absence_minutes", 60)
+        
+        if not self._occupied and auto_shutdown_enable:
+            # Verificar há quanto tempo está desocupado
+            occupancy_state = self.hass.states.get(self.occupancy_entity_id) if self.occupancy_entity_id else None
+            if occupancy_state and occupancy_state.last_changed:
+                time_since_last_presence = datetime.now() - occupancy_state.last_changed
+                minutes_absent = time_since_last_presence.total_seconds() / 60
+                
+                # Se estiver ausente há mais tempo que o configurado, desligar o AC
+                if minutes_absent >= prolonged_absence_minutes:
+                    current_hvac_mode = climate_state.state
+                    if current_hvac_mode != HVACMode.OFF:
+                        actions["set_hvac_mode"] = HVACMode.OFF
+                        actions["reason"] = f"auto_shutdown after {prolonged_absence_minutes} min absence"
+                        return actions
+        
         # Apply occupancy setback if unoccupied
         if not self._occupied:
             setback_offset = self.config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
@@ -456,6 +496,15 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         """Execute control actions on the climate entity."""
         try:
             action_messages = []
+            action_details = {}
+            climate_state = self.hass.states.get(self.climate_entity_id)
+            
+            # Collect current state information for comparison
+            current_state = {
+                "hvac_mode": climate_state.state if climate_state else "unknown",
+                "temperature": climate_state.attributes.get(ATTR_TEMPERATURE) if climate_state else None,
+                "fan_mode": climate_state.attributes.get(ATTR_FAN_MODE) if climate_state else None,
+            }
             
             # Set temperature
             if actions["set_temperature"] is not None:
@@ -469,6 +518,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 )
                 self._last_target_temp = actions["set_temperature"]
                 action_messages.append(f"Temperature set to {actions['set_temperature']:.1f}°C")
+                action_details["temperature"] = {
+                    "new": actions["set_temperature"],
+                    "old": current_state["temperature"],
+                }
             
             # Set HVAC mode
             if actions["set_hvac_mode"] is not None:
@@ -481,6 +534,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     },
                 )
                 action_messages.append(f"HVAC mode set to {actions['set_hvac_mode']}")
+                action_details["hvac_mode"] = {
+                    "new": actions["set_hvac_mode"],
+                    "old": current_state["hvac_mode"],
+                }
             
             # Set fan mode
             if actions["set_fan_mode"] is not None:
@@ -493,11 +550,51 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     },
                 )
                 action_messages.append(f"Fan mode set to {actions['set_fan_mode']}")
+                action_details["fan_mode"] = {
+                    "new": actions["set_fan_mode"],
+                    "old": current_state["fan_mode"],
+                }
             
             # Create logbook entry if any actions were taken
             if action_messages:
                 reason = actions.get("reason", "adaptive control")
-                message = f"Climate adjusted: {', '.join(action_messages)} ({reason})"
+                
+                # Criar uma mensagem mais detalhada para o logbook
+                if not self._occupied and "auto_shutdown" in reason:
+                    # Caso especial: desligamento automático devido a ausência prolongada
+                    last_presence = "unknown"
+                    if self.occupancy_entity_id:
+                        occupancy_state = self.hass.states.get(self.occupancy_entity_id)
+                        if occupancy_state and occupancy_state.last_changed:
+                            last_presence = occupancy_state.last_changed.strftime('%H:%M:%S')
+                    
+                    minutes = self.config.get("prolonged_absence_minutes", 60)
+                    message = (
+                        f"Adaptive Climate Auto shutdown activated due to prolonged absence ({minutes} min). "
+                        f"HVAC turned off for energy saving. Last presence: {last_presence} "
+                        f"triggered by action Climate: {', '.join(action_messages)}"
+                    )
+                else:
+                    # Mensagem padrão para outras ações
+                    changes = []
+                    if "temperature" in action_details:
+                        old_temp = action_details["temperature"]["old"]
+                        new_temp = action_details["temperature"]["new"]
+                        changes.append(f"temperature from {old_temp:.1f}°C to {new_temp:.1f}°C")
+                    
+                    if "hvac_mode" in action_details:
+                        old_mode = action_details["hvac_mode"]["old"]
+                        new_mode = action_details["hvac_mode"]["new"]
+                        changes.append(f"mode from {old_mode} to {new_mode}")
+                    
+                    if "fan_mode" in action_details:
+                        old_fan = action_details["fan_mode"]["old"]
+                        new_fan = action_details["fan_mode"]["new"]
+                        changes.append(f"fan from {old_fan} to {new_fan}")
+                    
+                    changes_text = ", ".join(changes)
+                    message = f"Climate adjusted: {changes_text} ({reason})"
+                
                 self._create_logbook_entry(message, self.climate_entity_id)
                 
         except Exception as err:
@@ -513,30 +610,67 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             indoor_temp = data.get("indoor_temperature", 0)
             outdoor_temp = data.get("outdoor_temperature", 0)
             
-            _LOGGER.info(
-                "ASHRAE 55 compliant climate control applied. "
-                "Target: %.1f°C (Current: %.1f°C), Indoor: %.1f°C, Outdoor: %.2f°C, "
-                "Comfort zone: %.1f-%.1f°C (adaptive temp: %.0f°C), "
-                "HVAC Mode: %s %s, Occupancy: %s, Category: %s (±%.1f°C), "
-                "Air velocity offset: %.0f°C, Humidity offset: %.0f°C, "
-                "Fan: %s, Compliance: \"%s\"",
-                actions.get("set_temperature", self._last_target_temp or 0),
-                self._last_target_temp or 0,
-                indoor_temp,
-                outdoor_temp,
-                comfort_min,
-                comfort_max,
-                comfort_temp,
-                actions.get("set_hvac_mode", "unchanged"),
-                actions.get("reason", ""),
-                data.get("occupancy", "unknown"),
-                self.config.get("comfort_category", "II"),
-                self.calculator.get_comfort_tolerance(),
-                0,  # Air velocity offset (placeholder)
-                0,  # Humidity offset (placeholder)
-                actions.get("set_fan_mode", "unchanged"),
-                "Compliant" if data.get("ashrae_compliant", False) else "Non-compliant"
+            # Obtenha o estado atual do clima para comparações
+            climate_state = self.hass.states.get(self.climate_entity_id)
+            current_hvac_mode = climate_state.state if climate_state else "unknown"
+            current_temp = climate_state.attributes.get(ATTR_TEMPERATURE, 0) if climate_state else 0
+            current_fan = climate_state.attributes.get(ATTR_FAN_MODE, "unknown") if climate_state else "unknown"
+            
+            # Determinar alteração do modo HVAC
+            hvac_change = ""
+            if actions.get("set_hvac_mode") is not None:
+                hvac_change = f" (was {current_hvac_mode})"
+            
+            # Determinar alteração do modo do ventilador
+            fan_change = ""
+            if actions.get("set_fan_mode") is not None:
+                fan_change = f" (was {current_fan})"
+            
+            # Obter offsets para detalhamento - obtenha dos dados ou use valores padrão de 0
+            air_velocity_offset = data.get("air_velocity_offset", 0)
+            humidity_offset = data.get("humidity_offset", 0)
+            
+            # Obter hora da última presença, se disponível
+            last_presence_time = ""
+            if not self._occupied and self.occupancy_entity_id:
+                occupancy_state = self.hass.states.get(self.occupancy_entity_id)
+                if occupancy_state and occupancy_state.last_changed:
+                    last_presence_time = f", Last presence: {occupancy_state.last_changed.strftime('%H:%M:%S')}"
+            
+            # Determine which action is being triggered
+            trigger_action = "Climate:"
+            if actions.get("set_temperature") is not None:
+                trigger_action += " Set temperature"
+            if actions.get("set_hvac_mode") is not None:
+                trigger_action += " Set HVAC mode"
+            if actions.get("set_fan_mode") is not None:
+                trigger_action += " Set fan mode"
+            
+            log_message = (
+                f"Target: {actions.get('set_temperature', current_temp):.1f}°C (Current: {current_temp:.1f}°C), "
+                f"Indoor: {indoor_temp:.1f}°C, Outdoor: {outdoor_temp:.1f}°C, "
+                f"Comfort zone: {comfort_min:.1f}-{comfort_max:.1f}°C (adaptive temp: {comfort_temp:.1f}°C), "
+                f"HVAC Mode: {actions.get('set_hvac_mode', current_hvac_mode)} ({actions.get('reason', 'adaptive control')}){hvac_change}, "
+                f"Occupancy: {'Occupied' if self._occupied else 'Unoccupied'}{last_presence_time}, "
+                f"Category: {self.config.get('comfort_category', 'II')} (±{self.calculator.get_comfort_tolerance():.1f}°C), "
+                f"Air velocity offset: {air_velocity_offset:.1f}°C, Humidity offset: {humidity_offset:.1f}°C, "
+                f"Fan: {actions.get('set_fan_mode', current_fan)}{fan_change}, "
+                f"Compliance: \"{data.get('ashrae_compliant', False) and 'Compliant' or 'Non-compliant'}\" "
+                f"triggered by action {trigger_action}"
             )
+            
+            _LOGGER.info(log_message)
+            
+            # Também criar entrada no logbook com informações mais detalhadas
+            device_name = self.config.get("name", "Adaptive Climate")
+            logbook_message = (
+                f"{device_name}: {trigger_action} - "
+                f"Target: {actions.get('set_temperature', current_temp):.1f}°C, "
+                f"Indoor: {indoor_temp:.1f}°C, Outdoor: {outdoor_temp:.1f}°C, "
+                f"Comfort: {comfort_min:.1f}-{comfort_max:.1f}°C, "
+                f"Mode: {actions.get('set_hvac_mode', current_hvac_mode)}{hvac_change}"
+            )
+            self._create_logbook_entry(logbook_message, self.climate_entity_id)
 
     async def set_manual_override(self, temperature: float, duration: int | None = None) -> None:
         """Set manual override."""

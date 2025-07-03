@@ -14,6 +14,7 @@ from homeassistant.helpers.entity import EntityCategory
 
 from .const import (
     DOMAIN,
+    VERSION,
     DEFAULT_COMFORT_TEMP_MIN_OFFSET,
     DEFAULT_COMFORT_TEMP_MAX_OFFSET,
     DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
@@ -64,7 +65,7 @@ class AdaptiveClimateNumberBase(CoordinatorEntity, NumberEntity):
             "name": config_entry.data.get("name", "Adaptive Climate"),
             "manufacturer": "ASHRAE",
             "model": "Adaptive Climate Controller",
-            "sw_version": "0.1.3",
+            "sw_version": VERSION,
         }
         self._attr_entity_category = EntityCategory.CONFIG
 

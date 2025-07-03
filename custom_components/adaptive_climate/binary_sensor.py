@@ -14,7 +14,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import EntityCategory
 
-from .const import DOMAIN
+from .const import DOMAIN, VERSION
 from .coordinator import AdaptiveClimateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,11 +44,10 @@ class AdaptiveClimateBinarySensorBase(CoordinatorEntity, BinarySensorEntity):
         super().__init__(coordinator)
         self.config_entry = config_entry
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, config_entry.entry_id)},
-            "name": config_entry.data.get("name", "Adaptive Climate"),
+            "identifiers": {(DOMAIN, config_entry.entry_id)},            "name": config_entry.data.get("name", "Adaptive Climate"),
             "manufacturer": "ASHRAE",
-            "model": "Adaptive Climate Controller", 
-            "sw_version": "0.1.3",
+            "model": "Adaptive Climate Controller",
+            "sw_version": VERSION,
         }
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
