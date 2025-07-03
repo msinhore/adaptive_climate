@@ -157,6 +157,33 @@ class AreaBasedConfigHelper:
         
         return errors
 
+    def get_entities_in_area(self, area_id: str, domain_filter: list[str] = None) -> list[str]:
+        """Get all entities in a specific area with optional domain filtering.
+        
+        Args:
+            area_id: The area ID to filter entities by.
+            domain_filter: Optional list of domains to filter entities by.
+            
+        Returns:
+            A list of entity IDs in the specified area, optionally filtered by domain.
+        """
+        entities = []
+        
+        for entity in self._entity_registry.entities.values():
+            # Skip disabled entities
+            if entity.disabled:
+                continue
+                
+            # Check if entity is in the specified area
+            if entity.area_id == area_id:
+                # Apply domain filter if provided
+                if domain_filter and entity.domain not in domain_filter:
+                    continue
+                    
+                entities.append(entity.entity_id)
+        
+        return entities
+
 
 def get_area_name(hass: HomeAssistant, area_id: str | None) -> str:
     """Get area name from area ID."""
