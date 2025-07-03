@@ -457,56 +457,66 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if issues:
             _LOGGER.debug("Area/entity diagnostics (informational only): %s", issues)
 
-        # Create unified configuration schema - SIMPLIFIED for compatibility
+        # Create unified configuration schema following official HA documentation
+        # Reference: https://developers.home-assistant.io/docs/data_entry_flow_index/
         unified_schema = vol.Schema({
-            # === COMFORT CATEGORY (Simple dropdown) ===
+            # === COMFORT CATEGORY (dropdown with vol.In) ===
             vol.Optional(
                 "comfort_category", 
-                default=current_config.get("comfort_category", DEFAULT_COMFORT_CATEGORY)
+                default=current_config.get("comfort_category", DEFAULT_COMFORT_CATEGORY),
+                description={"suggested_value": current_config.get("comfort_category", DEFAULT_COMFORT_CATEGORY)}
             ): vol.In(["I", "II", "III"]),
 
-            # === NUMERIC FIELDS (Basic number validation) ===
+            # === NUMERIC FIELDS (text inputs with validation) ===
             vol.Optional(
                 "min_comfort_temp",
-                default=current_config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)
+                default=current_config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP),
+                description={"suggested_value": current_config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)}
             ): vol.All(vol.Coerce(float), vol.Range(min=15.0, max=22.0)),
             
             vol.Optional(
                 "max_comfort_temp",
-                default=current_config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP)
+                default=current_config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP),
+                description={"suggested_value": current_config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP)}
             ): vol.All(vol.Coerce(float), vol.Range(min=25.0, max=32.0)),
             
             vol.Optional(
                 "temperature_change_threshold",
-                default=current_config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
+                default=current_config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD),
+                description={"suggested_value": current_config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)}
             ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=3.0)),
             
             vol.Optional(
                 "air_velocity",
-                default=current_config.get("air_velocity", DEFAULT_AIR_VELOCITY)
+                default=current_config.get("air_velocity", DEFAULT_AIR_VELOCITY),
+                description={"suggested_value": current_config.get("air_velocity", DEFAULT_AIR_VELOCITY)}
             ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
             
             vol.Optional(
                 "natural_ventilation_threshold",
-                default=current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)
+                default=current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD),
+                description={"suggested_value": current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)}
             ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=5.0)),
             
             vol.Optional(
                 "setback_temperature_offset",
-                default=current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
+                default=current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET),
+                description={"suggested_value": current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)}
             ): vol.All(vol.Coerce(float), vol.Range(min=1.0, max=5.0)),
             
             vol.Optional(
                 "prolonged_absence_minutes",
-                default=current_config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES)
+                default=current_config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES),
+                description={"suggested_value": current_config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES)}
             ): vol.All(vol.Coerce(int), vol.Range(min=10, max=240)),
             
             vol.Optional(
                 "auto_shutdown_minutes",
-                default=current_config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES)
+                default=current_config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES),
+                description={"suggested_value": current_config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES)}
             ): vol.All(vol.Coerce(int), vol.Range(min=15, max=480)),
 
-            # === FEATURE TOGGLES ===
+            # === FEATURE TOGGLES (checkboxes) ===
             vol.Optional(
                 "energy_save_mode",
                 default=current_config.get("energy_save_mode", True)
@@ -547,43 +557,50 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 default=current_config.get("use_operative_temperature", False)
             ): bool,
 
-            # === ENTITY SELECTORS (Basic) ===
+            # === ENTITY SELECTORS (text inputs) ===
             vol.Optional(
                 "climate_entity",
-                default=current_data.get("climate_entity")
+                default=current_data.get("climate_entity", ""),
+                description={"suggested_value": current_data.get("climate_entity", "")}
             ): str,
 
             vol.Optional(
                 "indoor_temp_sensor",
-                default=current_data.get("indoor_temp_sensor")
+                default=current_data.get("indoor_temp_sensor", ""),
+                description={"suggested_value": current_data.get("indoor_temp_sensor", "")}
             ): str,
 
             vol.Optional(
                 "outdoor_temp_sensor", 
-                default=current_data.get("outdoor_temp_sensor")
+                default=current_data.get("outdoor_temp_sensor", ""),
+                description={"suggested_value": current_data.get("outdoor_temp_sensor", "")}
             ): str,
 
             vol.Optional(
                 "occupancy_sensor",
-                default=current_data.get("occupancy_sensor", "")
+                default=current_data.get("occupancy_sensor", ""),
+                description={"suggested_value": current_data.get("occupancy_sensor", "")}
             ): str,
 
             vol.Optional(
                 "mean_radiant_temp_sensor",
-                default=current_data.get("mean_radiant_temp_sensor", "")
+                default=current_data.get("mean_radiant_temp_sensor", ""),
+                description={"suggested_value": current_data.get("mean_radiant_temp_sensor", "")}
             ): str,
 
             vol.Optional(
                 "indoor_humidity_sensor",
-                default=current_data.get("indoor_humidity_sensor", "")
+                default=current_data.get("indoor_humidity_sensor", ""),
+                description={"suggested_value": current_data.get("indoor_humidity_sensor", "")}
             ): str,
 
             vol.Optional(
                 "outdoor_humidity_sensor",
-                default=current_data.get("outdoor_humidity_sensor", "")
+                default=current_data.get("outdoor_humidity_sensor", ""),
+                description={"suggested_value": current_data.get("outdoor_humidity_sensor", "")}
             ): str,
 
-            # === RESET ACTIONS ===
+            # === RESET ACTIONS (checkboxes) ===
             vol.Optional("reset_outdoor_history", default=False): bool,
             vol.Optional("reset_to_defaults", default=False): bool,
         })
