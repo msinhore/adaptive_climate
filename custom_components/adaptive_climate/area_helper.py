@@ -195,28 +195,7 @@ class AreaBasedConfigHelper:
         """
         _LOGGER.debug("Getting entities in area %s", area_id)
         
-        # Verificar se a área existe
-        area = self._area_registry.async_get_area(area_id)
-        if not area:
-            _LOGGER.warning("Area with ID %s not found", area_id)
-            return {
-                "climate": [],
-                "sensor": [],
-                "binary_sensor": [],
-                "switch": [],
-                "light": [],
-                "media_player": [],
-                "weather": [],
-                "other": [],
-                "temperature_sensors": [],
-                "humidity_sensors": [],
-                "other_sensors": [],
-                "occupancy_sensors": [],
-                "other_binary_sensors": [],
-            }
-        
-        _LOGGER.debug("Finding entities for area: %s (ID: %s)", area.name, area_id)
-        
+        # Initialize result dictionary with empty lists
         result = {
             "climate": [],
             "sensor": [],
@@ -226,38 +205,54 @@ class AreaBasedConfigHelper:
             "media_player": [],
             "weather": [],
             "other": [],
+            "temperature_sensors": [],
+            "humidity_sensors": [],
+            "other_sensors": [],
+            "occupancy_sensors": [],
+            "other_binary_sensors": [],
         }
         
-        # Debug Area Registry
-        _LOGGER.debug("Area Registry areas: %s", 
-                     {a_id: a.name for a_id, a in self._area_registry.areas.items()})
+        # Verificar se a área existe
+        area = self._area_registry.async_get_area(area_id)
+        if not area:
+            _LOGGER.warning("Area with ID %s not found", area_id)
+            return result
         
-        # Listar todas as entidades para depuração
-        all_entities = []
+        _LOGGER.debug("Finding entities for area: %s (ID: %s)", area.name, area_id)
+        
+        # Verificar todas as entidades registradas em cada área para diagnóstico
+        area_entity_count = {}
         for entity in self._entity_registry.entities.values():
-            if not entity.disabled:
-                all_entities.append({
-                    "entity_id": entity.entity_id, 
-                    "area_id": entity.area_id,
-                    "domain": entity.domain
-                })
+            if not entity.disabled and entity.area_id:
+                area_entity_count[entity.area_id] = area_entity_count.get(entity.area_id, 0) + 1
         
-        # Debug only a few entities, not the entire list which could be very large
-        _LOGGER.debug("Total available non-disabled entities: %s", len(all_entities))
-        _LOGGER.debug("Sample of entities (first 10): %s", all_entities[:10] if all_entities else [])
+        _LOGGER.debug("Area entity counts: %s", 
+                     {a_id: count for a_id, count in area_entity_count.items()})
+        
+        # Verificar se há áreas vazias (sem entidades)
+        empty_areas = []
+        for a_id, area_obj in self._area_registry.areas.items():
+            if a_id not in area_entity_count or area_entity_count[a_id] == 0:
+                empty_areas.append(area_obj.name)
+        
+        if empty_areas:
+            _LOGGER.warning("Found areas with no entities assigned: %s", empty_areas)
         
         # Count entities by domain for debugging
         domain_counts = {}
-        for entity in all_entities:
-            domain = entity["domain"]
+        for entity in self._entity_registry.entities.values():
+            if entity.disabled:
+                continue
+                
+            domain = entity.domain
             domain_counts[domain] = domain_counts.get(domain, 0) + 1
         
         _LOGGER.debug("Entities by domain: %s", domain_counts)
         
         # Count entities by area for debugging
         area_counts = {}
-        for entity in all_entities:
-            entity_area = entity["area_id"]
+        for entity in self._entity_registry.entities.values():
+            entity_area = entity.area_id
             if entity_area:
                 area_counts[entity_area] = area_counts.get(entity_area, 0) + 1
         
@@ -342,6 +337,68 @@ class AreaBasedConfigHelper:
         _LOGGER.debug("Final categorized entities: %s", result)
         
         return result
+
+    def diagnose_area_entity_issues(self) -> dict[str, Any]:
+        """Diagnostica problemas relacionados à atribuição de entidades em áreas.
+        
+        Returns:
+            Um dicionário com informações de diagnóstico.
+        """
+        issues = {}
+        
+        # Verificar áreas sem entidades
+        area_entity_count = {}
+        for entity in self._entity_registry.entities.values():
+            if not entity.disabled and entity.area_id:
+                area_entity_count[entity.area_id] = area_entity_count.get(entity.area_id, 0) + 1
+        
+        empty_areas = []
+        for a_id, area in self._area_registry.areas.items():
+            if a_id not in area_entity_count:
+                empty_areas.append(area.name)
+        
+        if empty_areas:
+            issues["empty_areas"] = empty_areas
+            _LOGGER.warning("Áreas sem entidades atribuídas: %s", empty_areas)
+        
+        # Verificar entidades de clima sem área atribuída
+        climate_without_area = []
+        for entity in self._entity_registry.entities.values():
+            if entity.domain == "climate" and not entity.disabled and not entity.area_id:
+                climate_without_area.append(entity.entity_id)
+        
+        if climate_without_area:
+            issues["climate_without_area"] = climate_without_area
+            _LOGGER.warning("Entidades de clima sem área atribuída: %s", climate_without_area)
+        
+        # Verificar sensores sem área atribuída
+        sensors_without_area = []
+        for entity in self._entity_registry.entities.values():
+            if entity.domain == "sensor" and not entity.disabled and not entity.area_id:
+                state = self.hass.states.get(entity.entity_id)
+                if state and (
+                    state.attributes.get("device_class") in ["temperature", "humidity"] or
+                    state.attributes.get("unit_of_measurement") in ["°C", "°F", "%"]
+                ):
+                    sensors_without_area.append(entity.entity_id)
+        
+        if sensors_without_area:
+            issues["sensors_without_area"] = sensors_without_area
+            _LOGGER.warning("Sensores relevantes sem área atribuída: %s", sensors_without_area)
+        
+        # Verificar sensores binários sem área atribuída
+        binary_sensors_without_area = []
+        for entity in self._entity_registry.entities.values():
+            if entity.domain == "binary_sensor" and not entity.disabled and not entity.area_id:
+                state = self.hass.states.get(entity.entity_id)
+                if state and state.attributes.get("device_class") in ["motion", "occupancy", "presence"]:
+                    binary_sensors_without_area.append(entity.entity_id)
+        
+        if binary_sensors_without_area:
+            issues["binary_sensors_without_area"] = binary_sensors_without_area
+            _LOGGER.warning("Sensores binários relevantes sem área atribuída: %s", binary_sensors_without_area)
+        
+        return issues
 
 
 def get_area_name(hass: HomeAssistant, area_id: str | None) -> str:
