@@ -10,9 +10,9 @@ MANIFEST_PATH = os.path.join(os.path.dirname(__file__), "manifest.json")
 try:
     with open(MANIFEST_PATH, "r") as manifest_file:
         _MANIFEST = json.load(manifest_file)
-        VERSION = _MANIFEST.get("version", "0.1.7")  # Valor padrão caso não encontre
+        VERSION = _MANIFEST.get("version", "0.1.8")  # Valor padrão caso não encontre
 except (FileNotFoundError, json.JSONDecodeError):
-    VERSION = "0.1.7"  # Fallback se não conseguir ler o arquivo
+    VERSION = "0.1.8"  # Fallback se não conseguir ler o arquivo
 
 # Default values
 DEFAULT_COMFORT_CATEGORY = "II"
