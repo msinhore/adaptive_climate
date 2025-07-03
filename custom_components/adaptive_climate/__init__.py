@@ -30,17 +30,24 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_register_template_functions(hass)
     
     # Register logbook handlers
-    if hasattr(hass.components, "logbook"):
-        hass.components.logbook.async_register_event_type(
-            DOMAIN,
+    try:
+        # Check if logbook is loaded using the correct method
+        from homeassistant.components import logbook
+        
+        # Register event types
+        logbook.async_register_event_type(
+            hass,
             EVENT_ADAPTIVE_CLIMATE_MODE_CHANGE,
             "changed HVAC mode",
         )
-        hass.components.logbook.async_register_event_type(
-            DOMAIN,
+        logbook.async_register_event_type(
+            hass,
             EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP, 
             "changed target temperature",
         )
+        _LOGGER.debug("Successfully registered logbook event types")
+    except (ImportError, AttributeError) as err:
+        _LOGGER.debug("Logbook integration not ready or available: %s", err)
     
     return True
 
