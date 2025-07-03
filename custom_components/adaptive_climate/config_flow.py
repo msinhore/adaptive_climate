@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
+from homeassistant.helpers import area_registry
 
 from .const import (
     DOMAIN,
@@ -29,6 +30,9 @@ from .const import (
 from .area_helper import AreaBasedConfigHelper
 
 _LOGGER = logging.getLogger(__name__)
+
+# Enhanced logging for debugging entity selection issues
+_LOGGER.setLevel(logging.DEBUG)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
@@ -140,6 +144,63 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step."""
+        # Debug info about all entities in the registry
+        entity_reg = async_get_entity_registry(self.hass)
+        area_reg = area_registry.async_get(self.hass)
+
+        # Log all areas in registry
+        _LOGGER.debug("All areas in registry:")
+        for area_id, area in area_reg.areas.items():
+            _LOGGER.debug("Area: %s (ID: %s)", area.name, area_id)
+
+        # Count entities by domain and area
+        domain_counts = {}
+        area_entity_counts = {}
+        climate_entities_by_area = {}
+        sensor_entities_by_area = {}
+        
+        # Debug log for all climate and sensor entities
+        _LOGGER.debug("Examining all climate and sensor entities:")
+        
+        for entity_id, entity in entity_reg.entities.items():
+            # Skip disabled entities
+            if entity.disabled:
+                continue
+                
+            # Count by domain
+            domain = entity.domain
+            domain_counts[domain] = domain_counts.get(domain, 0) + 1
+            
+            # Count by area
+            if entity.area_id:
+                area_entity_counts[entity.area_id] = area_entity_counts.get(entity.area_id, 0) + 1
+                
+                # Track climate entities by area
+                if domain == "climate":
+                    if entity.area_id not in climate_entities_by_area:
+                        climate_entities_by_area[entity.area_id] = []
+                    climate_entities_by_area[entity.area_id].append(entity.entity_id)
+                    _LOGGER.debug("Found climate entity: %s in area: %s", 
+                                entity.entity_id, area_reg.async_get_area(entity.area_id).name)
+                
+                # Track sensor entities by area
+                if domain == "sensor":
+                    if entity.area_id not in sensor_entities_by_area:
+                        sensor_entities_by_area[entity.area_id] = []
+                    sensor_entities_by_area[entity.area_id].append(entity.entity_id)
+                    state = self.hass.states.get(entity.entity_id)
+                    if state:
+                        unit = state.attributes.get("unit_of_measurement")
+                        device_class = state.attributes.get("device_class")
+                        _LOGGER.debug("Found sensor entity: %s in area: %s (unit: %s, device_class: %s)", 
+                                   entity.entity_id, area_reg.async_get_area(entity.area_id).name,
+                                   unit, device_class)
+        
+        _LOGGER.debug("Entity counts by domain: %s", domain_counts)
+        _LOGGER.debug("Entity counts by area: %s", 
+                     {area_reg.async_get_area(a_id).name: count 
+                      for a_id, count in area_entity_counts.items()})
+        
         # Build data schema with area filter if needed
         selected_area = None
         climate_entities = []
@@ -150,11 +211,34 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if selected_area:
                 _LOGGER.debug("Selected area: %s", selected_area)
                 area_helper = AreaBasedConfigHelper(self.hass)
+                
+                # Check direct area entity registry first
+                _LOGGER.debug("Entities directly assigned to area %s:", selected_area)
+                area_entities = []
+                for entity_id, entity in entity_reg.entities.items():
+                    if entity.area_id == selected_area and not entity.disabled:
+                        area_entities.append(entity_id)
+                _LOGGER.debug("Direct area entities: %s", area_entities)
+                
+                # Now use the helper method
                 entities_by_type = area_helper.get_entities_by_type_in_area(selected_area)
                 climate_entities = entities_by_type["climate"]
                 indoor_temp_sensors = entities_by_type["temperature_sensors"]
-                _LOGGER.debug("Climate entities in area: %s", climate_entities)
-                _LOGGER.debug("Temperature sensors in area: %s", indoor_temp_sensors)
+                _LOGGER.debug("Climate entities in area from helper: %s", climate_entities)
+                _LOGGER.debug("Temperature sensors in area from helper: %s", indoor_temp_sensors)
+                
+                # If no entities found but we know they exist, try to find them without area filtering
+                if not climate_entities and selected_area in climate_entities_by_area:
+                    _LOGGER.warning("Found climate entities in registry but not via helper: %s",
+                                 climate_entities_by_area[selected_area])
+                
+                # Try to find all entities in the area regardless of our helper
+                all_entities_in_area = []
+                for entity in entity_reg.entities.values():
+                    if entity.area_id == selected_area and not entity.disabled:
+                        all_entities_in_area.append(entity.entity_id)
+                
+                _LOGGER.debug("All entities in selected area from registry: %s", all_entities_in_area)
         
         # Diagnóstico de problemas de áreas e entidades
         area_helper = AreaBasedConfigHelper(self.hass)
@@ -166,6 +250,25 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 issues
             )
         
+        # If we're still not finding entities in areas, try without area filtering
+        if selected_area and not climate_entities:
+            _LOGGER.warning("No climate entities found in area %s, showing all climate entities instead", selected_area)
+            # Get all climate entities
+            climate_entities = [e.entity_id for e in entity_reg.entities.values() 
+                              if e.domain == "climate" and not e.disabled]
+        
+        if selected_area and not indoor_temp_sensors:
+            _LOGGER.warning("No temperature sensors found in area %s, showing all temperature sensors instead", selected_area)
+            # Get all potential temperature sensors
+            temp_sensors = []
+            for entity in entity_reg.entities.values():
+                if entity.domain == "sensor" and not entity.disabled:
+                    state = self.hass.states.get(entity.entity_id)
+                    if state and (state.attributes.get("unit_of_measurement") in ["°C", "°F"] or 
+                               state.attributes.get("device_class") == "temperature"):
+                        temp_sensors.append(entity.entity_id)
+            indoor_temp_sensors = temp_sensors
+        
         # Create schema with optional area filter
         # Use empty list instead of None for include_entities
         # Home Assistant's API expects [] when no entities should be included, not None
@@ -176,18 +279,27 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required("climate_entity", default="" if user_input is None else user_input.get("climate_entity", "")): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="climate",
-                        include_entities=climate_entities if climate_entities else []
+                        # First try with include_entities if we have filtered entities
+                        include_entities=climate_entities if climate_entities else [],
+                        # If no filtered entities or filtering is causing issues, 
+                        # don't set any other restrictions so all climate entities show
                     )
                 ),
                 vol.Required("indoor_temp_sensor", default="" if user_input is None else user_input.get("indoor_temp_sensor", "")): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain=["sensor", "input_number", "weather"],
+                        # Add multiple ways to match temperature sensors
+                        device_class=["temperature"],
+                        # We've seen that include_entities can sometimes cause issues with
+                        # empty dropdowns, so provide it only when we have entities to include
                         include_entities=indoor_temp_sensors if indoor_temp_sensors else []
                     )
                 ),
                 vol.Required("outdoor_temp_sensor", default="" if user_input is None else user_input.get("outdoor_temp_sensor", "")): selector.EntitySelector(
                     selector.EntitySelectorConfig(
-                        domain=["sensor", "input_number", "weather"]
+                        domain=["sensor", "input_number", "weather"],
+                        # Add device_class for outdoor temperature sensors too
+                        device_class=["temperature", "weather"]
                     )
                 ),
                 vol.Optional("comfort_category", default=DEFAULT_COMFORT_CATEGORY if user_input is None else user_input.get("comfort_category", DEFAULT_COMFORT_CATEGORY)): selector.SelectSelector(

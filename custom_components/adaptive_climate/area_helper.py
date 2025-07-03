@@ -9,6 +9,9 @@ from homeassistant.helpers import area_registry, entity_registry, device_registr
 
 _LOGGER = logging.getLogger(__name__)
 
+# Set to debug level for easier troubleshooting
+_LOGGER.setLevel(logging.DEBUG)
+
 
 class AreaBasedConfigHelper:
     """Helper class for area-based configuration."""
@@ -49,6 +52,147 @@ class AreaBasedConfigHelper:
                 climate_entities.append(entity.entity_id)
         
         return climate_entities
+        
+    def dump_entity_registry_assignments(self) -> dict[str, Any]:
+        """Dump entity registry assignments for debugging.
+        
+        Returns:
+            A dictionary with debug info about entity registry assignments.
+        """
+        result = {
+            "entity_count": 0,
+            "entities_with_area": 0,
+            "entities_without_area": 0,
+            "area_stats": {},
+            "domain_stats": {},
+            "areas_without_entities": [],
+            "domains_without_areas": {},
+            "climate_entities": [],
+            "temperature_sensors": [],
+            "humidity_sensors": []
+        }
+        
+        # Get statistics about entities and areas
+        for entity in self._entity_registry.entities.values():
+            if entity.disabled:
+                continue
+                
+            result["entity_count"] += 1
+            domain = entity.domain
+            
+            # Count by domain
+            result["domain_stats"][domain] = result["domain_stats"].get(domain, 0) + 1
+            
+            # Check if entity has an area
+            if entity.area_id:
+                result["entities_with_area"] += 1
+                
+                # Get area name
+                area = self._area_registry.async_get_area(entity.area_id)
+                area_name = area.name if area else "Unknown Area"
+                
+                # Count by area
+                if area_name not in result["area_stats"]:
+                    result["area_stats"][area_name] = {
+                        "total": 0,
+                        "domains": {}
+                    }
+                
+                result["area_stats"][area_name]["total"] += 1
+                
+                if domain not in result["area_stats"][area_name]["domains"]:
+                    result["area_stats"][area_name]["domains"][domain] = 0
+                    
+                result["area_stats"][area_name]["domains"][domain] += 1
+                
+                # Track climate entities
+                if domain == "climate":
+                    result["climate_entities"].append({
+                        "entity_id": entity.entity_id,
+                        "area_name": area_name,
+                        "area_id": entity.area_id
+                    })
+                
+                # Track sensor entities and categorize them
+                if domain == "sensor":
+                    state = self.hass.states.get(entity.entity_id)
+                    if state:
+                        unit = state.attributes.get("unit_of_measurement")
+                        device_class = state.attributes.get("device_class")
+                        
+                        # Check for temperature sensors
+                        if unit in ["°C", "°F"] or device_class == "temperature":
+                            result["temperature_sensors"].append({
+                                "entity_id": entity.entity_id,
+                                "area_name": area_name,
+                                "area_id": entity.area_id,
+                                "unit": unit,
+                                "device_class": device_class
+                            })
+                        
+                        # Check for humidity sensors
+                        elif unit == "%" or device_class == "humidity":
+                            result["humidity_sensors"].append({
+                                "entity_id": entity.entity_id,
+                                "area_name": area_name,
+                                "area_id": entity.area_id,
+                                "unit": unit,
+                                "device_class": device_class
+                            })
+            else:
+                result["entities_without_area"] += 1
+                
+                # Track domains without areas
+                if domain not in result["domains_without_areas"]:
+                    result["domains_without_areas"][domain] = 0
+                    
+                result["domains_without_areas"][domain] += 1
+                
+                # Check if it's a relevant entity that should have an area
+                if domain == "climate":
+                    result["climate_entities"].append({
+                        "entity_id": entity.entity_id,
+                        "area_name": "No Area",
+                        "area_id": None
+                    })
+                
+                # Check for temperature/humidity sensors without area
+                if domain == "sensor":
+                    state = self.hass.states.get(entity.entity_id)
+                    if state:
+                        unit = state.attributes.get("unit_of_measurement")
+                        device_class = state.attributes.get("device_class")
+                        
+                        if unit in ["°C", "°F"] or device_class == "temperature":
+                            result["temperature_sensors"].append({
+                                "entity_id": entity.entity_id,
+                                "area_name": "No Area",
+                                "area_id": None,
+                                "unit": unit,
+                                "device_class": device_class
+                            })
+                        
+                        elif unit == "%" or device_class == "humidity":
+                            result["humidity_sensors"].append({
+                                "entity_id": entity.entity_id,
+                                "area_name": "No Area",
+                                "area_id": None,
+                                "unit": unit,
+                                "device_class": device_class
+                            })
+        
+        # Find areas without entities
+        for area_id, area in self._area_registry.areas.items():
+            area_has_entities = False
+            for entity in self._entity_registry.entities.values():
+                if entity.area_id == area_id and not entity.disabled:
+                    area_has_entities = True
+                    break
+            
+            if not area_has_entities:
+                result["areas_without_entities"].append(area.name)
+        
+        return result
 
     def _get_suggested_sensors_for_area(self, area_id: str) -> dict[str, list[str]]:
         """Get suggested sensors for an area."""
