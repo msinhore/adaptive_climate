@@ -118,7 +118,6 @@ STEP_THRESHOLDS_DATA_SCHEMA = vol.Schema(
     }
 )
 
-
 class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Adaptive Climate."""
 
@@ -457,7 +456,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 )
             ),
 
-            # === AIR VELOCITY INPUT BOX ===
             vol.Optional(
                 "air_velocity", 
                 default=current_config.get("air_velocity", DEFAULT_AIR_VELOCITY)
@@ -469,31 +467,28 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 )
             ),
 
-            # === NATURAL VENTILATION INPUT BOX ===
             vol.Optional(
                 "natural_ventilation_threshold",
                 default=current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=0.5, max=10.0, step=0.5, 
+                    min=0.5, max=10.0, step=0.1, 
                     mode=selector.NumberSelectorMode.BOX,
                     unit_of_measurement="°C"
                 )
             ),
 
-            # === SETBACK TEMPERATURE INPUT BOX ===
             vol.Optional(
                 "setback_temperature_offset",
                 default=current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=0.5, max=5.0, step=0.5, 
+                    min=0.5, max=5.0, step=0.1, 
                     mode=selector.NumberSelectorMode.BOX,
                     unit_of_measurement="°C"
                 )
             ),
 
-            # === TIME PERIODS (MINUTES) - Using BOX mode for precise values ===
             vol.Optional(
                 "prolonged_absence_minutes",
                 default=current_config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES)

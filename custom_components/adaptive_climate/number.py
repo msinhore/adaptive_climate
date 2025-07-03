@@ -36,6 +36,8 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     
     entities = [
+        MinComfortTempNumber(coordinator, config_entry),
+        MaxComfortTempNumber(coordinator, config_entry),
         TemperatureChangeThresholdNumber(coordinator, config_entry),
         AirVelocityNumber(coordinator, config_entry),
         NaturalVentilationThresholdNumber(coordinator, config_entry),
@@ -62,6 +64,36 @@ class AdaptiveClimateNumberBase(CoordinatorEntity, NumberEntity):
         }
         self._attr_entity_category = EntityCategory.CONFIG
 
+
+class MinComfortTempNumber(AdaptiveClimateNumberBase):
+    """Number entity for minimum comfort temperature."""
+
+    def __init__(self, coordinator: AdaptiveClimateCoordinator, config_entry: ConfigEntry) -> None:
+        super().__init__(coordinator, config_entry)
+        self._attr_unique_id = f"{config_entry.entry_id}_min_comfort_temp"
+        self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} Min Comfort Temperature"
+        self._attr_icon = "mdi:thermometer-low"
+        self._attr_native_min_value = 15.0
+        self._attr_native_max_value = 22.0
+        self._attr_native_step = 0.1
+        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+        self._attr_device_class = NumberDeviceClass.TEMPERATURE
+        self._attr_native_value = 18.0
+
+class MaxComfortTempNumber(AdaptiveClimateNumberBase):
+    """Number entity for maximum comfort temperature."""
+
+    def __init__(self, coordinator: AdaptiveClimateCoordinator, config_entry: ConfigEntry) -> None:
+        super().__init__(coordinator, config_entry)
+        self._attr_unique_id = f"{config_entry.entry_id}_max_comfort_temp"
+        self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} Max Comfort Temperature"
+        self._attr_icon = "mdi:thermometer-high"
+        self._attr_native_min_value = 25.0
+        self._attr_native_max_value = 32.0
+        self._attr_native_step = 0.1
+        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+        self._attr_device_class = NumberDeviceClass.TEMPERATURE
+        self._attr_native_value = 27.0
 
 class TemperatureChangeThresholdNumber(AdaptiveClimateNumberBase):
     """Number entity for temperature change threshold."""
