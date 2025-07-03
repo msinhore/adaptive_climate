@@ -506,48 +506,121 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             vol.Optional(
                 "comfort_category", 
                 default=current_config.get("comfort_category", DEFAULT_COMFORT_CATEGORY)
-            ): vol.In(["I", "II", "III"]),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"value": "I", "label": "Category I - ±2°C (90% satisfaction)"},
+                        {"value": "II", "label": "Category II - ±3°C (80% satisfaction)"},
+                        {"value": "III", "label": "Category III - ±4°C (65% satisfaction)"},
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
 
-            # === NUMERIC CONFIGURATION FIELDS (Simple number inputs) ===
+            # === NUMERIC CONFIGURATION FIELDS ===
             vol.Optional(
                 "min_comfort_temp",
                 default=current_config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)
-            ): vol.All(vol.Coerce(float), vol.Range(min=15.0, max=22.0)),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=15.0,
+                    max=22.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="°C"
+                )
+            ),
             
             vol.Optional(
                 "max_comfort_temp",
                 default=current_config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP)
-            ): vol.All(vol.Coerce(float), vol.Range(min=25.0, max=32.0)),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=25.0,
+                    max=32.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="°C"
+                )
+            ),
             
             vol.Optional(
                 "temperature_change_threshold",
                 default=current_config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
-            ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=3.0)),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.1,
+                    max=3.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="°C"
+                )
+            ),
             
             vol.Optional(
                 "air_velocity",
                 default=current_config.get("air_velocity", DEFAULT_AIR_VELOCITY)
-            ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.0,
+                    max=2.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="m/s"
+                )
+            ),
             
             vol.Optional(
                 "natural_ventilation_threshold",
                 default=current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)
-            ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=5.0)),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.5,
+                    max=5.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="°C"
+                )
+            ),
             
             vol.Optional(
                 "setback_temperature_offset",
                 default=current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
-            ): vol.All(vol.Coerce(float), vol.Range(min=1.0, max=5.0)),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=1.0,
+                    max=5.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="°C"
+                )
+            ),
             
             vol.Optional(
                 "prolonged_absence_minutes",
                 default=current_config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES)
-            ): vol.All(vol.Coerce(int), vol.Range(min=10, max=240)),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=10,
+                    max=240,
+                    step=1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="min"
+                )
+            ),
             
             vol.Optional(
                 "auto_shutdown_minutes",
                 default=current_config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES)
-            ): vol.All(vol.Coerce(int), vol.Range(min=15, max=480)),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=15,
+                    max=480,
+                    step=1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="min"
+                )
+            ),
 
             # === ENTITY SELECTORS ===
             vol.Optional(
