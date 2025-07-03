@@ -457,249 +457,135 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if issues:
             _LOGGER.debug("Area/entity diagnostics (informational only): %s", issues)
 
-        # Create unified configuration schema with modern selectors
+        # Create unified configuration schema - SIMPLIFIED for compatibility
         unified_schema = vol.Schema({
-            # === FEATURE TOGGLES (Using BooleanSelector for modern toggle switches) ===
-            vol.Optional(
-                "energy_save_mode",
-                default=current_config.get("energy_save_mode", True)
-            ): selector.BooleanSelector(),
-            
-            vol.Optional(
-                "natural_ventilation_enable",
-                default=current_config.get("natural_ventilation_enable", True)
-            ): selector.BooleanSelector(),
-            
-            vol.Optional(
-                "adaptive_air_velocity",
-                default=current_config.get("adaptive_air_velocity", True)
-            ): selector.BooleanSelector(),
-            
-            vol.Optional(
-                "humidity_comfort_enable",
-                default=current_config.get("humidity_comfort_enable", True)
-            ): selector.BooleanSelector(),
-            
-            vol.Optional(
-                "comfort_precision_mode",
-                default=current_config.get("comfort_precision_mode", False)
-            ): selector.BooleanSelector(),
-            
-            vol.Optional(
-                "use_occupancy_features",
-                default=current_config.get("use_occupancy_features", False)
-            ): selector.BooleanSelector(),
-            
-            vol.Optional(
-                "auto_shutdown_enable",
-                default=current_config.get("auto_shutdown_enable", False)
-            ): selector.BooleanSelector(),
-            
-            vol.Optional(
-                "use_operative_temperature",
-                default=current_config.get("use_operative_temperature", False)
-            ): selector.BooleanSelector(            ),
-            
-            # Area selector has been removed as it wasn't useful
-
-            # === COMFORT CATEGORY DROPDOWN ===
+            # === COMFORT CATEGORY (Simple dropdown) ===
             vol.Optional(
                 "comfort_category", 
                 default=current_config.get("comfort_category", DEFAULT_COMFORT_CATEGORY)
-            ): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=[
-                        {"value": "I", "label": "Category I - ±2°C (90% satisfaction)"},
-                        {"value": "II", "label": "Category II - ±3°C (80% satisfaction)"},
-                        {"value": "III", "label": "Category III - ±4°C (65% satisfaction)"},
-                    ],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
-            ),
+            ): vol.In(["I", "II", "III"]),
 
-            # === NUMERIC CONFIGURATION FIELDS ===
+            # === NUMERIC FIELDS (Basic number validation) ===
             vol.Optional(
                 "min_comfort_temp",
                 default=current_config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=15.0,
-                    max=22.0,
-                    step=0.1,
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="°C"
-                )
-            ),
+            ): vol.All(vol.Coerce(float), vol.Range(min=15.0, max=22.0)),
             
             vol.Optional(
                 "max_comfort_temp",
                 default=current_config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=25.0,
-                    max=32.0,
-                    step=0.1,
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="°C"
-                )
-            ),
+            ): vol.All(vol.Coerce(float), vol.Range(min=25.0, max=32.0)),
             
             vol.Optional(
                 "temperature_change_threshold",
                 default=current_config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0.1,
-                    max=3.0,
-                    step=0.1,
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="°C"
-                )
-            ),
+            ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=3.0)),
             
             vol.Optional(
                 "air_velocity",
                 default=current_config.get("air_velocity", DEFAULT_AIR_VELOCITY)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0.0,
-                    max=2.0,
-                    step=0.1,
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="m/s"
-                )
-            ),
+            ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
             
             vol.Optional(
                 "natural_ventilation_threshold",
                 default=current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0.5,
-                    max=5.0,
-                    step=0.1,
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="°C"
-                )
-            ),
+            ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=5.0)),
             
             vol.Optional(
                 "setback_temperature_offset",
                 default=current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=1.0,
-                    max=5.0,
-                    step=0.1,
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="°C"
-                )
-            ),
+            ): vol.All(vol.Coerce(float), vol.Range(min=1.0, max=5.0)),
             
             vol.Optional(
                 "prolonged_absence_minutes",
                 default=current_config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=10,
-                    max=240,
-                    step=1,
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="min"
-                )
-            ),
+            ): vol.All(vol.Coerce(int), vol.Range(min=10, max=240)),
             
             vol.Optional(
                 "auto_shutdown_minutes",
                 default=current_config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=15,
-                    max=480,
-                    step=1,
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="min"
-                )
-            ),
+            ): vol.All(vol.Coerce(int), vol.Range(min=15, max=480)),
 
-            # === ENTITY SELECTORS ===
+            # === FEATURE TOGGLES ===
+            vol.Optional(
+                "energy_save_mode",
+                default=current_config.get("energy_save_mode", True)
+            ): bool,
+            
+            vol.Optional(
+                "natural_ventilation_enable",
+                default=current_config.get("natural_ventilation_enable", True)
+            ): bool,
+            
+            vol.Optional(
+                "adaptive_air_velocity",
+                default=current_config.get("adaptive_air_velocity", True)
+            ): bool,
+            
+            vol.Optional(
+                "humidity_comfort_enable",
+                default=current_config.get("humidity_comfort_enable", True)
+            ): bool,
+            
+            vol.Optional(
+                "comfort_precision_mode",
+                default=current_config.get("comfort_precision_mode", False)
+            ): bool,
+            
+            vol.Optional(
+                "use_occupancy_features",
+                default=current_config.get("use_occupancy_features", False)
+            ): bool,
+            
+            vol.Optional(
+                "auto_shutdown_enable",
+                default=current_config.get("auto_shutdown_enable", False)
+            ): bool,
+            
+            vol.Optional(
+                "use_operative_temperature",
+                default=current_config.get("use_operative_temperature", False)
+            ): bool,
+
+            # === ENTITY SELECTORS (Basic) ===
             vol.Optional(
                 "climate_entity",
                 default=current_data.get("climate_entity")
-            ): selector.EntitySelector(
-                selector.EntitySelectorConfig(
-                    domain="climate"
-                    # No include_entities to ensure all entities are shown
-                )
-            ),
+            ): str,
 
             vol.Optional(
                 "indoor_temp_sensor",
                 default=current_data.get("indoor_temp_sensor")
-            ): selector.EntitySelector(
-                selector.EntitySelectorConfig(
-                    domain=["sensor", "input_number", "weather"],
-                    device_class=["temperature"]
-                    # No include_entities to ensure all entities are shown
-                )
-            ),
+            ): str,
 
             vol.Optional(
                 "outdoor_temp_sensor", 
                 default=current_data.get("outdoor_temp_sensor")
-            ): selector.EntitySelector(
-                selector.EntitySelectorConfig(
-                    domain=["sensor", "input_number", "weather"],
-                    device_class=["temperature", "weather"]
-                )
-            ),
+            ): str,
 
             vol.Optional(
                 "occupancy_sensor",
-                default=current_data.get("occupancy_sensor")
-            ): selector.EntitySelector(
-                selector.EntitySelectorConfig(
-                    domain="binary_sensor",
-                    device_class=["motion", "occupancy", "presence"]
-                    # No include_entities to ensure all entities are shown
-                )
-            ),
+                default=current_data.get("occupancy_sensor", "")
+            ): str,
 
             vol.Optional(
                 "mean_radiant_temp_sensor",
-                default=current_data.get("mean_radiant_temp_sensor")
-            ): selector.EntitySelector(
-                selector.EntitySelectorConfig(
-                    domain=["sensor", "input_number"],
-                    device_class=["temperature"]
-                    # No include_entities to ensure all entities are shown
-                )
-            ),
+                default=current_data.get("mean_radiant_temp_sensor", "")
+            ): str,
 
             vol.Optional(
                 "indoor_humidity_sensor",
-                default=current_data.get("indoor_humidity_sensor")
-            ): selector.EntitySelector(
-                selector.EntitySelectorConfig(
-                    domain=["sensor", "input_number"],
-                    device_class=["humidity"]
-                    # No include_entities to ensure all entities are shown
-                )
-            ),
+                default=current_data.get("indoor_humidity_sensor", "")
+            ): str,
 
             vol.Optional(
                 "outdoor_humidity_sensor",
-                default=current_data.get("outdoor_humidity_sensor")
-            ): selector.EntitySelector(
-                selector.EntitySelectorConfig(
-                    domain=["sensor", "input_number", "weather"],
-                    device_class=["humidity", "weather"]
-                )
-            ),
+                default=current_data.get("outdoor_humidity_sensor", "")
+            ): str,
 
             # === RESET ACTIONS ===
-            vol.Optional("reset_outdoor_history", default=False): selector.BooleanSelector(),
-            vol.Optional("reset_to_defaults", default=False): selector.BooleanSelector(),
+            vol.Optional("reset_outdoor_history", default=False): bool,
+            vol.Optional("reset_to_defaults", default=False): bool,
         })
 
         return self.async_show_form(
