@@ -193,6 +193,30 @@ class AreaBasedConfigHelper:
         Returns:
             A dictionary with entity types as keys and lists of entity IDs as values.
         """
+        _LOGGER.debug("Getting entities in area %s", area_id)
+        
+        # Verificar se a área existe
+        area = self._area_registry.async_get_area(area_id)
+        if not area:
+            _LOGGER.warning("Area with ID %s not found", area_id)
+            return {
+                "climate": [],
+                "sensor": [],
+                "binary_sensor": [],
+                "switch": [],
+                "light": [],
+                "media_player": [],
+                "weather": [],
+                "other": [],
+                "temperature_sensors": [],
+                "humidity_sensors": [],
+                "other_sensors": [],
+                "occupancy_sensors": [],
+                "other_binary_sensors": [],
+            }
+        
+        _LOGGER.debug("Finding entities for area: %s (ID: %s)", area.name, area_id)
+        
         result = {
             "climate": [],
             "sensor": [],
@@ -204,17 +228,65 @@ class AreaBasedConfigHelper:
             "other": [],
         }
         
-        # Get all entities in the area
+        # Debug Area Registry
+        _LOGGER.debug("Area Registry areas: %s", 
+                     {a_id: a.name for a_id, a in self._area_registry.areas.items()})
+        
+        # Listar todas as entidades para depuração
+        all_entities = []
         for entity in self._entity_registry.entities.values():
-            if entity.disabled or entity.area_id != area_id:
+            if not entity.disabled:
+                all_entities.append({
+                    "entity_id": entity.entity_id, 
+                    "area_id": entity.area_id,
+                    "domain": entity.domain
+                })
+        
+        # Debug only a few entities, not the entire list which could be very large
+        _LOGGER.debug("Total available non-disabled entities: %s", len(all_entities))
+        _LOGGER.debug("Sample of entities (first 10): %s", all_entities[:10] if all_entities else [])
+        
+        # Count entities by domain for debugging
+        domain_counts = {}
+        for entity in all_entities:
+            domain = entity["domain"]
+            domain_counts[domain] = domain_counts.get(domain, 0) + 1
+        
+        _LOGGER.debug("Entities by domain: %s", domain_counts)
+        
+        # Count entities by area for debugging
+        area_counts = {}
+        for entity in all_entities:
+            entity_area = entity["area_id"]
+            if entity_area:
+                area_counts[entity_area] = area_counts.get(entity_area, 0) + 1
+        
+        _LOGGER.debug("Entities by area: %s", area_counts)
+        _LOGGER.debug("Looking for entities in area ID: %s", area_id)
+        
+        # Get all entities in the area
+        area_entities = []
+        for entity in self._entity_registry.entities.values():
+            if entity.disabled:
                 continue
-            
-            # Group by domain
-            domain = entity.domain
-            if domain in result:
-                result[domain].append(entity.entity_id)
-            else:
-                result["other"].append(entity.entity_id)
+                
+            if entity.area_id == area_id:
+                area_entities.append(entity.entity_id)
+                
+                # Group by domain
+                domain = entity.domain
+                if domain in result:
+                    result[domain].append(entity.entity_id)
+                else:
+                    result["other"].append(entity.entity_id)
+        
+        _LOGGER.debug("Found %d entities in area %s: %s", 
+                     len(area_entities), area.name, area_entities)
+        
+        # Depuração: verificar quantas entidades foram encontradas para cada categoria
+        for domain, entities in result.items():
+            _LOGGER.debug("Found %d entities of type %s: %s", 
+                        len(entities), domain, entities)
                 
         # Get additional information for sensors to further categorize them
         temp_sensors = []
@@ -224,6 +296,7 @@ class AreaBasedConfigHelper:
         for entity_id in result["sensor"]:
             state = self.hass.states.get(entity_id)
             if not state:
+                _LOGGER.debug("No state found for entity %s", entity_id)
                 other_sensors.append(entity_id)
                 continue
                 
@@ -231,10 +304,14 @@ class AreaBasedConfigHelper:
             if (state.attributes.get("unit_of_measurement") in ["°C", "°F"] or 
                     state.attributes.get("device_class") == "temperature"):
                 temp_sensors.append(entity_id)
+                _LOGGER.debug("Found temperature sensor: %s with attributes %s", 
+                             entity_id, state.attributes)
             # Check for humidity sensors
             elif (state.attributes.get("unit_of_measurement") == "%" or 
                   state.attributes.get("device_class") == "humidity"):
                 humidity_sensors.append(entity_id)
+                _LOGGER.debug("Found humidity sensor: %s with attributes %s", 
+                             entity_id, state.attributes)
             else:
                 other_sensors.append(entity_id)
                 
@@ -250,6 +327,8 @@ class AreaBasedConfigHelper:
                 
             if state.attributes.get("device_class") in ["motion", "occupancy", "presence"]:
                 occupancy_sensors.append(entity_id)
+                _LOGGER.debug("Found occupancy sensor: %s with attributes %s", 
+                             entity_id, state.attributes)
             else:
                 other_binary_sensors.append(entity_id)
                 
@@ -259,6 +338,8 @@ class AreaBasedConfigHelper:
         result["other_sensors"] = other_sensors
         result["occupancy_sensors"] = occupancy_sensors
         result["other_binary_sensors"] = other_binary_sensors
+        
+        _LOGGER.debug("Final categorized entities: %s", result)
         
         return result
 
@@ -277,3 +358,50 @@ def suggest_entity_name_for_area(area_name: str, entity_type: str) -> str:
     """Suggest an entity name based on area and type."""
     clean_area_name = area_name.replace(" ", "_").lower()
     return f"adaptive_climate_{clean_area_name}_{entity_type}"
+
+
+def get_entities_by_area_and_domain(hass: HomeAssistant, area_name_or_id: str, domains: list[str] = None) -> list[str]:
+    """Get entities filtered by area and domain.
+    
+    This function can be used in templates with the template.area_domain_entities custom template function.
+    
+    Args:
+        hass: The Home Assistant instance.
+        area_name_or_id: The name or ID of the area to filter entities by.
+        domains: Optional list of domains to filter entities by (e.g., ["climate", "sensor"]).
+        
+    Returns:
+        A list of entity_ids in the specified area, optionally filtered by domain.
+    """
+    _LOGGER.debug("Finding entities in area %s with domains %s", area_name_or_id, domains)
+    area_reg = area_registry.async_get(hass)
+    
+    # If an area name is provided, try to find the corresponding area ID
+    area_id = area_name_or_id
+    if area_name_or_id and not area_name_or_id.startswith(("area_", "0123456789abcdef")):
+        for a_id, area in area_reg.areas.items():
+            if area.name.lower() == area_name_or_id.lower():
+                area_id = a_id
+                break
+    
+    if not area_id:
+        _LOGGER.warning("Area with name or ID %s not found", area_name_or_id)
+        return []
+    
+    ent_reg = entity_registry.async_get(hass)
+    entities = []
+    
+    for entity in ent_reg.entities.values():
+        if entity.disabled:
+            continue
+            
+        if entity.area_id == area_id:
+            if domains and entity.domain not in domains:
+                continue
+                
+            entities.append(entity.entity_id)
+    
+    _LOGGER.debug("Found %d entities in area %s with domains %s: %s", 
+                 len(entities), area_name_or_id, domains, entities)
+    
+    return entities

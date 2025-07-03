@@ -8,7 +8,7 @@
 
 A Home Assistant custom component that acts as an intelligent controller for your existing climate entities using the ASHRAE 55 adaptive comfort model. It provides energy-saving features, natural ventilation detection, and comprehensive diagnostic sensors.
 
-**Development Version: 0.1.3**
+**Development Version: 0.1.7**
 
 ## Overview
 
@@ -249,4 +249,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Development Version**: 0.1.3
+**Development Version**: 0.1.7

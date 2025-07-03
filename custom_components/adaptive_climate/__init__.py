@@ -10,6 +10,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
 from .coordinator import AdaptiveClimateCoordinator
+from .template import async_register_template_functions
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,6 +20,10 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.N
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Adaptive Climate component."""
     hass.data.setdefault(DOMAIN, {})
+    
+    # Register custom template functions
+    async_register_template_functions(hass)
+    
     return True
 
 
