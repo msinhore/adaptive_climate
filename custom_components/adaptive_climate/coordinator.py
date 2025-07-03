@@ -6,8 +6,10 @@ import json
 import logging
 from datetime import datetime, timedelta
 from typing import Any
+import pytz
 
 from homeassistant.core import HomeAssistant, State, callback
+from homeassistant.util import dt as dt_util
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.storage import Store
@@ -108,6 +110,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict[str, Any]:
         """Update data."""
         try:
+            # Start with fresh calculation
+            self._error_count = getattr(self, '_error_count', 0)
+            
             # Get current states
             climate_state = self.hass.states.get(self.climate_entity_id)
             indoor_temp_state = self.hass.states.get(self.indoor_temp_entity_id)
@@ -124,18 +129,20 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             
             if missing_entities:
                 # Only log warning if this is the first time or if it's been a while
-                now = datetime.now()
+                now = dt_util.now()
                 if not hasattr(self, '_last_warning_time') or (now - self._last_warning_time).total_seconds() > 300:  # 5 minutes
                     _LOGGER.info("Waiting for required temperature sensors to become available: %s", ", ".join(missing_entities))
                     self._last_warning_time = now
                 
+                status_message = f"entities_unavailable: {', '.join(missing_entities)}"
+                
                 # Return previous data if available, or minimal default data
                 if self.data:
-                    return self.data
+                    return {**self.data, "status": status_message}
                 elif self._last_valid_data:
                     _LOGGER.info("Using last valid persisted data while entities are unavailable")
-                    return self._last_valid_data
-                return self._get_default_data()
+                    return {**self._last_valid_data, "status": status_message}
+                return self._get_default_data(status=status_message)
             
             # Parse temperatures
             try:
@@ -146,11 +153,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                               indoor_temp_state.state, outdoor_temp_state.state, exc)
                 # Return previous data if available, or minimal default data
                 if self.data:
-                    return self.data
+                    return {**self.data, "status": "invalid_temperature_values"}
                 elif self._last_valid_data:
                     _LOGGER.info("Using last valid persisted data due to invalid temperature values")
-                    return self._last_valid_data
-                return self._get_default_data()
+                    return {**self._last_valid_data, "status": "invalid_temperature_values"}
+                return self._get_default_data(status="invalid_temperature_values")
             
             # Update outdoor temperature history and running mean
             self._update_outdoor_temp_history(outdoor_temp)
@@ -193,7 +200,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 "manual_override": self._manual_override,
                 "natural_ventilation_active": self._natural_ventilation_active,
                 "control_actions": control_actions,
-                "last_updated": datetime.now(),
+                "last_updated": dt_util.now(),
             }
             
             # Log control action
@@ -206,7 +213,25 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             return data
             
         except Exception as err:
-            _LOGGER.error("Error updating adaptive climate data: %s", err)
+            self._error_count += 1
+            error_type = type(err).__name__
+            
+            # Special handling for datetime errors - reset the history if we're having timezone issues
+            if "offset-naive and offset-aware datetime" in str(err):
+                _LOGGER.warning("Timezone mismatch detected - resetting temperature history")
+                self._outdoor_temp_history = []  # Reset history
+                self._running_mean_outdoor_temp = None
+                
+                # If this is happening repeatedly, try to recover
+                if self._error_count > 3:
+                    _LOGGER.warning("Persistent datetime errors - forcing timezone aware timestamps")
+                    # Force the coordinator to update with correct timezone info
+                    self.hass.async_create_task(self._force_timezone_update())
+            
+            # Only log full error periodically to avoid log spam
+            if self._error_count <= 3 or self._error_count % 10 == 0:  # Log first 3 errors and then every 10th
+                _LOGGER.error("Error updating adaptive climate data: %s", err)
+            
             # Return previous data if available, or minimal default data
             if self.data:
                 return self.data
@@ -215,8 +240,12 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 return self._last_valid_data
             return self._get_default_data()
 
-    def _get_default_data(self) -> dict[str, Any]:
-        """Get default data when entities are unavailable."""
+    def _get_default_data(self, status: str = "entities_unavailable") -> dict[str, Any]:
+        """Get default data when entities are unavailable.
+        
+        Args:
+            status: The status to report for diagnostic purposes.
+        """
         return {
             "adaptive_comfort_temp": 22.0,
             "comfort_temp_min": 20.0,
@@ -230,8 +259,8 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             "natural_ventilation_active": False,
             "ashrae_compliant": False,
             "control_actions": {},
-            "last_updated": datetime.now(),
-            "status": "entities_unavailable",
+            "last_updated": dt_util.now(),
+            "status": status,
         }
 
     async def _load_persisted_data(self) -> None:
@@ -273,7 +302,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     key: value for key, value in current_data.items()
                     if key not in ["last_updated"]  # Exclude non-serializable items
                 },
-                "last_updated": datetime.now().isoformat(),
+                "last_updated": dt_util.now().isoformat(),
             }
             
             # Save to storage
@@ -363,7 +392,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
     def _check_override_expiry(self) -> None:
         """Check if manual override has expired."""
         if self._manual_override and self._override_expiry:
-            if datetime.now() >= self._override_expiry:
+            if dt_util.now() >= self._override_expiry:
                 self._manual_override = False
                 self._override_expiry = None
                 
@@ -432,7 +461,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             # Verificar há quanto tempo está desocupado
             occupancy_state = self.hass.states.get(self.occupancy_entity_id) if self.occupancy_entity_id else None
             if occupancy_state and occupancy_state.last_changed:
-                time_since_last_presence = datetime.now() - occupancy_state.last_changed
+                time_since_last_presence = dt_util.now() - occupancy_state.last_changed
                 minutes_absent = time_since_last_presence.total_seconds() / 60
                 
                 # Se estiver ausente há mais tempo que o configurado, desligar o AC
@@ -718,7 +747,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         self._last_target_temp = temperature
         
         if duration:
-            self._override_expiry = datetime.now() + timedelta(seconds=duration)
+            self._override_expiry = dt_util.now() + timedelta(seconds=duration)
         else:
             self._override_expiry = None
         
@@ -796,7 +825,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
     def _update_outdoor_temp_history(self, outdoor_temp: float) -> None:
         """Update outdoor temperature history and calculate running mean."""
-        now = datetime.now()
+        now = dt_util.now()
         
         # Add current temperature
         self._outdoor_temp_history.append((now, outdoor_temp))
@@ -893,3 +922,33 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 _LOGGER.info("Final state saved to storage during shutdown")
         except Exception as err:
             _LOGGER.warning("Failed to save final state during shutdown: %s", err)
+
+    async def _force_timezone_update(self) -> None:
+        """Force update with correct timezone info to recover from timezone errors."""
+        try:
+            _LOGGER.info("Attempting to recover from timezone errors")
+            
+            # Reset counters and timestamps
+            self._error_count = 0
+            self._outdoor_temp_history = []
+            self._running_mean_outdoor_temp = None
+            
+            # Get a fresh timestamp with the correct timezone
+            current_time = dt_util.now()
+            
+            # Get current outdoor temperature
+            outdoor_temp_state = self.hass.states.get(self.outdoor_temp_entity_id)
+            if outdoor_temp_state and outdoor_temp_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+                try:
+                    outdoor_temp = float(outdoor_temp_state.state)
+                    # Initialize the history with the current temperature
+                    self._outdoor_temp_history = [(current_time, outdoor_temp)]
+                    _LOGGER.info("Temperature history reset with current time: %s", current_time)
+                except (ValueError, TypeError):
+                    pass
+                
+            # Force a refresh
+            await self.async_request_refresh()
+            
+        except Exception as err:
+            _LOGGER.error("Error during timezone recovery: %s", err)
