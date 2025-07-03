@@ -295,17 +295,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 user_input = {k: v for k, v in user_input.items() if k != "reset_outdoor_history"}
             
             if user_input.get("reset_to_defaults", False):
-                # Reset to default values
+                # Reset to default values, mas apenas para valores que não são gerenciados pelos number helpers
                 default_config = {
                     "comfort_category": DEFAULT_COMFORT_CATEGORY,
-                    "air_velocity": DEFAULT_AIR_VELOCITY,
-                    "temperature_change_threshold": DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
-                    "natural_ventilation_threshold": DEFAULT_NATURAL_VENTILATION_THRESHOLD,
-                    "setback_temperature_offset": DEFAULT_SETBACK_TEMPERATURE_OFFSET,
-                    "min_comfort_temp": DEFAULT_MIN_COMFORT_TEMP,
-                    "max_comfort_temp": DEFAULT_MAX_COMFORT_TEMP,
-                    "prolonged_absence_minutes": DEFAULT_PROLONGED_ABSENCE_MINUTES,
-                    "auto_shutdown_minutes": DEFAULT_AUTO_SHUTDOWN_MINUTES,
+                    # Removidos os campos numéricos que são gerenciados pelos number helpers:
+                    # "air_velocity", "temperature_change_threshold", "natural_ventilation_threshold",
+                    # "setback_temperature_offset", "min_comfort_temp", "max_comfort_temp",
+                    # "prolonged_absence_minutes", "auto_shutdown_minutes"
                     "adaptive_air_velocity": True,
                     "natural_ventilation_enable": True,
                     "humidity_comfort_enable": True,
@@ -323,6 +319,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 k: v for k, v in user_input.items() 
                 if not k.startswith("reset_") and v is not None
             }
+            
+            # Remover campos numéricos que são gerenciados exclusivamente pelos number helpers
+            number_fields = [
+                "min_comfort_temp", "max_comfort_temp", "temperature_change_threshold", 
+                "air_velocity", "natural_ventilation_threshold", "setback_temperature_offset", 
+                "prolonged_absence_minutes", "auto_shutdown_minutes"
+            ]
+            config_update = {k: v for k, v in config_update.items() if k not in number_fields}
             
             if config_update:
                 # Update coordinator with new configuration
@@ -419,95 +423,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         {"value": "III", "label": f"Category III - {COMFORT_CATEGORIES['III']['description']}"},
                     ],
                     mode=selector.SelectSelectorMode.DROPDOWN,
-                )
-            ),
-
-            # === TEMPERATURE INPUT BOXES ===
-            vol.Optional(
-                "min_comfort_temp",
-                default=current_config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=15.0, max=22.0, step=0.5, 
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="°C"
-                )
-            ),
-            
-            vol.Optional(
-                "max_comfort_temp",
-                default=current_config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=25.0, max=32.0, step=0.5, 
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="°C"
-                )
-            ),
-
-            vol.Optional(
-                "temperature_change_threshold",
-                default=current_config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0.1, max=3.0, step=0.1, 
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="°C"
-                )
-            ),
-
-            vol.Optional(
-                "air_velocity", 
-                default=current_config.get("air_velocity", DEFAULT_AIR_VELOCITY)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0.0, max=2.0, step=0.1, 
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="m/s"
-                )
-            ),
-
-            vol.Optional(
-                "natural_ventilation_threshold",
-                default=current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0.5, max=10.0, step=0.1, 
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="°C"
-                )
-            ),
-
-            vol.Optional(
-                "setback_temperature_offset",
-                default=current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0.5, max=5.0, step=0.1, 
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="°C"
-                )
-            ),
-
-            vol.Optional(
-                "prolonged_absence_minutes",
-                default=current_config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=10, max=240, step=5, 
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="min"
-                )
-            ),
-
-            vol.Optional(
-                "auto_shutdown_minutes",
-                default=current_config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=15, max=480, step=15, 
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="min"
                 )
             ),
 

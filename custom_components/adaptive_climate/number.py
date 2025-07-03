@@ -21,6 +21,9 @@ from .const import (
     DEFAULT_NATURAL_VENTILATION_THRESHOLD,
     DEFAULT_SETBACK_TEMPERATURE_OFFSET,
     DEFAULT_AUTO_SHUTDOWN_MINUTES,
+    DEFAULT_MIN_COMFORT_TEMP,
+    DEFAULT_MAX_COMFORT_TEMP,
+    DEFAULT_PROLONGED_ABSENCE_MINUTES,
 )
 from .coordinator import AdaptiveClimateCoordinator
 
@@ -42,6 +45,7 @@ async def async_setup_entry(
         AirVelocityNumber(coordinator, config_entry),
         NaturalVentilationThresholdNumber(coordinator, config_entry),
         SetbackTemperatureOffsetNumber(coordinator, config_entry),
+        ProlongedAbsenceMinutesNumber(coordinator, config_entry),
         AutoShutdownMinutesNumber(coordinator, config_entry),
     ]
     
@@ -78,7 +82,23 @@ class MinComfortTempNumber(AdaptiveClimateNumberBase):
         self._attr_native_step = 0.1
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self._attr_device_class = NumberDeviceClass.TEMPERATURE
-        self._attr_native_value = 18.0
+        self._attr_native_value = coordinator.config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)
+    
+    @property
+    def native_value(self) -> float | None:
+        """Return the current value."""
+        return self._attr_native_value
+    
+    async def async_set_native_value(self, value: float) -> None:
+        """Set the value."""
+        self._attr_native_value = value
+        await self.coordinator.update_config({"min_comfort_temp": value})
+    
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.last_update_success
+
 
 class MaxComfortTempNumber(AdaptiveClimateNumberBase):
     """Number entity for maximum comfort temperature."""
@@ -93,7 +113,23 @@ class MaxComfortTempNumber(AdaptiveClimateNumberBase):
         self._attr_native_step = 0.1
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self._attr_device_class = NumberDeviceClass.TEMPERATURE
-        self._attr_native_value = 27.0
+        self._attr_native_value = coordinator.config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP)
+    
+    @property
+    def native_value(self) -> float | None:
+        """Return the current value."""
+        return self._attr_native_value
+    
+    async def async_set_native_value(self, value: float) -> None:
+        """Set the value."""
+        self._attr_native_value = value
+        await self.coordinator.update_config({"max_comfort_temp": value})
+    
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.last_update_success
+
 
 class TemperatureChangeThresholdNumber(AdaptiveClimateNumberBase):
     """Number entity for temperature change threshold."""
@@ -109,14 +145,16 @@ class TemperatureChangeThresholdNumber(AdaptiveClimateNumberBase):
         self._attr_native_step = 0.1
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self._attr_device_class = NumberDeviceClass.TEMPERATURE
+        self._attr_native_value = coordinator.config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
 
     @property
     def native_value(self) -> float | None:
         """Return the current value."""
-        return self.coordinator.config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
+        return self._attr_native_value
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the value."""
+        self._attr_native_value = value
         await self.coordinator.update_config({"temperature_change_threshold": value})
 
     @property
@@ -138,14 +176,16 @@ class AirVelocityNumber(AdaptiveClimateNumberBase):
         self._attr_native_max_value = 2.0
         self._attr_native_step = 0.01
         self._attr_native_unit_of_measurement = "m/s"
+        self._attr_native_value = coordinator.config.get("air_velocity", DEFAULT_AIR_VELOCITY)
 
     @property
     def native_value(self) -> float | None:
         """Return the current value."""
-        return self.coordinator.config.get("air_velocity", DEFAULT_AIR_VELOCITY)
+        return self._attr_native_value
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the value."""
+        self._attr_native_value = value
         await self.coordinator.update_config({"air_velocity": value})
 
     @property
@@ -168,14 +208,16 @@ class NaturalVentilationThresholdNumber(AdaptiveClimateNumberBase):
         self._attr_native_step = 0.1
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self._attr_device_class = NumberDeviceClass.TEMPERATURE
+        self._attr_native_value = coordinator.config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)
 
     @property
     def native_value(self) -> float | None:
         """Return the current value."""
-        return self.coordinator.config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)
+        return self._attr_native_value
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the value."""
+        self._attr_native_value = value
         await self.coordinator.update_config({"natural_ventilation_threshold": value})
 
     @property
@@ -198,14 +240,16 @@ class SetbackTemperatureOffsetNumber(AdaptiveClimateNumberBase):
         self._attr_native_step = 0.1
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self._attr_device_class = NumberDeviceClass.TEMPERATURE
+        self._attr_native_value = coordinator.config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
 
     @property
     def native_value(self) -> float | None:
         """Return the current value."""
-        return self.coordinator.config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
+        return self._attr_native_value
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the value."""
+        self._attr_native_value = value
         await self.coordinator.update_config({"setback_temperature_offset": value})
 
     @property
@@ -227,15 +271,48 @@ class AutoShutdownMinutesNumber(AdaptiveClimateNumberBase):
         self._attr_native_max_value = 480  # 8 hours
         self._attr_native_step = 5
         self._attr_native_unit_of_measurement = "min"
+        self._attr_native_value = coordinator.config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES)
 
     @property
     def native_value(self) -> float | None:
         """Return the current value."""
-        return self.coordinator.config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES)
+        return self._attr_native_value
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the value."""
+        self._attr_native_value = value
         await self.coordinator.update_config({"auto_shutdown_minutes": value})
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.last_update_success
+
+
+class ProlongedAbsenceMinutesNumber(AdaptiveClimateNumberBase):
+    """Number entity for prolonged absence minutes."""
+
+    def __init__(self, coordinator: AdaptiveClimateCoordinator, config_entry: ConfigEntry) -> None:
+        """Initialize the number entity."""
+        super().__init__(coordinator, config_entry)
+        self._attr_unique_id = f"{config_entry.entry_id}_prolonged_absence_minutes"
+        self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} Prolonged Absence Minutes"
+        self._attr_icon = "mdi:timer-outline"
+        self._attr_native_min_value = 10
+        self._attr_native_max_value = 240  # 4 hours
+        self._attr_native_step = 5
+        self._attr_native_unit_of_measurement = "min"
+        self._attr_native_value = coordinator.config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES)
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the current value."""
+        return self._attr_native_value
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Set the value."""
+        self._attr_native_value = value
+        await self.coordinator.update_config({"prolonged_absence_minutes": value})
 
     @property
     def available(self) -> bool:
