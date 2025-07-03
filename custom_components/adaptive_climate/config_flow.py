@@ -123,6 +123,11 @@ STEP_THRESHOLDS_DATA_SCHEMA = vol.Schema(
     }
 )
 
+# Jellyfin-style Options Schema - Simple and Minimal for Testing
+OPTIONAL_DATA_SCHEMA = vol.Schema(
+    {vol.Optional("comfort_category"): vol.In(["I", "II", "III"])}
+)
+
 class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Adaptive Climate."""
 
@@ -356,49 +361,20 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle options flow for Adaptive Climate."""
+    """Handle an option flow for Adaptive Climate."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry):
-        """Initialize options flow."""
-        self.config_entry = config_entry
-        _LOGGER.error("OptionsFlowHandler INITIALIZED for entry: %s", config_entry.entry_id)
-
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> config_entries.FlowResult:
-        """Handle unified configuration panel."""
-        _LOGGER.error("OptionsFlowHandler.async_step_init CALLED with user_input: %s", user_input)
-        
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Manage the options."""
         if user_input is not None:
-            _LOGGER.error("Processing user input in OptionsFlow: %s", user_input)
-            # Return immediately to test if it's working
             return self.async_create_entry(title="", data=user_input)
 
-        # Get current values from coordinator and config entry
-        try:
-            coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
-            current_config = coordinator.config
-        except KeyError:
-            # Fallback if coordinator not available
-            current_config = {**self.config_entry.data, **self.config_entry.options}
-        
-        # Create test schema
-        _LOGGER.error("=== DEBUGGING OptionsFlow ===")
-        _LOGGER.error("Current config from coordinator: %s", current_config)
-        _LOGGER.error("Current data from entry: %s", self.config_entry.data)
-        _LOGGER.error("Entry supports_options: %s", self.config_entry.supports_options)
-        
-        test_schema = vol.Schema({
-            vol.Optional("comfort_category", default=current_config.get("comfort_category", "I")): vol.In(["I", "II", "III"]),
-            vol.Optional("min_comfort_temp", default=current_config.get("min_comfort_temp", 20.0)): vol.All(vol.Coerce(float), vol.Range(min=15.0, max=25.0)),
-            vol.Optional("test_debug_field", default="working"): str,
-        })
-
-        _LOGGER.error("Showing form with test schema")
         return self.async_show_form(
             step_id="init",
-            data_schema=test_schema,
-            description_placeholders={
-                "warning": "DEBUG: If you see this, OptionsFlow is working!"
-            }
+            data_schema=self.add_suggested_values_to_schema(
+                OPTIONAL_DATA_SCHEMA, self.config_entry.options
+            ),
         )
 
 
