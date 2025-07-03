@@ -16,17 +16,47 @@ _LOGGER = logging.getLogger(__name__)
 @callback
 def async_register_template_functions(hass: HomeAssistant) -> None:
     """Register custom template functions for Adaptive Climate."""
-    template.attach_function_to_template(
-        hass, 
-        "area_domain_entities", 
-        _area_domain_entities_function(hass)
-    )
-    
-    template.attach_function_to_template(
-        hass,
-        "check_area_entities",
-        _check_area_entities_function(hass)
-    )
+    try:
+        # Get the function references ready
+        area_domain_entities_func = _area_domain_entities_function(hass)
+        check_area_entities_func = _check_area_entities_function(hass)
+        
+        # Method 1: Modern HA 2023.9+ approach using HomeAssistant.components.template.template
+        if hasattr(hass, "components") and hasattr(hass.components, "template"):
+            if hasattr(hass.components.template, "Template") and hasattr(hass.components.template.Template, "register_template_functions"):
+                hass.components.template.Template.register_template_functions({
+                    "area_domain_entities": area_domain_entities_func,
+                    "check_area_entities": check_area_entities_func,
+                })
+                _LOGGER.debug("Registered custom template functions using hass.components.template.Template.register_template_functions")
+                return
+                
+        # Method 2: Direct access to template module
+        if hasattr(template, "Template") and hasattr(template.Template, "register_template_functions"):
+            template.Template.register_template_functions({
+                "area_domain_entities": area_domain_entities_func,
+                "check_area_entities": check_area_entities_func,
+            })
+            _LOGGER.debug("Registered custom template functions using template.Template.register_template_functions")
+            return
+            
+        # Method 3: Direct access to template environment globals (modern approach)
+        if "template.environment" in hass.data and hasattr(hass.data["template.environment"], "globals"):
+            hass.data["template.environment"].globals["area_domain_entities"] = area_domain_entities_func
+            hass.data["template.environment"].globals["check_area_entities"] = check_area_entities_func
+            _LOGGER.debug("Registered custom template functions directly to template environment globals")
+            return
+            
+        # Method 4 (Very Legacy): Not recommended but included as final fallback
+        if hasattr(template, "attach_function_to_template"):
+            template.attach_function_to_template(hass, "area_domain_entities", area_domain_entities_func)
+            template.attach_function_to_template(hass, "check_area_entities", check_area_entities_func)
+            _LOGGER.debug("Registered custom template functions using legacy attach_function_to_template")
+            return
+            
+        _LOGGER.warning("Could not register template functions through any known method. Template functions may not be available.")
+    except Exception as err:
+        _LOGGER.error("Error registering custom template functions: %s", err)
 
 
 def _area_domain_entities_function(hass: HomeAssistant) -> Callable:
