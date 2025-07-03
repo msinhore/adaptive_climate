@@ -14,6 +14,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.components.logbook import LOGBOOK_ENTRY_MESSAGE, LOGBOOK_ENTRY_NAME
 from homeassistant.const import (
     ATTR_TEMPERATURE,
+    ATTR_NAME,
     STATE_ON,
     STATE_OFF,
     STATE_UNKNOWN,
@@ -38,6 +39,8 @@ from .const import (
     DOMAIN,
     UPDATE_INTERVAL_MEDIUM,
     DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
+    EVENT_ADAPTIVE_CLIMATE_MODE_CHANGE,
+    EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP,
     DEFAULT_SETBACK_TEMPERATURE_OFFSET,
 )
 from .ashrae_calculator import AdaptiveComfortCalculator
@@ -529,6 +532,21 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     "new": actions["set_temperature"],
                     "old": current_state["temperature"],
                 }
+                
+                # Fire event for logbook
+                climate_entity = self.hass.states.get(self.climate_entity_id)
+                climate_name = climate_entity.attributes.get("friendly_name", self.climate_entity_id) if climate_entity else self.climate_entity_id
+                
+                self.hass.bus.async_fire(
+                    EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP,
+                    {
+                        "entity_id": self.climate_entity_id,
+                        ATTR_NAME: climate_name,
+                        "old_temp": current_state["temperature"],
+                        "new_temp": actions["set_temperature"],
+                        "reason": actions.get("reason", "adaptive control")
+                    },
+                )
             
             # Set HVAC mode
             if actions["set_hvac_mode"] is not None:
@@ -545,6 +563,21 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     "new": actions["set_hvac_mode"],
                     "old": current_state["hvac_mode"],
                 }
+                
+                # Fire event for logbook
+                climate_entity = self.hass.states.get(self.climate_entity_id)
+                climate_name = climate_entity.attributes.get("friendly_name", self.climate_entity_id) if climate_entity else self.climate_entity_id
+                
+                self.hass.bus.async_fire(
+                    EVENT_ADAPTIVE_CLIMATE_MODE_CHANGE,
+                    {
+                        "entity_id": self.climate_entity_id,
+                        ATTR_NAME: climate_name,
+                        "old_mode": current_state["hvac_mode"],
+                        "new_mode": actions["set_hvac_mode"],
+                        "reason": actions.get("reason", "adaptive control")
+                    },
+                )
             
             # Set fan mode
             if actions["set_fan_mode"] is not None:
