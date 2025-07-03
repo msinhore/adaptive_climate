@@ -136,7 +136,7 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry):
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
         """Return the options flow."""
         return OptionsFlowHandler(config_entry)
 
@@ -358,88 +358,19 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Adaptive Climate."""
 
-    def __init__(self, config_entry):
+    def __init__(self, config_entry: config_entries.ConfigEntry):
         """Initialize options flow."""
         self.config_entry = config_entry
+        _LOGGER.error("OptionsFlowHandler INITIALIZED for entry: %s", config_entry.entry_id)
 
-    async def async_step_init(self, user_input=None):
-        """Handle unified configuration panel with modern UI components."""
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> config_entries.FlowResult:
+        """Handle unified configuration panel."""
+        _LOGGER.error("OptionsFlowHandler.async_step_init CALLED with user_input: %s", user_input)
+        
         if user_input is not None:
-            # Handle reset actions first
-            coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
-            
-            if user_input.get("reset_outdoor_history", False):
-                await coordinator.reset_outdoor_history()
-                # Remove reset flag before saving
-                user_input = {k: v for k, v in user_input.items() if k != "reset_outdoor_history"}
-            
-            if user_input.get("reset_to_defaults", False):
-                # Reset to default values, incluindo campos numéricos
-                default_config = {
-                    "comfort_category": DEFAULT_COMFORT_CATEGORY,
-                    "min_comfort_temp": DEFAULT_MIN_COMFORT_TEMP,
-                    "max_comfort_temp": DEFAULT_MAX_COMFORT_TEMP,
-                    "temperature_change_threshold": DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
-                    "air_velocity": DEFAULT_AIR_VELOCITY,
-                    "natural_ventilation_threshold": DEFAULT_NATURAL_VENTILATION_THRESHOLD,
-                    "setback_temperature_offset": DEFAULT_SETBACK_TEMPERATURE_OFFSET,
-                    "prolonged_absence_minutes": DEFAULT_PROLONGED_ABSENCE_MINUTES,
-                    "auto_shutdown_minutes": DEFAULT_AUTO_SHUTDOWN_MINUTES,
-                    "adaptive_air_velocity": True,
-                    "natural_ventilation_enable": True,
-                    "humidity_comfort_enable": True,
-                    "comfort_precision_mode": False,
-                    "use_occupancy_features": False,
-                    "auto_shutdown_enable": False,
-                    "energy_save_mode": True,
-                    "use_operative_temperature": False,
-                }
-                await coordinator.update_config(default_config)
-                return self.async_create_entry(title="", data=default_config)
-            
-            # Filter out reset actions and None values
-            config_update = {
-                k: v for k, v in user_input.items() 
-                if not k.startswith("reset_") and v is not None
-            }
-            
-            # NumberSelector already returns the correct types, no conversion needed
-            
-            if config_update:
-                # Log area changes if present
-                if "area" in config_update:
-                    _LOGGER.debug("Updating area to '%s' in configuration", config_update["area"])
-                
-                # Update coordinator with new configuration
-                await coordinator.update_config(config_update)
-                
-                # Merge with existing options and data for entities
-                new_options = {**self.config_entry.options, **config_update}
-                
-                # Update config entry data if entity selections changed
-                entity_keys = ["climate_entity", "indoor_temp_sensor", "outdoor_temp_sensor", 
-                              "occupancy_sensor", "mean_radiant_temp_sensor", 
-                              "indoor_humidity_sensor", "outdoor_humidity_sensor"]
-                
-                # Numeric configuration keys that should also be saved to data
-                numeric_keys = ["min_comfort_temp", "max_comfort_temp", "temperature_change_threshold", 
-                               "air_velocity", "natural_ventilation_threshold", "setback_temperature_offset", 
-                               "prolonged_absence_minutes", "auto_shutdown_minutes"]
-                
-                # Combine entity and numeric keys for data updates
-                data_update_keys = entity_keys + numeric_keys
-                
-                data_updates = {k: v for k, v in config_update.items() if k in data_update_keys}
-                if data_updates:
-                    # Update the config entry data as well
-                    self.hass.config_entries.async_update_entry(
-                        self.config_entry, 
-                        data={**self.config_entry.data, **data_updates}
-                    )
-                
-                return self.async_create_entry(title="", data=new_options)
-            
-            return self.async_create_entry(title="", data=self.config_entry.options)
+            _LOGGER.error("Processing user input in OptionsFlow: %s", user_input)
+            # Return immediately to test if it's working
+            return self.async_create_entry(title="", data=user_input)
 
         # Get current values from coordinator and config entry
         try:
@@ -449,167 +380,24 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             # Fallback if coordinator not available
             current_config = {**self.config_entry.data, **self.config_entry.options}
         
-        current_data = self.config_entry.data
-
-        # Keep diagnostics for debugging but area functionality has been removed
-        area_helper = AreaBasedConfigHelper(self.hass)
-        issues = area_helper.diagnose_area_entity_issues()
-        if issues:
-            _LOGGER.debug("Area/entity diagnostics (informational only): %s", issues)
-
-        # Create unified configuration schema following official HA documentation
-        # Reference: https://developers.home-assistant.io/docs/data_entry_flow_index/
-        unified_schema = vol.Schema({
-            # === COMFORT CATEGORY (dropdown with vol.In) ===
-            vol.Optional(
-                "comfort_category", 
-                default=current_config.get("comfort_category", DEFAULT_COMFORT_CATEGORY),
-                description={"suggested_value": current_config.get("comfort_category", DEFAULT_COMFORT_CATEGORY)}
-            ): vol.In(["I", "II", "III"]),
-
-            # === NUMERIC FIELDS (text inputs with validation) ===
-            vol.Optional(
-                "min_comfort_temp",
-                default=current_config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP),
-                description={"suggested_value": current_config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)}
-            ): vol.All(vol.Coerce(float), vol.Range(min=15.0, max=22.0)),
-            
-            vol.Optional(
-                "max_comfort_temp",
-                default=current_config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP),
-                description={"suggested_value": current_config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP)}
-            ): vol.All(vol.Coerce(float), vol.Range(min=25.0, max=32.0)),
-            
-            vol.Optional(
-                "temperature_change_threshold",
-                default=current_config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD),
-                description={"suggested_value": current_config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)}
-            ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=3.0)),
-            
-            vol.Optional(
-                "air_velocity",
-                default=current_config.get("air_velocity", DEFAULT_AIR_VELOCITY),
-                description={"suggested_value": current_config.get("air_velocity", DEFAULT_AIR_VELOCITY)}
-            ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
-            
-            vol.Optional(
-                "natural_ventilation_threshold",
-                default=current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD),
-                description={"suggested_value": current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)}
-            ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=5.0)),
-            
-            vol.Optional(
-                "setback_temperature_offset",
-                default=current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET),
-                description={"suggested_value": current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)}
-            ): vol.All(vol.Coerce(float), vol.Range(min=1.0, max=5.0)),
-            
-            vol.Optional(
-                "prolonged_absence_minutes",
-                default=current_config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES),
-                description={"suggested_value": current_config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES)}
-            ): vol.All(vol.Coerce(int), vol.Range(min=10, max=240)),
-            
-            vol.Optional(
-                "auto_shutdown_minutes",
-                default=current_config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES),
-                description={"suggested_value": current_config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES)}
-            ): vol.All(vol.Coerce(int), vol.Range(min=15, max=480)),
-
-            # === FEATURE TOGGLES (checkboxes) ===
-            vol.Optional(
-                "energy_save_mode",
-                default=current_config.get("energy_save_mode", True)
-            ): bool,
-            
-            vol.Optional(
-                "natural_ventilation_enable",
-                default=current_config.get("natural_ventilation_enable", True)
-            ): bool,
-            
-            vol.Optional(
-                "adaptive_air_velocity",
-                default=current_config.get("adaptive_air_velocity", True)
-            ): bool,
-            
-            vol.Optional(
-                "humidity_comfort_enable",
-                default=current_config.get("humidity_comfort_enable", True)
-            ): bool,
-            
-            vol.Optional(
-                "comfort_precision_mode",
-                default=current_config.get("comfort_precision_mode", False)
-            ): bool,
-            
-            vol.Optional(
-                "use_occupancy_features",
-                default=current_config.get("use_occupancy_features", False)
-            ): bool,
-            
-            vol.Optional(
-                "auto_shutdown_enable",
-                default=current_config.get("auto_shutdown_enable", False)
-            ): bool,
-            
-            vol.Optional(
-                "use_operative_temperature",
-                default=current_config.get("use_operative_temperature", False)
-            ): bool,
-
-            # === ENTITY SELECTORS (text inputs) ===
-            vol.Optional(
-                "climate_entity",
-                default=current_data.get("climate_entity", ""),
-                description={"suggested_value": current_data.get("climate_entity", "")}
-            ): str,
-
-            vol.Optional(
-                "indoor_temp_sensor",
-                default=current_data.get("indoor_temp_sensor", ""),
-                description={"suggested_value": current_data.get("indoor_temp_sensor", "")}
-            ): str,
-
-            vol.Optional(
-                "outdoor_temp_sensor", 
-                default=current_data.get("outdoor_temp_sensor", ""),
-                description={"suggested_value": current_data.get("outdoor_temp_sensor", "")}
-            ): str,
-
-            vol.Optional(
-                "occupancy_sensor",
-                default=current_data.get("occupancy_sensor", ""),
-                description={"suggested_value": current_data.get("occupancy_sensor", "")}
-            ): str,
-
-            vol.Optional(
-                "mean_radiant_temp_sensor",
-                default=current_data.get("mean_radiant_temp_sensor", ""),
-                description={"suggested_value": current_data.get("mean_radiant_temp_sensor", "")}
-            ): str,
-
-            vol.Optional(
-                "indoor_humidity_sensor",
-                default=current_data.get("indoor_humidity_sensor", ""),
-                description={"suggested_value": current_data.get("indoor_humidity_sensor", "")}
-            ): str,
-
-            vol.Optional(
-                "outdoor_humidity_sensor",
-                default=current_data.get("outdoor_humidity_sensor", ""),
-                description={"suggested_value": current_data.get("outdoor_humidity_sensor", "")}
-            ): str,
-
-            # === RESET ACTIONS (checkboxes) ===
-            vol.Optional("reset_outdoor_history", default=False): bool,
-            vol.Optional("reset_to_defaults", default=False): bool,
+        # Create test schema
+        _LOGGER.error("=== DEBUGGING OptionsFlow ===")
+        _LOGGER.error("Current config from coordinator: %s", current_config)
+        _LOGGER.error("Current data from entry: %s", self.config_entry.data)
+        _LOGGER.error("Entry supports_options: %s", self.config_entry.supports_options)
+        
+        test_schema = vol.Schema({
+            vol.Optional("comfort_category", default=current_config.get("comfort_category", "I")): vol.In(["I", "II", "III"]),
+            vol.Optional("min_comfort_temp", default=current_config.get("min_comfort_temp", 20.0)): vol.All(vol.Coerce(float), vol.Range(min=15.0, max=25.0)),
+            vol.Optional("test_debug_field", default="working"): str,
         })
 
+        _LOGGER.error("Showing form with test schema")
         return self.async_show_form(
             step_id="init",
-            data_schema=unified_schema,
+            data_schema=test_schema,
             description_placeholders={
-                "warning": "Reset operations cannot be undone!"
+                "warning": "DEBUG: If you see this, OptionsFlow is working!"
             }
         )
 
