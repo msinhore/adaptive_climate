@@ -8,7 +8,11 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN
+from .const import (
+    DOMAIN,
+    EVENT_ADAPTIVE_CLIMATE_MODE_CHANGE,
+    EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP,
+)
 from .coordinator import AdaptiveClimateCoordinator
 from .template import async_register_template_functions
 from .logbook import async_describe_events
@@ -29,12 +33,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     if hasattr(hass.components, "logbook"):
         hass.components.logbook.async_register_event_type(
             DOMAIN,
-            "adaptive_climate_mode_change",
+            EVENT_ADAPTIVE_CLIMATE_MODE_CHANGE,
             "changed HVAC mode",
         )
         hass.components.logbook.async_register_event_type(
             DOMAIN,
-            "adaptive_climate_target_temp", 
+            EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP, 
             "changed target temperature",
         )
     
