@@ -184,6 +184,84 @@ class AreaBasedConfigHelper:
         
         return entities
 
+    def get_entities_by_type_in_area(self, area_id: str) -> dict[str, list[str]]:
+        """Get entities in an area grouped by domain type.
+        
+        Args:
+            area_id: The area ID to filter entities by.
+            
+        Returns:
+            A dictionary with entity types as keys and lists of entity IDs as values.
+        """
+        result = {
+            "climate": [],
+            "sensor": [],
+            "binary_sensor": [],
+            "switch": [],
+            "light": [],
+            "media_player": [],
+            "weather": [],
+            "other": [],
+        }
+        
+        # Get all entities in the area
+        for entity in self._entity_registry.entities.values():
+            if entity.disabled or entity.area_id != area_id:
+                continue
+            
+            # Group by domain
+            domain = entity.domain
+            if domain in result:
+                result[domain].append(entity.entity_id)
+            else:
+                result["other"].append(entity.entity_id)
+                
+        # Get additional information for sensors to further categorize them
+        temp_sensors = []
+        humidity_sensors = []
+        other_sensors = []
+        
+        for entity_id in result["sensor"]:
+            state = self.hass.states.get(entity_id)
+            if not state:
+                other_sensors.append(entity_id)
+                continue
+                
+            # Check for temperature sensors
+            if (state.attributes.get("unit_of_measurement") in ["°C", "°F"] or 
+                    state.attributes.get("device_class") == "temperature"):
+                temp_sensors.append(entity_id)
+            # Check for humidity sensors
+            elif (state.attributes.get("unit_of_measurement") == "%" or 
+                  state.attributes.get("device_class") == "humidity"):
+                humidity_sensors.append(entity_id)
+            else:
+                other_sensors.append(entity_id)
+                
+        # Check for binary sensors related to occupancy
+        occupancy_sensors = []
+        other_binary_sensors = []
+        
+        for entity_id in result["binary_sensor"]:
+            state = self.hass.states.get(entity_id)
+            if not state:
+                other_binary_sensors.append(entity_id)
+                continue
+                
+            if state.attributes.get("device_class") in ["motion", "occupancy", "presence"]:
+                occupancy_sensors.append(entity_id)
+            else:
+                other_binary_sensors.append(entity_id)
+                
+        # Add additional categories to the result
+        result["temperature_sensors"] = temp_sensors
+        result["humidity_sensors"] = humidity_sensors
+        result["other_sensors"] = other_sensors
+        result["occupancy_sensors"] = occupancy_sensors
+        result["other_binary_sensors"] = other_binary_sensors
+        
+        return result
+
 
 def get_area_name(hass: HomeAssistant, area_id: str | None) -> str:
     """Get area name from area ID."""

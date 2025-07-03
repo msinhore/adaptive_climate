@@ -150,10 +150,11 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if selected_area:
                 _LOGGER.debug("Selected area: %s", selected_area)
                 area_helper = AreaBasedConfigHelper(self.hass)
-                climate_entities = area_helper.get_entities_in_area(selected_area, ["climate"])
-                indoor_temp_sensors = area_helper.get_entities_in_area(selected_area, ["sensor", "input_number", "weather"])
+                entities_by_type = area_helper.get_entities_by_type_in_area(selected_area)
+                climate_entities = entities_by_type["climate"]
+                indoor_temp_sensors = entities_by_type["temperature_sensors"]
                 _LOGGER.debug("Climate entities in area: %s", climate_entities)
-                _LOGGER.debug("Sensors in area: %s", indoor_temp_sensors)
+                _LOGGER.debug("Temperature sensors in area: %s", indoor_temp_sensors)
         
         # Create schema with optional area filter
         schema = vol.Schema(
@@ -233,27 +234,13 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.debug("Filtering advanced entities for area: %s", selected_area)
                 area_helper = AreaBasedConfigHelper(self.hass)
                 
-                # Get binary sensors for occupancy
-                occupancy_sensors = []
-                for entity_id in area_helper.get_entities_in_area(selected_area, ["binary_sensor"]):
-                    state = self.hass.states.get(entity_id)
-                    if state and state.attributes.get("device_class") in ["motion", "occupancy", "presence"]:
-                        occupancy_sensors.append(entity_id)
+                # Get all entities by type in this area
+                entities_by_type = area_helper.get_entities_by_type_in_area(selected_area)
                 
-                # Get temperature sensors
-                temperature_sensors = []
-                humidity_sensors = []
-                for entity_id in area_helper.get_entities_in_area(selected_area, ["sensor", "input_number"]):
-                    state = self.hass.states.get(entity_id)
-                    if state:
-                        # Check for temperature sensors
-                        if (state.attributes.get("unit_of_measurement") in ["°C", "°F"] or
-                                state.attributes.get("device_class") == "temperature"):
-                            temperature_sensors.append(entity_id)
-                        # Check for humidity sensors
-                        elif (state.attributes.get("unit_of_measurement") == "%" or
-                              state.attributes.get("device_class") == "humidity"):
-                            humidity_sensors.append(entity_id)
+                # Get the specific entity types we need
+                occupancy_sensors = entities_by_type["occupancy_sensors"]
+                temperature_sensors = entities_by_type["temperature_sensors"]
+                humidity_sensors = entities_by_type["humidity_sensors"]
                 
                 _LOGGER.debug("Found occupancy sensors: %s", occupancy_sensors)
                 _LOGGER.debug("Found temperature sensors: %s", temperature_sensors)
@@ -432,42 +419,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             _LOGGER.debug("Filtering options entities for area: %s", selected_area)
             area_helper = AreaBasedConfigHelper(self.hass)
             
-            # Get climate entities in area
-            climate_entities = area_helper.get_entities_in_area(selected_area, ["climate"])
+            # Get all entities by type in this area using our improved helper
+            entities_by_type = area_helper.get_entities_by_type_in_area(selected_area)
             
-            # Get temperature sensors in area
-            temperature_sensors = []
-            humidity_sensors = []
-            for entity_id in area_helper.get_entities_in_area(selected_area, ["sensor", "input_number"]):
-                state = self.hass.states.get(entity_id)
-                if state:
-                    # Check for temperature sensors
-                    if (state.attributes.get("unit_of_measurement") in ["°C", "°F"] or
-                            state.attributes.get("device_class") == "temperature"):
-                        temperature_sensors.append(entity_id)
-                    # Check for humidity sensors
-                    elif (state.attributes.get("unit_of_measurement") == "%" or
-                          state.attributes.get("device_class") == "humidity"):
-                        humidity_sensors.append(entity_id)
-            
-            # Indoor temperature sensors are in the area
-            indoor_temp_sensors = temperature_sensors
-            
-            # Mean radiant temperature sensors are in the area
-            mean_radiant_temp_sensors = temperature_sensors
-            
-            # Indoor humidity sensors are in the area
-            indoor_humidity_sensors = humidity_sensors
-            
-            # Get binary sensors for occupancy in area
-            for entity_id in area_helper.get_entities_in_area(selected_area, ["binary_sensor"]):
-                state = self.hass.states.get(entity_id)
-                if state and state.attributes.get("device_class") in ["motion", "occupancy", "presence"]:
-                    occupancy_sensors.append(entity_id)
+            # Get the entities we need for each selector
+            climate_entities = entities_by_type["climate"]
+            indoor_temp_sensors = entities_by_type["temperature_sensors"]
+            mean_radiant_temp_sensors = entities_by_type["temperature_sensors"]  # Same as temperature sensors
+            indoor_humidity_sensors = entities_by_type["humidity_sensors"]
+            occupancy_sensors = entities_by_type["occupancy_sensors"]
             
             _LOGGER.debug("Found climate entities: %s", climate_entities)
-            _LOGGER.debug("Found temperature sensors: %s", temperature_sensors)
-            _LOGGER.debug("Found humidity sensors: %s", humidity_sensors)
+            _LOGGER.debug("Found temperature sensors: %s", indoor_temp_sensors)
+            _LOGGER.debug("Found humidity sensors: %s", indoor_humidity_sensors)
             _LOGGER.debug("Found occupancy sensors: %s", occupancy_sensors)
 
         # Create unified configuration schema with modern selectors
