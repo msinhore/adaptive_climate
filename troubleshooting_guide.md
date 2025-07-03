@@ -4,13 +4,15 @@ This guide provides step-by-step solutions to resolve the "No matching entities 
 
 ## Root Causes
 
-This issue typically occurs for one of the following reasons:
+This issue typically occurred for one of the following reasons:
 
-1. **Area Assignment**: Entities are not correctly assigned to areas in Home Assistant
+1. **Area Filtering**: Area-based entity filtering was causing selectors to show "No matching entities found"
 2. **Entity Registry**: Issues with entity registration or area ID mapping
-3. **Selector Configuration**: Problems with how entity selectors are configured
+3. **Selector Configuration**: Problems with how entity selectors were configured
 4. **Browser Cache**: Stale data in your browser cache
 5. **Permissions**: The user doesn't have proper permissions to access entities
+
+**UPDATE:** We've removed area-based entity filtering from the config flow to fix this issue. Now all selectors will show all relevant entities regardless of area selection. The area is still stored and used for organizational purposes, but it no longer affects which entities are shown in the dropdown selectors.
 
 ## Diagnostic Steps
 
@@ -66,12 +68,13 @@ Enable debug logging:
 4. Assign each climate entity and temperature sensor to the correct area
 5. Restart Home Assistant
 
-### Solution 2: Bypass Area Filtering
+### Solution 2: Area Selection
 
-If area filtering isn't working, try these workarounds:
+Area-based entity filtering has been removed from the config flow. Now:
 
-1. **Skip Area Selection**: Don't select an area during setup
-2. **Use Direct Entity Selection**: Manually select entities instead of relying on area filtering
+1. **Area Is Optional**: The area field is still available but only for organizational purposes
+2. **All Entities Are Shown**: All relevant entities are shown in selectors regardless of area selection
+3. **Use Device Class**: Entities are filtered by device class and domain, not by area
 
 ### Solution 3: Update Browser and Clear Cache
 
