@@ -85,6 +85,47 @@ set_temporary_override:
           step: 1
           unit_of_measurement: "hours"
 
+# Event definitions for logbook
+adaptive_climate_mode_change:
+  event_type: adaptive_climate_mode_change
+  description: "Event triggered when HVAC mode changes"
+  data:
+    entity_id:
+      example: "climate.adaptive_climate_sala"
+      description: "Climate entity ID"
+    name:
+      example: "Adaptive Climate Sala"
+      description: "Friendly name of the entity"
+    old_mode:
+      example: "heat"
+      description: "Previous HVAC mode"
+    new_mode:
+      example: "cool"
+      description: "New HVAC mode"
+    reason:
+      example: "adaptive control"
+      description: "Reason for the change"
+
+adaptive_climate_target_temp:
+  event_type: adaptive_climate_target_temp
+  description: "Event triggered when target temperature changes"
+  data:
+    entity_id:
+      example: "climate.adaptive_climate_sala"
+      description: "Climate entity ID"
+    name:
+      example: "Adaptive Climate Sala"
+      description: "Friendly name of the entity"
+    old_temp:
+      example: "22.5"
+      description: "Previous temperature"
+    new_temp:
+      example: "23.5"
+      description: "New temperature"
+    reason:
+      example: "adaptive control"
+      description: "Reason for the change"
+
 update_config:
   name: Update Configuration
   description: Update adaptive climate configuration parameters

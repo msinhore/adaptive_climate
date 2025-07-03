@@ -7,12 +7,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.components.logbook import async_describe_events
 
 from .const import DOMAIN
 from .coordinator import AdaptiveClimateCoordinator
 from .template import async_register_template_functions
-from .logbook import async_describe_events as adaptive_climate_async_describe_events
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,9 +23,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     
     # Register custom template functions
     async_register_template_functions(hass)
-    
-    # Register logbook event handlers
-    async_describe_events(hass, adaptive_climate_async_describe_events)
     
     return True
 
