@@ -65,8 +65,15 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(minutes=UPDATE_INTERVAL_MEDIUM),
         )
         
-        self.config = config_entry_data
-        self.calculator = AdaptiveComfortCalculator(config_entry_data)
+        # Always create a mutable dictionary from the config entry data
+        if hasattr(config_entry_data, "mapping"):
+            # Handle MappingProxy objects
+            self.config = dict(config_entry_data.mapping)
+        else:
+            # Handle regular dictionaries and other mappings
+            self.config = dict(config_entry_data)
+            
+        self.calculator = AdaptiveComfortCalculator(self.config)
         
         # State tracking
         self._manual_override = False
@@ -116,7 +123,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 # Only log warning if this is the first time or if it's been a while
                 now = datetime.now()
                 if not hasattr(self, '_last_warning_time') or (now - self._last_warning_time).total_seconds() > 300:  # 5 minutes
-                    _LOGGER.warning("Required entities not available or unknown: %s", ", ".join(missing_entities))
+                    _LOGGER.info("Waiting for required temperature sensors to become available: %s", ", ".join(missing_entities))
                     self._last_warning_time = now
                 
                 # Return previous data if available, or minimal default data
@@ -803,15 +810,33 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
     async def update_config(self, config_updates: dict[str, Any]) -> None:
         """Update configuration dynamically."""
-        # Update local config
-        self.config.update(config_updates)
-        
-        # Update calculator config
-        self.calculator.update_config(self.config)
-        
-        _LOGGER.info("Configuration updated: %s", config_updates)
-        
-        # Trigger immediate update
+        try:
+            # Always create a fresh mutable copy from the original config
+            if hasattr(self.config, "mapping"):
+                # Handle MappingProxy objects
+                updated_config = dict(self.config.mapping)
+            elif hasattr(self.config, "items"):
+                # Handle dict-like objects
+                updated_config = dict(self.config)
+            else:
+                # Fallback for other cases
+                _LOGGER.warning("Config object type not recognized: %s", type(self.config))
+                updated_config = {}
+                
+            # Update the copy with new values
+            updated_config.update(config_updates)
+            
+            # Replace the original config with the updated copy
+            self.config = updated_config
+            
+            # Update calculator config
+            self.calculator.update_config(self.config)
+            
+            _LOGGER.info("Configuration updated: %s", config_updates)
+            
+            # Trigger immediate update
+        except Exception as err:
+            _LOGGER.error("Failed to update configuration: %s - %s", type(err).__name__, err)
         await self.async_request_refresh()
 
     async def reset_outdoor_history(self) -> None:
