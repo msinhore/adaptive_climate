@@ -32,35 +32,32 @@ def async_register_template_functions(hass: HomeAssistant) -> None:
             "safe_states": safe_states_list,
         }
         
-        # Method 1: Modern HA 2023.9+ approach using HomeAssistant.components.template.template
-        if hasattr(hass, "components") and hasattr(hass.components, "template"):
-            if hasattr(hass.components.template, "Template") and hasattr(hass.components.template.Template, "register_template_functions"):
-                hass.components.template.Template.register_template_functions(template_functions)
-                _LOGGER.debug("Registered custom template functions using hass.components.template.Template.register_template_functions")
-                return
-                
-        # Method 2: Direct access to template module
-        if hasattr(template, "Template") and hasattr(template.Template, "register_template_functions"):
-            template.Template.register_template_functions(template_functions)
-            _LOGGER.debug("Registered custom template functions using template.Template.register_template_functions")
-            return
-            
-        # Method 3: Direct access to template environment globals (modern approach)
-        if "template.environment" in hass.data and hasattr(hass.data["template.environment"], "globals"):
-            env_globals = hass.data["template.environment"].globals
-            for name, func in template_functions.items():
-                env_globals[name] = func
-            _LOGGER.debug("Registered custom template functions directly to template environment globals")
-            return
-            
-        # Method 4 (Very Legacy): Not recommended but included as final fallback
-        if hasattr(template, "attach_function_to_template"):
-            for name, func in template_functions.items():
-                template.attach_function_to_template(hass, name, func)
-            _LOGGER.debug("Registered custom template functions using legacy attach_function_to_template")
-            return
-            
-        _LOGGER.warning("Could not register template functions through any known method. Template functions may not be available.")
+        # Simplified registration approach using known stable methods
+        success = False
+        
+        # Method 1: Try direct access to template environment globals
+        try:
+            if "template.environment" in hass.data and hasattr(hass.data["template.environment"], "globals"):
+                env_globals = hass.data["template.environment"].globals
+                for name, func in template_functions.items():
+                    env_globals[name] = func
+                _LOGGER.debug("Registered custom template functions using template environment globals")
+                success = True
+        except Exception as err:
+            _LOGGER.debug("Could not register via template environment: %s", err)
+        
+        # Method 2: Legacy method if the first approach failed
+        if not success and hasattr(template, "attach_function_to_template"):
+            try:
+                for name, func in template_functions.items():
+                    template.attach_function_to_template(hass, name, func)
+                _LOGGER.debug("Registered custom template functions using legacy attach_function_to_template")
+                success = True
+            except Exception as err:
+                _LOGGER.debug("Could not register via attach_function_to_template: %s", err)
+        
+        if not success:
+            _LOGGER.warning("Could not register template functions through any known method. Template functions may not be available.")
     except Exception as err:
         _LOGGER.error("Error registering custom template functions: %s", err)
 
