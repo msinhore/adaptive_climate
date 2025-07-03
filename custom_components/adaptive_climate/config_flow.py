@@ -201,14 +201,10 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                      {area_reg.async_get_area(a_id).name: count 
                       for a_id, count in area_entity_counts.items()})
         
-        # Instead of area filtering, we'll use the area just for informational purposes
-        # and show all entities in selectors
-        selected_area = None
-        
+        # We've completely removed the area selector since it wasn't useful
+        # All entity selectors will show all relevant entities directly
         if user_input is not None:
-            selected_area = user_input.get("area")
-            if selected_area:
-                _LOGGER.debug("Selected area: %s (will be stored but not used for filtering)", selected_area)
+            _LOGGER.debug("Processing user input: %s", user_input)
         
         # Diagnóstico de problemas de áreas e entidades (mantido para debugging)
         area_helper = AreaBasedConfigHelper(self.hass)
@@ -219,12 +215,10 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 issues
             )
         
-        # Create schema with area for storage only, not filtering
-        # All entity selectors now show all relevant entities without area filtering
+        # Create schema without area selector - using only entity selectors
         schema = vol.Schema(
             {
                 vol.Required(CONF_NAME, default="Adaptive Climate" if user_input is None else user_input.get(CONF_NAME, "Adaptive Climate")): str,
-                vol.Optional("area", default=selected_area): selector.AreaSelector(),
                 vol.Required("climate_entity", default="" if user_input is None else user_input.get("climate_entity", "")): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="climate"
@@ -277,10 +271,6 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 step_id="user", data_schema=schema, errors=errors
             )
 
-        # Store selected area in config data if provided
-        if selected_area:
-            self.config_data["area"] = selected_area
-            
         # Update config data with all user inputs
         self.config_data.update(user_input)
         return await self.async_step_advanced()
@@ -290,10 +280,8 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Handle advanced options step.""" 
         if user_input is None:
-            # Note the selected area for informational purposes only
-            selected_area = self.config_data.get("area")
-            if selected_area:
-                _LOGGER.debug("Selected area for advanced step: %s (stored but not used for filtering)", selected_area)
+            # Prepare for advanced options
+            _LOGGER.debug("Preparing advanced options step")
             
             # Create schema without area filtering for entity selectors
             advanced_schema = vol.Schema(
@@ -430,10 +418,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 # Merge with existing options and data for entities
                 new_options = {**self.config_entry.options, **config_update}
                 
-                # Update config entry data if entity selections or area changed
+                # Update config entry data if entity selections changed
                 entity_keys = ["climate_entity", "indoor_temp_sensor", "outdoor_temp_sensor", 
                               "occupancy_sensor", "mean_radiant_temp_sensor", 
-                              "indoor_humidity_sensor", "outdoor_humidity_sensor", "area"]
+                              "indoor_humidity_sensor", "outdoor_humidity_sensor"]
                 
                 entity_updates = {k: v for k, v in config_update.items() if k in entity_keys}
                 if entity_updates:
@@ -457,20 +445,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         
         current_data = self.config_entry.data
 
-        # Note selected area for informational purposes only
-        selected_area = current_data.get("area")
-        
-        # Keep diagnostics for debugging
+        # Keep diagnostics for debugging but area functionality has been removed
         area_helper = AreaBasedConfigHelper(self.hass)
         issues = area_helper.diagnose_area_entity_issues()
         if issues:
-            _LOGGER.warning(
-                "Diagnóstico de problemas com áreas e entidades: %s (apenas informativo, não afeta a funcionalidade)", 
-                issues
-            )
-            
-        if selected_area:
-            _LOGGER.debug("Selected area: %s (stored but not used for filtering)", selected_area)
+            _LOGGER.debug("Area/entity diagnostics (informational only): %s", issues)
 
         # Create unified configuration schema with modern selectors
         unified_schema = vol.Schema({
@@ -515,11 +494,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 default=current_config.get("use_operative_temperature", False)
             ): selector.BooleanSelector(            ),
             
-            # === AREA SELECTOR (if previously configured) ===
-            vol.Optional(
-                "area",
-                default=current_data.get("area")
-            ): selector.AreaSelector(),
+            # Area selector has been removed as it wasn't useful
 
             # === COMFORT CATEGORY DROPDOWN ===
             vol.Optional(

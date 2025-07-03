@@ -12,18 +12,19 @@ This issue typically occurred for one of the following reasons:
 4. **Browser Cache**: Stale data in your browser cache
 5. **Permissions**: The user doesn't have proper permissions to access entities
 
-**UPDATE:** We've removed area-based entity filtering from the config flow to fix this issue. Now all selectors will show all relevant entities regardless of area selection. The area is still stored and used for organizational purposes, but it no longer affects which entities are shown in the dropdown selectors.
+**UPDATE:** We've completely removed the area selector from the config flow to fix this issue. Now all selectors will show all relevant entities based on their domain and device class attributes, without any area-based filtering or organization.
 
 ## Diagnostic Steps
 
-### 1. Check Area Assignments
+### 1. Check Entity Attributes
 
-First, verify that your entities are correctly assigned to areas:
+First, verify that your entities have the correct attributes for proper selection:
 
 1. Go to **Settings → Devices & Services → Entities**
 2. Filter for entities you want to use (e.g., search for "climate" or "temperature")
-3. Check if each entity has an area assigned
-4. If not, click the entity, then click the gear icon to edit, and assign an area
+3. Check if temperature sensors have a device_class of "temperature" or unit_of_measurement of "°C"/"°F"
+4. Check if humidity sensors have a device_class of "humidity" or unit_of_measurement of "%"
+5. Check if occupancy sensors have a device_class of "motion", "occupancy", or "presence"
 
 ### 2. Use the Diagnostic Template
 
@@ -68,13 +69,13 @@ Enable debug logging:
 4. Assign each climate entity and temperature sensor to the correct area
 5. Restart Home Assistant
 
-### Solution 2: Area Selection
+### Solution 2: No More Area Selection
 
-Area-based entity filtering has been removed from the config flow. Now:
+The area selector has been completely removed from the config flow. Now:
 
-1. **Area Is Optional**: The area field is still available but only for organizational purposes
-2. **All Entities Are Shown**: All relevant entities are shown in selectors regardless of area selection
-3. **Use Device Class**: Entities are filtered by device class and domain, not by area
+1. **No Area Selection**: There is no longer an area field in the configuration
+2. **All Entities Are Shown**: All relevant entities are shown in selectors directly
+3. **Device Class Filtering**: Entities are filtered only by device class and domain
 
 ### Solution 3: Update Browser and Clear Cache
 
