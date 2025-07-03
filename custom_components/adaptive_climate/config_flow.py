@@ -506,113 +506,48 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             vol.Optional(
                 "comfort_category", 
                 default=current_config.get("comfort_category", DEFAULT_COMFORT_CATEGORY)
-            ): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=[
-                        {"value": "I", "label": f"Category I - {COMFORT_CATEGORIES['I']['description']}"},
-                        {"value": "II", "label": f"Category II - {COMFORT_CATEGORIES['II']['description']}"},
-                        {"value": "III", "label": f"Category III - {COMFORT_CATEGORIES['III']['description']}"},
-                    ],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
-            ),
+            ): vol.In(["I", "II", "III"]),
 
-            # === NUMERIC CONFIGURATION FIELDS (Using NumberSelector for direct input) ===
+            # === NUMERIC CONFIGURATION FIELDS (Simple number inputs) ===
             vol.Optional(
                 "min_comfort_temp",
                 default=current_config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=15.0,
-                    max=22.0,
-                    step=0.1,
-                    mode=selector.NumberSelectorMode.BOX
-                )
-            ),
+            ): vol.All(vol.Coerce(float), vol.Range(min=15.0, max=22.0)),
             
             vol.Optional(
                 "max_comfort_temp",
                 default=current_config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=25.0,
-                    max=32.0,
-                    step=0.1,
-                    mode=selector.NumberSelectorMode.BOX
-                )
-            ),
+            ): vol.All(vol.Coerce(float), vol.Range(min=25.0, max=32.0)),
             
             vol.Optional(
                 "temperature_change_threshold",
                 default=current_config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0.1,
-                    max=3.0,
-                    step=0.1,
-                    mode=selector.NumberSelectorMode.BOX
-                )
-            ),
+            ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=3.0)),
             
             vol.Optional(
                 "air_velocity",
                 default=current_config.get("air_velocity", DEFAULT_AIR_VELOCITY)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0.0,
-                    max=2.0,
-                    step=0.1,
-                    mode=selector.NumberSelectorMode.BOX
-                )
-            ),
+            ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
             
             vol.Optional(
                 "natural_ventilation_threshold",
                 default=current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=0.5,
-                    max=5.0,
-                    step=0.1,
-                    mode=selector.NumberSelectorMode.BOX
-                )
-            ),
+            ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=5.0)),
             
             vol.Optional(
                 "setback_temperature_offset",
                 default=current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=1.0,
-                    max=5.0,
-                    step=0.1,
-                    mode=selector.NumberSelectorMode.BOX
-                )
-            ),
+            ): vol.All(vol.Coerce(float), vol.Range(min=1.0, max=5.0)),
             
             vol.Optional(
                 "prolonged_absence_minutes",
                 default=current_config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=10,
-                    max=240,
-                    step=1,
-                    mode=selector.NumberSelectorMode.BOX
-                )
-            ),
+            ): vol.All(vol.Coerce(int), vol.Range(min=10, max=240)),
             
             vol.Optional(
                 "auto_shutdown_minutes",
                 default=current_config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES)
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=15,
-                    max=480,
-                    step=1,
-                    mode=selector.NumberSelectorMode.BOX
-                )
-            ),
+            ): vol.All(vol.Coerce(int), vol.Range(min=15, max=480)),
 
             # === ENTITY SELECTORS ===
             vol.Optional(
