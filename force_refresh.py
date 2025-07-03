@@ -29,21 +29,43 @@ def main():
                 print(f"   Removendo: {pyc_path}")
                 os.remove(pyc_path)
     
-    # 2. Verificar sintaxe do config_flow.py
-    print("2. Verificando sintaxe do config_flow.py...")
-    result = subprocess.run([
-        "python3", "-m", "py_compile", 
+    # 2. Verificar sintaxe dos arquivos principais
+    print("2. Verificando sintaxe dos arquivos principais...")
+    
+    files_to_check = [
+        "custom_components/adaptive_climate/__init__.py",
         "custom_components/adaptive_climate/config_flow.py"
-    ], capture_output=True, text=True)
+    ]
     
-    if result.returncode == 0:
-        print("   ✅ Sintaxe OK")
-    else:
-        print(f"   ❌ Erro de sintaxe: {result.stderr}")
-        return
+    for file_path in files_to_check:
+        result = subprocess.run([
+            "python3", "-m", "py_compile", file_path
+        ], capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            print(f"   ✅ {file_path} - Sintaxe OK")
+        else:
+            print(f"   ❌ {file_path} - Erro de sintaxe: {result.stderr}")
+            return
     
-    # 3. Verificar se async_get_options_flow está correto
-    print("3. Verificando estrutura do OptionsFlow...")
+    # 3. Verificar se async_setup_entry está presente no __init__.py
+    print("3. Verificando estrutura do __init__.py...")
+    with open("custom_components/adaptive_climate/__init__.py", "r") as f:
+        init_content = f.read()
+        
+        init_checks = [
+            ("async_setup_entry function", "async def async_setup_entry" in init_content),
+            ("No legacy async_setup", "async def async_setup(hass: HomeAssistant, config: ConfigType)" not in init_content),
+            ("PLATFORMS definition", "PLATFORMS:" in init_content),
+            ("ConfigEntry import", "from homeassistant.config_entries import ConfigEntry" in init_content),
+        ]
+        
+        for check_name, result in init_checks:
+            status = "✅" if result else "❌"
+            print(f"   {status} {check_name}")
+    
+    # 4. Verificar estrutura do OptionsFlow no config_flow.py
+    print("4. Verificando estrutura do OptionsFlow...")
     with open("custom_components/adaptive_climate/config_flow.py", "r") as f:
         content = f.read()
         
@@ -59,13 +81,13 @@ def main():
             status = "✅" if result else "❌"
             print(f"   {status} {check_name}")
     
-    # 4. Criar um timestamp para forçar reload
-    print("4. Criando timestamp para forçar reload...")
+    # 5. Criar um timestamp para forçar reload
+    print("5. Criando timestamp para forçar reload...")
     timestamp_file = Path("custom_components/adaptive_climate/.force_reload")
     timestamp_file.write_text(f"Last refresh: {os.popen('date').read().strip()}")
     print(f"   ✅ Criado: {timestamp_file}")
     
-    # 5. Instruções finais
+    # 6. Instruções finais
     print("\n" + "="*60)
     print("🎯 PRÓXIMOS PASSOS:")
     print("1. Copie TODO o diretório custom_components/adaptive_climate para")
@@ -75,6 +97,9 @@ def main():
     print("4. Encontre a integração 'Adaptive Climate'")
     print("5. Clique nos 3 pontos > 'Configurar'")
     print("6. Procure por campos de debug como 'test_debug_field'")
+    print("\n🔍 LOGS DE DEBUG:")
+    print("- Verifique os logs do HA para mensagens com 'OptionsFlowHandler'")
+    print("- Se não aparecer nenhuma mensagem, o OptionsFlow não está sendo chamado")
     print("="*60)
     
     print("\n✅ Refresh completo finalizado!")

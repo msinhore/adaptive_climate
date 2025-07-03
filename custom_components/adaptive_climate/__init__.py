@@ -22,60 +22,23 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.NUMBER, Platform.SWITCH]
 
 
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the Adaptive Climate component."""
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Adaptive Climate from a config entry."""
+    _LOGGER.debug("Setting up Adaptive Climate coordinator")
+    
+    # Initialize domain data
     hass.data.setdefault(DOMAIN, {})
     
     # Register custom template functions
     async_register_template_functions(hass)
     
-    # This approach avoids any reference to hass.components
-    async def _setup_logbook():
-        """Set up logbook integration."""
-        try:
-            # Dynamic import to avoid dependency issues
-            import importlib
-            
-            try:
-                # Try to import logbook module
-                logbook_module = importlib.import_module("homeassistant.components.logbook")
-                
-                # Check if the registration function exists
-                if hasattr(logbook_module, "async_register_event_type"):
-                    # Register event types
-                    logbook_module.async_register_event_type(
-                        hass,
-                        EVENT_ADAPTIVE_CLIMATE_MODE_CHANGE,
-                        "changed HVAC mode",
-                    )
-                    logbook_module.async_register_event_type(
-                        hass,
-                        EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP, 
-                        "changed target temperature",
-                    )
-                    _LOGGER.debug("Successfully registered logbook event types")
-                else:
-                    _LOGGER.debug("Logbook module found but missing registration function")
-            except (ImportError, ModuleNotFoundError):
-                _LOGGER.debug("Could not import logbook module")
-        except Exception as err:
-            _LOGGER.debug("Error setting up logbook integration: %s", err)
-    
-    # Call the setup function but don't block on it
-    hass.async_create_task(_setup_logbook())
-    
-    return True
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Adaptive Climate from a config entry."""
-    _LOGGER.debug("Setting up Adaptive Climate coordinator")
+    # Set up logbook integration
+    await _async_setup_logbook(hass)
     
     # Create coordinator
     coordinator = AdaptiveClimateCoordinator(hass, entry.data)
     
     # Store coordinator
-    hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
     
     # Perform initial data fetch with retry logic
@@ -93,6 +56,40 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     # Add update listener for options flow
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+    
+    return True
+
+
+async def _async_setup_logbook(hass: HomeAssistant) -> None:
+    """Set up logbook integration."""
+    try:
+        # Dynamic import to avoid dependency issues
+        import importlib
+        
+        try:
+            # Try to import logbook module
+            logbook_module = importlib.import_module("homeassistant.components.logbook")
+            
+            # Check if the registration function exists
+            if hasattr(logbook_module, "async_register_event_type"):
+                # Register event types
+                logbook_module.async_register_event_type(
+                    hass,
+                    EVENT_ADAPTIVE_CLIMATE_MODE_CHANGE,
+                    "changed HVAC mode",
+                )
+                logbook_module.async_register_event_type(
+                    hass,
+                    EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP, 
+                    "changed target temperature",
+                )
+                _LOGGER.debug("Successfully registered logbook event types")
+            else:
+                _LOGGER.debug("Logbook module found but missing registration function")
+        except (ImportError, ModuleNotFoundError):
+            _LOGGER.debug("Could not import logbook module")
+    except Exception as err:
+        _LOGGER.debug("Error setting up logbook integration: %s", err)
     
     return True
 
