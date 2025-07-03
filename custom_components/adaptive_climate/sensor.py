@@ -45,9 +45,10 @@ class AdaptiveClimateSensorBase(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.config_entry = config_entry
+        self._config_name = config_entry.data.get("name", "Adaptive Climate")
         self._attr_device_info = {
             "identifiers": {(DOMAIN, config_entry.entry_id)},
-            "name": config_entry.data.get("name", "Adaptive Climate"),
+            "name": self._config_name,
             "manufacturer": "ASHRAE",
             "model": "Adaptive Climate Controller",
             "sw_version": VERSION,
@@ -62,7 +63,7 @@ class AdaptiveComfortTemperatureSensor(AdaptiveClimateSensorBase):
         """Initialize the sensor."""
         super().__init__(coordinator, config_entry)
         self._attr_unique_id = f"{config_entry.entry_id}_comfort_temperature"
-        self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} Comfort Temperature"
+        self._attr_name = f"ASHRAE 55 {self._config_name} Comfort Temperature"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -105,7 +106,7 @@ class OutdoorRunningMeanSensor(AdaptiveClimateSensorBase):
         """Initialize the sensor."""
         super().__init__(coordinator, config_entry)
         self._attr_unique_id = f"{config_entry.entry_id}_outdoor_running_mean"
-        self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} Outdoor Running Mean"
+        self._attr_name = f"{self._config_name} Outdoor Running Mean"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS

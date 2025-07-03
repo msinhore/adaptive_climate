@@ -11,6 +11,7 @@ from homeassistant.helpers.typing import ConfigType
 from .const import DOMAIN
 from .coordinator import AdaptiveClimateCoordinator
 from .template import async_register_template_functions
+from .logbook import async_describe_events
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,6 +24,19 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     
     # Register custom template functions
     async_register_template_functions(hass)
+    
+    # Register logbook handlers
+    if hasattr(hass.components, "logbook"):
+        hass.components.logbook.async_register_event_type(
+            DOMAIN,
+            "adaptive_climate_mode_change",
+            "changed HVAC mode",
+        )
+        hass.components.logbook.async_register_event_type(
+            DOMAIN,
+            "adaptive_climate_target_temp", 
+            "changed target temperature",
+        )
     
     return True
 

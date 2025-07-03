@@ -9,6 +9,7 @@ from homeassistant.exceptions import TemplateError
 from homeassistant.helpers import template, area_registry, entity_registry
 
 from .area_helper import get_entities_by_area_and_domain
+from .template_helpers import safe_state, safe_states_list
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,43 +21,88 @@ def async_register_template_functions(hass: HomeAssistant) -> None:
         # Get the function references ready
         area_domain_entities_func = _area_domain_entities_function(hass)
         check_area_entities_func = _check_area_entities_function(hass)
+        safe_name_func = _safe_name_function()
+        
+        # Create a dictionary of functions to register
+        template_functions = {
+            "area_domain_entities": area_domain_entities_func,
+            "check_area_entities": check_area_entities_func,
+            "safe_name": safe_name_func,
+            "safe_state": safe_state,
+            "safe_states": safe_states_list,
+        }
         
         # Method 1: Modern HA 2023.9+ approach using HomeAssistant.components.template.template
         if hasattr(hass, "components") and hasattr(hass.components, "template"):
             if hasattr(hass.components.template, "Template") and hasattr(hass.components.template.Template, "register_template_functions"):
-                hass.components.template.Template.register_template_functions({
-                    "area_domain_entities": area_domain_entities_func,
-                    "check_area_entities": check_area_entities_func,
-                })
+                hass.components.template.Template.register_template_functions(template_functions)
                 _LOGGER.debug("Registered custom template functions using hass.components.template.Template.register_template_functions")
                 return
                 
         # Method 2: Direct access to template module
         if hasattr(template, "Template") and hasattr(template.Template, "register_template_functions"):
-            template.Template.register_template_functions({
-                "area_domain_entities": area_domain_entities_func,
-                "check_area_entities": check_area_entities_func,
-            })
+            template.Template.register_template_functions(template_functions)
             _LOGGER.debug("Registered custom template functions using template.Template.register_template_functions")
             return
             
         # Method 3: Direct access to template environment globals (modern approach)
         if "template.environment" in hass.data and hasattr(hass.data["template.environment"], "globals"):
-            hass.data["template.environment"].globals["area_domain_entities"] = area_domain_entities_func
-            hass.data["template.environment"].globals["check_area_entities"] = check_area_entities_func
+            env_globals = hass.data["template.environment"].globals
+            for name, func in template_functions.items():
+                env_globals[name] = func
             _LOGGER.debug("Registered custom template functions directly to template environment globals")
             return
             
         # Method 4 (Very Legacy): Not recommended but included as final fallback
         if hasattr(template, "attach_function_to_template"):
-            template.attach_function_to_template(hass, "area_domain_entities", area_domain_entities_func)
-            template.attach_function_to_template(hass, "check_area_entities", check_area_entities_func)
+            for name, func in template_functions.items():
+                template.attach_function_to_template(hass, name, func)
             _LOGGER.debug("Registered custom template functions using legacy attach_function_to_template")
             return
             
         _LOGGER.warning("Could not register template functions through any known method. Template functions may not be available.")
     except Exception as err:
         _LOGGER.error("Error registering custom template functions: %s", err)
+
+
+def _safe_name_function() -> Callable:
+    """Create a function to safely get entity or dictionary name."""
+    
+    def safe_name(obj: Any) -> str:
+        """Safely get the name of an entity or dictionary.
+        
+        Args:
+            obj: The object to get the name from. Can be a dictionary, ReadOnlyDict, or any object.
+            
+        Returns:
+            The name as a string, or a fallback value if no name is available.
+            
+        Examples:
+            {{ safe_name(this) }}
+        """
+        try:
+            # Try direct attribute access first
+            if hasattr(obj, "name"):
+                return obj.name
+            
+            # Try dictionary access
+            if hasattr(obj, "get"):
+                name = obj.get("name")
+                if name:
+                    return name
+            
+            # Try __getitem__ access
+            try:
+                return obj["name"]
+            except (KeyError, TypeError):
+                pass
+                
+            # If all else fails, try to convert to string
+            return str(obj)
+        except Exception:
+            return "Unknown"
+    
+    return safe_name
 
 
 def _area_domain_entities_function(hass: HomeAssistant) -> Callable:
