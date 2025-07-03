@@ -139,10 +139,49 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step."""
+        # Build data schema with area filter if needed
+        selected_area = None
+        entity_filter = {}
+        
+        if user_input is not None:
+            selected_area = user_input.get("area")
+            if selected_area:
+                entity_filter = {"area_id": selected_area}
+        
+        # Create schema with optional area filter
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_NAME, default="Adaptive Climate" if user_input is None else user_input.get(CONF_NAME, "Adaptive Climate")): str,
+                vol.Optional("area", default=selected_area): selector.AreaSelector(),
+                vol.Required("climate_entity", default="" if user_input is None else user_input.get("climate_entity", "")): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="climate", **entity_filter)
+                ),
+                vol.Required("indoor_temp_sensor", default="" if user_input is None else user_input.get("indoor_temp_sensor", "")): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["sensor", "input_number", "weather"],
+                        **entity_filter
+                    )
+                ),
+                vol.Required("outdoor_temp_sensor", default="" if user_input is None else user_input.get("outdoor_temp_sensor", "")): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["sensor", "input_number", "weather"]
+                    )
+                ),
+                vol.Optional("comfort_category", default=DEFAULT_COMFORT_CATEGORY if user_input is None else user_input.get("comfort_category", DEFAULT_COMFORT_CATEGORY)): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": "I", "label": f"Category I {COMFORT_CATEGORIES['I']['description']}"},
+                            {"value": "II", "label": f"Category II {COMFORT_CATEGORIES['II']['description']}"},
+                            {"value": "III", "label": f"Category III {COMFORT_CATEGORIES['III']['description']}"},
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+        
         if user_input is None:
-            return self.async_show_form(
-                step_id="user", data_schema=STEP_USER_DATA_SCHEMA
-            )
+            return self.async_show_form(step_id="user", data_schema=schema)
 
         errors = {}
 
@@ -155,47 +194,15 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     errors[field] = "entity_not_found"
 
         if errors:
-            # Rebuild schema with area filter if area was selected
-            selected_area = user_input.get("area")
-            entity_filter = {}
-            if selected_area:
-                entity_filter["area"] = selected_area
-            
-            user_schema_with_area = vol.Schema(
-                {
-                    vol.Required(CONF_NAME, default=user_input.get(CONF_NAME, "Adaptive Climate")): str,
-                    vol.Optional("area", default=selected_area): selector.AreaSelector(),
-                    vol.Required("climate_entity", default=user_input.get("climate_entity", "")): selector.EntitySelector(
-                        selector.EntitySelectorConfig(domain="climate", **entity_filter)
-                    ),
-                    vol.Required("indoor_temp_sensor", default=user_input.get("indoor_temp_sensor", "")): selector.EntitySelector(
-                        selector.EntitySelectorConfig(
-                            domain=["sensor", "input_number", "weather"],
-                            **entity_filter
-                        )
-                    ),
-                    vol.Required("outdoor_temp_sensor", default=user_input.get("outdoor_temp_sensor", "")): selector.EntitySelector(
-                        selector.EntitySelectorConfig(
-                            domain=["sensor", "input_number", "weather"]
-                        )
-                    ),
-                    vol.Optional("comfort_category", default=user_input.get("comfort_category", DEFAULT_COMFORT_CATEGORY)): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=[
-                                {"value": "I", "label": f"Category I {COMFORT_CATEGORIES['I']['description']}"},
-                                {"value": "II", "label": f"Category II {COMFORT_CATEGORIES['II']['description']}"},
-                                {"value": "III", "label": f"Category III {COMFORT_CATEGORIES['III']['description']}"},
-                            ],
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                        )
-                    ),
-                }
-            )
-            
             return self.async_show_form(
-                step_id="user", data_schema=user_schema_with_area, errors=errors
+                step_id="user", data_schema=schema, errors=errors
             )
 
+        # Store selected area in config data if provided
+        if selected_area:
+            self.config_data["area"] = selected_area
+            
+        # Update config data with all user inputs
         self.config_data.update(user_input)
         return await self.async_step_advanced()
 
@@ -210,7 +217,7 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Build entity selectors with area filter if area is selected
             entity_filter = {}
             if selected_area:
-                entity_filter["area"] = selected_area
+                entity_filter["area_id"] = selected_area
             
             advanced_schema = vol.Schema(
                 {
@@ -271,6 +278,11 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(self.config_data[CONF_NAME])
         self._abort_if_unique_id_configured()
 
+        # Log area configuration if present
+        if "area" in self.config_data:
+            _LOGGER.debug("Saving area '%s' in configuration for %s", 
+                         self.config_data["area"], self.config_data[CONF_NAME])
+
         return self.async_create_entry(
             title=self.config_data[CONF_NAME], data=self.config_data
         )
@@ -329,16 +341,20 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             config_update = {k: v for k, v in config_update.items() if k not in number_fields}
             
             if config_update:
+                # Log area changes if present
+                if "area" in config_update:
+                    _LOGGER.debug("Updating area to '%s' in configuration", config_update["area"])
+                
                 # Update coordinator with new configuration
                 await coordinator.update_config(config_update)
                 
                 # Merge with existing options and data for entities
                 new_options = {**self.config_entry.options, **config_update}
                 
-                # Update config entry data if entity selections changed
+                # Update config entry data if entity selections or area changed
                 entity_keys = ["climate_entity", "indoor_temp_sensor", "outdoor_temp_sensor", 
                               "occupancy_sensor", "mean_radiant_temp_sensor", 
-                              "indoor_humidity_sensor", "outdoor_humidity_sensor"]
+                              "indoor_humidity_sensor", "outdoor_humidity_sensor", "area"]
                 
                 entity_updates = {k: v for k, v in config_update.items() if k in entity_keys}
                 if entity_updates:
@@ -366,7 +382,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         selected_area = current_data.get("area")
         entity_filter = {}
         if selected_area:
-            entity_filter["area"] = selected_area
+            entity_filter["area_id"] = selected_area
 
         # Create unified configuration schema with modern selectors
         unified_schema = vol.Schema({
@@ -409,7 +425,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             vol.Optional(
                 "use_operative_temperature",
                 default=current_config.get("use_operative_temperature", False)
-            ): selector.BooleanSelector(),
+            ): selector.BooleanSelector(            ),
+            
+            # === AREA SELECTOR (if previously configured) ===
+            vol.Optional(
+                "area",
+                default=current_data.get("area")
+            ): selector.AreaSelector(),
 
             # === COMFORT CATEGORY DROPDOWN ===
             vol.Optional(
