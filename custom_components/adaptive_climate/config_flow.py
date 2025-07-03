@@ -403,21 +403,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 if not k.startswith("reset_") and v is not None
             }
             
-            # Convert numeric text fields to proper types
-            numeric_fields = {
-                "min_comfort_temp": float, "max_comfort_temp": float, 
-                "temperature_change_threshold": float, "air_velocity": float, 
-                "natural_ventilation_threshold": float, "setback_temperature_offset": float, 
-                "prolonged_absence_minutes": int, "auto_shutdown_minutes": int
-            }
-            
-            for field, field_type in numeric_fields.items():
-                if field in config_update:
-                    try:
-                        config_update[field] = field_type(config_update[field])
-                    except (ValueError, TypeError):
-                        # Keep original value if conversion fails
-                        pass
+            # NumberSelector already returns the correct types, no conversion needed
             
             if config_update:
                 # Log area changes if present
@@ -527,79 +513,104 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         {"value": "II", "label": f"Category II - {COMFORT_CATEGORIES['II']['description']}"},
                         {"value": "III", "label": f"Category III - {COMFORT_CATEGORIES['III']['description']}"},
                     ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
 
-            # === NUMERIC CONFIGURATION FIELDS (Using TextSelector for direct input) ===
+            # === NUMERIC CONFIGURATION FIELDS (Using NumberSelector for direct input) ===
             vol.Optional(
                 "min_comfort_temp",
-                default=str(current_config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP))
-            ): selector.TextSelector(
-                selector.TextSelectorConfig(
-                    type=selector.TextSelectorType.NUMBER
+                default=current_config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=15.0,
+                    max=22.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX
                 )
             ),
             
             vol.Optional(
                 "max_comfort_temp",
-                default=str(current_config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP))
-            ): selector.TextSelector(
-                selector.TextSelectorConfig(
-                    type=selector.TextSelectorType.NUMBER
+                default=current_config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=25.0,
+                    max=32.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX
                 )
             ),
             
             vol.Optional(
                 "temperature_change_threshold",
-                default=str(current_config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD))
-            ): selector.TextSelector(
-                selector.TextSelectorConfig(
-                    type=selector.TextSelectorType.NUMBER
+                default=current_config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.1,
+                    max=3.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX
                 )
             ),
             
             vol.Optional(
                 "air_velocity",
-                default=str(current_config.get("air_velocity", DEFAULT_AIR_VELOCITY))
-            ): selector.TextSelector(
-                selector.TextSelectorConfig(
-                    type=selector.TextSelectorType.NUMBER
+                default=current_config.get("air_velocity", DEFAULT_AIR_VELOCITY)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.0,
+                    max=2.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX
                 )
             ),
             
             vol.Optional(
                 "natural_ventilation_threshold",
-                default=str(current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD))
-            ): selector.TextSelector(
-                selector.TextSelectorConfig(
-                    type=selector.TextSelectorType.NUMBER
+                default=current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.5,
+                    max=5.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX
                 )
             ),
             
             vol.Optional(
                 "setback_temperature_offset",
-                default=str(current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET))
-            ): selector.TextSelector(
-                selector.TextSelectorConfig(
-                    type=selector.TextSelectorType.NUMBER
+                default=current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=1.0,
+                    max=5.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX
                 )
             ),
             
             vol.Optional(
                 "prolonged_absence_minutes",
-                default=str(current_config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES))
-            ): selector.TextSelector(
-                selector.TextSelectorConfig(
-                    type=selector.TextSelectorType.NUMBER
+                default=current_config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=10,
+                    max=240,
+                    step=1,
+                    mode=selector.NumberSelectorMode.BOX
                 )
             ),
             
             vol.Optional(
                 "auto_shutdown_minutes",
-                default=str(current_config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES))
-            ): selector.TextSelector(
-                selector.TextSelectorConfig(
-                    type=selector.TextSelectorType.NUMBER
+                default=current_config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=15,
+                    max=480,
+                    step=1,
+                    mode=selector.NumberSelectorMode.BOX
                 )
             ),
 
