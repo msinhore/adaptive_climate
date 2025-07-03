@@ -556,7 +556,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     },
                 )
                 self._last_target_temp = actions["set_temperature"]
-                action_messages.append(f"Temperature set to {actions['set_temperature']:.1f}°C")
+                # Safe format the temperature
+                temp_value = actions['set_temperature']
+                action_messages.append(f"Temperature set to {float(temp_value):.1f}°C" if temp_value is not None else "Temperature set")
                 action_details["temperature"] = {
                     "new": actions["set_temperature"],
                     "old": current_state["temperature"],
@@ -635,7 +637,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     if self.occupancy_entity_id:
                         occupancy_state = self.hass.states.get(self.occupancy_entity_id)
                         if occupancy_state and occupancy_state.last_changed:
-                            last_presence = occupancy_state.last_changed.strftime('%H:%M:%S')
+                            try:
+                                last_presence = occupancy_state.last_changed.strftime('%H:%M:%S')
+                            except (AttributeError, TypeError):
+                                last_presence = "format error"
                     
                     minutes = self.config.get("prolonged_absence_minutes", 60)
                     message = (
@@ -649,7 +654,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     if "temperature" in action_details:
                         old_temp = action_details["temperature"]["old"]
                         new_temp = action_details["temperature"]["new"]
-                        changes.append(f"temperature from {old_temp:.1f}°C to {new_temp:.1f}°C")
+                        # Safe format temperature values
+                        old_temp_str = f"{float(old_temp):.1f}" if old_temp is not None else "unknown"
+                        new_temp_str = f"{float(new_temp):.1f}" if new_temp is not None else "unknown"
+                        changes.append(f"temperature from {old_temp_str}°C to {new_temp_str}°C")
                     
                     if "hvac_mode" in action_details:
                         old_mode = action_details["hvac_mode"]["old"]
@@ -704,7 +712,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             if not self._occupied and self.occupancy_entity_id:
                 occupancy_state = self.hass.states.get(self.occupancy_entity_id)
                 if occupancy_state and occupancy_state.last_changed:
-                    last_presence_time = f", Last presence: {occupancy_state.last_changed.strftime('%H:%M:%S')}"
+                    try:
+                        last_presence_time = f", Last presence: {occupancy_state.last_changed.strftime('%H:%M:%S')}"
+                    except (AttributeError, TypeError):
+                        last_presence_time = ", Last presence: unknown (format error)"
             
             # Determine which action is being triggered
             trigger_action = "Climate:"
@@ -715,14 +726,28 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             if actions.get("set_fan_mode") is not None:
                 trigger_action += " Set fan mode"
             
+            # Safe format all values before building the log message
+            target_temp = actions.get('set_temperature', current_temp)
+            target_temp_str = f"{float(target_temp):.1f}" if target_temp is not None else "N/A"
+            current_temp_str = f"{float(current_temp):.1f}" if current_temp is not None else "N/A"
+            indoor_temp_str = f"{float(indoor_temp):.1f}" if indoor_temp is not None else "N/A"
+            outdoor_temp_str = f"{float(outdoor_temp):.1f}" if outdoor_temp is not None else "N/A"
+            comfort_min_str = f"{float(comfort_min):.1f}" if comfort_min is not None else "N/A"
+            comfort_max_str = f"{float(comfort_max):.1f}" if comfort_max is not None else "N/A"
+            comfort_temp_str = f"{float(comfort_temp):.1f}" if comfort_temp is not None else "N/A"
+            comfort_tolerance = self.calculator.get_comfort_tolerance()
+            comfort_tolerance_str = f"{float(comfort_tolerance):.1f}" if comfort_tolerance is not None else "N/A"
+            air_velocity_offset_str = f"{float(air_velocity_offset):.1f}" if air_velocity_offset is not None else "N/A"
+            humidity_offset_str = f"{float(humidity_offset):.1f}" if humidity_offset is not None else "N/A"
+            
             log_message = (
-                f"Target: {actions.get('set_temperature', current_temp):.1f}°C (Current: {current_temp:.1f}°C), "
-                f"Indoor: {indoor_temp:.1f}°C, Outdoor: {outdoor_temp:.1f}°C, "
-                f"Comfort zone: {comfort_min:.1f}-{comfort_max:.1f}°C (adaptive temp: {comfort_temp:.1f}°C), "
+                f"Target: {target_temp_str}°C (Current: {current_temp_str}°C), "
+                f"Indoor: {indoor_temp_str}°C, Outdoor: {outdoor_temp_str}°C, "
+                f"Comfort zone: {comfort_min_str}-{comfort_max_str}°C (adaptive temp: {comfort_temp_str}°C), "
                 f"HVAC Mode: {actions.get('set_hvac_mode', current_hvac_mode)} ({actions.get('reason', 'adaptive control')}){hvac_change}, "
                 f"Occupancy: {'Occupied' if self._occupied else 'Unoccupied'}{last_presence_time}, "
-                f"Category: {self.config.get('comfort_category', 'II')} (±{self.calculator.get_comfort_tolerance():.1f}°C), "
-                f"Air velocity offset: {air_velocity_offset:.1f}°C, Humidity offset: {humidity_offset:.1f}°C, "
+                f"Category: {self.config.get('comfort_category', 'II')} (±{comfort_tolerance_str}°C), "
+                f"Air velocity offset: {air_velocity_offset_str}°C, Humidity offset: {humidity_offset_str}°C, "
                 f"Fan: {actions.get('set_fan_mode', current_fan)}{fan_change}, "
                 f"Compliance: \"{data.get('ashrae_compliant', False) and 'Compliant' or 'Non-compliant'}\" "
                 f"triggered by action {trigger_action}"
@@ -732,11 +757,19 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             
             # Também criar entrada no logbook com informações mais detalhadas
             device_name = self.config.get("name", "Adaptive Climate")
+            # Safe formatting of temperature values for logbook
+            target_temp = actions.get('set_temperature', current_temp)
+            target_temp_str = f"{float(target_temp):.1f}" if target_temp is not None else "N/A"
+            indoor_temp_str = f"{float(indoor_temp):.1f}" if indoor_temp is not None else "N/A"
+            outdoor_temp_str = f"{float(outdoor_temp):.1f}" if outdoor_temp is not None else "N/A"
+            comfort_min_str = f"{float(comfort_min):.1f}" if comfort_min is not None else "N/A"
+            comfort_max_str = f"{float(comfort_max):.1f}" if comfort_max is not None else "N/A"
+            
             logbook_message = (
                 f"{device_name}: {trigger_action} - "
-                f"Target: {actions.get('set_temperature', current_temp):.1f}°C, "
-                f"Indoor: {indoor_temp:.1f}°C, Outdoor: {outdoor_temp:.1f}°C, "
-                f"Comfort: {comfort_min:.1f}-{comfort_max:.1f}°C, "
+                f"Target: {target_temp_str}°C, "
+                f"Indoor: {indoor_temp_str}°C, Outdoor: {outdoor_temp_str}°C, "
+                f"Comfort: {comfort_min_str}-{comfort_max_str}°C, "
                 f"Mode: {actions.get('set_hvac_mode', current_hvac_mode)}{hvac_change}"
             )
             self._create_logbook_entry(logbook_message, self.climate_entity_id)
@@ -763,7 +796,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         
         # Create logbook entry
         duration_text = f" for {duration//3600}h {(duration%3600)//60}m" if duration else ""
-        message = f"Manual override activated: {temperature:.1f}°C{duration_text}"
+        # Safe temperature formatting
+        temp_str = f"{float(temperature):.1f}" if temperature is not None else "custom"
+        message = f"Manual override activated: {temp_str}°C{duration_text}"
         self._create_logbook_entry(message, self.climate_entity_id)
         
         _LOGGER.info("Manual override set to %.1f°C%s", 
@@ -864,7 +899,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             self._natural_ventilation_active = new_status
             status_text = "optimal" if new_status else "not recommended"
             temp_diff = indoor_temp - outdoor_temp
-            message = f"Natural ventilation is now {status_text} (indoor: {indoor_temp:.1f}°C, outdoor: {outdoor_temp:.1f}°C, diff: {temp_diff:.1f}°C)"
+            # Safe format temperature values
+            indoor_str = f"{float(indoor_temp):.1f}" if indoor_temp is not None else "N/A"
+            outdoor_str = f"{float(outdoor_temp):.1f}" if outdoor_temp is not None else "N/A"
+            diff_str = f"{float(temp_diff):.1f}" if temp_diff is not None else "N/A"
+            message = f"Natural ventilation is now {status_text} (indoor: {indoor_str}°C, outdoor: {outdoor_str}°C, diff: {diff_str}°C)"
             self._create_logbook_entry(message)
             _LOGGER.info("Natural ventilation status changed: %s", status_text)
         else:

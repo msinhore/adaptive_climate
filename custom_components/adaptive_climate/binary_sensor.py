@@ -107,9 +107,26 @@ class ASHRAEComplianceSensor(AdaptiveClimateBinarySensorBase):
             "air_velocity_offset": round(self.coordinator.data.get("air_velocity_offset", 0), 2),
             "humidity_offset": round(self.coordinator.data.get("humidity_offset", 0), 2),
             
-            # Compliance calculation explanation
-            "compliance_calculation": f"{self.coordinator.data.get('indoor_temperature', 0):.1f}°C in range [{round(effective_min, 1) if effective_min else 0}°C - {round(effective_max, 1) if effective_max else 0}°C]",
+            # Compliance calculation explanation - protect against None values
+            "compliance_calculation": self._safe_compliance_calculation(effective_min, effective_max),
         }
+    
+    def _safe_compliance_calculation(self, effective_min, effective_max):
+        """Generate compliance calculation string with safe handling of None values."""
+        try:
+            # Get indoor temp with more robust None handling
+            indoor_temp = self.coordinator.data.get('indoor_temperature')
+            # Convert to float first if not None, then format
+            indoor_temp_str = f"{float(indoor_temp):.1f}" if indoor_temp is not None else "N/A"
+            
+            # Safe format min and max values with additional checks
+            min_str = f"{float(effective_min):.1f}" if effective_min is not None else "N/A"
+            max_str = f"{float(effective_max):.1f}" if effective_max is not None else "N/A"
+            
+            return f"{indoor_temp_str}°C in range [{min_str}°C - {max_str}°C]"
+        except Exception as err:
+            _LOGGER.debug("Error formatting compliance calculation: %s", err)
+            return "Calculating compliance range..."
 
 
 class NaturalVentilationSensor(AdaptiveClimateBinarySensorBase):
@@ -167,5 +184,5 @@ class NaturalVentilationSensor(AdaptiveClimateBinarySensorBase):
             "comfort_temp_max": round(comfort_max, 1),
             "conditions_met": conditions,
             "all_conditions_met": all_conditions_met,
-            "diagnostic_summary": f"Indoor {indoor_temp:.1f}°C {'>' if conditions['indoor_above_comfort_max'] else '≤'} {comfort_max:.1f}°C, Outdoor {outdoor_temp:.1f}°C {'<' if conditions['outdoor_cooler_than_indoor'] else '≥'} Indoor, Diff {temp_diff:.1f}°C {'≥' if conditions['temp_difference_sufficient'] else '<'} {threshold}°C",
+            "diagnostic_summary": f"Indoor {float(indoor_temp):.1f}°C {'>' if conditions['indoor_above_comfort_max'] else '≤'} {float(comfort_max):.1f}°C, Outdoor {float(outdoor_temp):.1f}°C {'<' if conditions['outdoor_cooler_than_indoor'] else '≥'} Indoor, Diff {float(temp_diff):.1f}°C {'≥' if conditions['temp_difference_sufficient'] else '<'} {float(threshold)}°C",
         }
