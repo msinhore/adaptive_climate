@@ -4,9 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Optional, Union, List
 
-from homeassistant.core import HomeAssistant, callback
 from homeassistant.const import STATE_UNKNOWN, STATE_UNAVAILABLE
-from homeassistant.components.template.template import _SENTINEL
 
 _LOGGER = logging.getLogger(__name__)
 
