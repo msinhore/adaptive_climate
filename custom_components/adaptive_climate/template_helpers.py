@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Union, List
-
-from homeassistant.const import STATE_UNKNOWN, STATE_UNAVAILABLE
+from typing import Any, List
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,12 +17,12 @@ def safe_state(entity) -> str:
         The state as a string, or 'unavailable' if the entity doesn't exist
     """
     if entity is None:
-        return STATE_UNAVAILABLE
+        return "unavailable"
         
     try:
         return entity.state
     except AttributeError:
-        return STATE_UNAVAILABLE
+        return "unavailable"
 
 
 def safe_states_list(entities_list: List[Any]) -> List[Any]:
