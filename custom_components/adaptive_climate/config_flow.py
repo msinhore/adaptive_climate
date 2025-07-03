@@ -374,13 +374,17 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 user_input = {k: v for k, v in user_input.items() if k != "reset_outdoor_history"}
             
             if user_input.get("reset_to_defaults", False):
-                # Reset to default values, mas apenas para valores que não são gerenciados pelos number helpers
+                # Reset to default values, incluindo campos numéricos
                 default_config = {
                     "comfort_category": DEFAULT_COMFORT_CATEGORY,
-                    # Removidos os campos numéricos que são gerenciados pelos number helpers:
-                    # "air_velocity", "temperature_change_threshold", "natural_ventilation_threshold",
-                    # "setback_temperature_offset", "min_comfort_temp", "max_comfort_temp",
-                    # "prolonged_absence_minutes", "auto_shutdown_minutes"
+                    "min_comfort_temp": DEFAULT_MIN_COMFORT_TEMP,
+                    "max_comfort_temp": DEFAULT_MAX_COMFORT_TEMP,
+                    "temperature_change_threshold": DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
+                    "air_velocity": DEFAULT_AIR_VELOCITY,
+                    "natural_ventilation_threshold": DEFAULT_NATURAL_VENTILATION_THRESHOLD,
+                    "setback_temperature_offset": DEFAULT_SETBACK_TEMPERATURE_OFFSET,
+                    "prolonged_absence_minutes": DEFAULT_PROLONGED_ABSENCE_MINUTES,
+                    "auto_shutdown_minutes": DEFAULT_AUTO_SHUTDOWN_MINUTES,
                     "adaptive_air_velocity": True,
                     "natural_ventilation_enable": True,
                     "humidity_comfort_enable": True,
@@ -399,13 +403,21 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 if not k.startswith("reset_") and v is not None
             }
             
-            # Remover campos numéricos que são gerenciados exclusivamente pelos number helpers
-            number_fields = [
-                "min_comfort_temp", "max_comfort_temp", "temperature_change_threshold", 
-                "air_velocity", "natural_ventilation_threshold", "setback_temperature_offset", 
-                "prolonged_absence_minutes", "auto_shutdown_minutes"
-            ]
-            config_update = {k: v for k, v in config_update.items() if k not in number_fields}
+            # Convert numeric text fields to proper types
+            numeric_fields = {
+                "min_comfort_temp": float, "max_comfort_temp": float, 
+                "temperature_change_threshold": float, "air_velocity": float, 
+                "natural_ventilation_threshold": float, "setback_temperature_offset": float, 
+                "prolonged_absence_minutes": int, "auto_shutdown_minutes": int
+            }
+            
+            for field, field_type in numeric_fields.items():
+                if field in config_update:
+                    try:
+                        config_update[field] = field_type(config_update[field])
+                    except (ValueError, TypeError):
+                        # Keep original value if conversion fails
+                        pass
             
             if config_update:
                 # Log area changes if present
@@ -423,12 +435,20 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                               "occupancy_sensor", "mean_radiant_temp_sensor", 
                               "indoor_humidity_sensor", "outdoor_humidity_sensor"]
                 
-                entity_updates = {k: v for k, v in config_update.items() if k in entity_keys}
-                if entity_updates:
+                # Numeric configuration keys that should also be saved to data
+                numeric_keys = ["min_comfort_temp", "max_comfort_temp", "temperature_change_threshold", 
+                               "air_velocity", "natural_ventilation_threshold", "setback_temperature_offset", 
+                               "prolonged_absence_minutes", "auto_shutdown_minutes"]
+                
+                # Combine entity and numeric keys for data updates
+                data_update_keys = entity_keys + numeric_keys
+                
+                data_updates = {k: v for k, v in config_update.items() if k in data_update_keys}
+                if data_updates:
                     # Update the config entry data as well
                     self.hass.config_entries.async_update_entry(
                         self.config_entry, 
-                        data={**self.config_entry.data, **entity_updates}
+                        data={**self.config_entry.data, **data_updates}
                     )
                 
                 return self.async_create_entry(title="", data=new_options)
@@ -507,7 +527,79 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         {"value": "II", "label": f"Category II - {COMFORT_CATEGORIES['II']['description']}"},
                         {"value": "III", "label": f"Category III - {COMFORT_CATEGORIES['III']['description']}"},
                     ],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+
+            # === NUMERIC CONFIGURATION FIELDS (Using TextSelector for direct input) ===
+            vol.Optional(
+                "min_comfort_temp",
+                default=str(current_config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP))
+            ): selector.TextSelector(
+                selector.TextSelectorConfig(
+                    type=selector.TextSelectorType.NUMBER
+                )
+            ),
+            
+            vol.Optional(
+                "max_comfort_temp",
+                default=str(current_config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP))
+            ): selector.TextSelector(
+                selector.TextSelectorConfig(
+                    type=selector.TextSelectorType.NUMBER
+                )
+            ),
+            
+            vol.Optional(
+                "temperature_change_threshold",
+                default=str(current_config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD))
+            ): selector.TextSelector(
+                selector.TextSelectorConfig(
+                    type=selector.TextSelectorType.NUMBER
+                )
+            ),
+            
+            vol.Optional(
+                "air_velocity",
+                default=str(current_config.get("air_velocity", DEFAULT_AIR_VELOCITY))
+            ): selector.TextSelector(
+                selector.TextSelectorConfig(
+                    type=selector.TextSelectorType.NUMBER
+                )
+            ),
+            
+            vol.Optional(
+                "natural_ventilation_threshold",
+                default=str(current_config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD))
+            ): selector.TextSelector(
+                selector.TextSelectorConfig(
+                    type=selector.TextSelectorType.NUMBER
+                )
+            ),
+            
+            vol.Optional(
+                "setback_temperature_offset",
+                default=str(current_config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET))
+            ): selector.TextSelector(
+                selector.TextSelectorConfig(
+                    type=selector.TextSelectorType.NUMBER
+                )
+            ),
+            
+            vol.Optional(
+                "prolonged_absence_minutes",
+                default=str(current_config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES))
+            ): selector.TextSelector(
+                selector.TextSelectorConfig(
+                    type=selector.TextSelectorType.NUMBER
+                )
+            ),
+            
+            vol.Optional(
+                "auto_shutdown_minutes",
+                default=str(current_config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES))
+            ): selector.TextSelector(
+                selector.TextSelectorConfig(
+                    type=selector.TextSelectorType.NUMBER
                 )
             ),
 
