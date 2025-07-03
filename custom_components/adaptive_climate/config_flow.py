@@ -163,13 +163,13 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required("climate_entity", default="" if user_input is None else user_input.get("climate_entity", "")): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="climate",
-                        include_entities=climate_entities if climate_entities else None
+                        include_entities=climate_entities if climate_entities else []
                     )
                 ),
                 vol.Required("indoor_temp_sensor", default="" if user_input is None else user_input.get("indoor_temp_sensor", "")): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain=["sensor", "input_number", "weather"],
-                        include_entities=indoor_temp_sensors if indoor_temp_sensors else None
+                        include_entities=indoor_temp_sensors if indoor_temp_sensors else []
                     )
                 ),
                 vol.Required("outdoor_temp_sensor", default="" if user_input is None else user_input.get("outdoor_temp_sensor", "")): selector.EntitySelector(
@@ -265,19 +265,19 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         selector.EntitySelectorConfig(
                             domain="binary_sensor",
                             device_class=["motion", "occupancy", "presence"],
-                            include_entities=occupancy_sensors if occupancy_sensors else None
+                            include_entities=occupancy_sensors if occupancy_sensors else []
                         )
                     ),
                     vol.Optional("mean_radiant_temp_sensor"): selector.EntitySelector(
                         selector.EntitySelectorConfig(
                             domain=["sensor", "input_number"],
-                            include_entities=temperature_sensors if temperature_sensors else None
+                            include_entities=temperature_sensors if temperature_sensors else []
                         )
                     ),
                     vol.Optional("indoor_humidity_sensor"): selector.EntitySelector(
                         selector.EntitySelectorConfig(
                             domain=["sensor", "input_number"],
-                            include_entities=humidity_sensors if humidity_sensors else None
+                            include_entities=humidity_sensors if humidity_sensors else []
                         )
                     ),
                     vol.Optional("outdoor_humidity_sensor"): selector.EntitySelector(
@@ -541,7 +541,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain="climate",
-                    include_entities=climate_entities if climate_entities else None
+                    include_entities=climate_entities if climate_entities else []
                 )
             ),
 
@@ -551,7 +551,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain=["sensor", "input_number", "weather"],
-                    include_entities=indoor_temp_sensors if indoor_temp_sensors else None
+                    include_entities=indoor_temp_sensors if indoor_temp_sensors else []
                 )
             ),
 
@@ -571,7 +571,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 selector.EntitySelectorConfig(
                     domain="binary_sensor",
                     device_class=["motion", "occupancy", "presence"],
-                    include_entities=occupancy_sensors if occupancy_sensors else None
+                    include_entities=occupancy_sensors if occupancy_sensors else []
                 )
             ),
 
@@ -581,7 +581,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain=["sensor", "input_number"],
-                    include_entities=mean_radiant_temp_sensors if mean_radiant_temp_sensors else None
+                    include_entities=mean_radiant_temp_sensors if mean_radiant_temp_sensors else []
                 )
             ),
 
@@ -591,7 +591,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain=["sensor", "input_number"],
-                    include_entities=indoor_humidity_sensors if indoor_humidity_sensors else None
+                    include_entities=indoor_humidity_sensors if indoor_humidity_sensors else []
                 )
             ),
 
