@@ -262,6 +262,7 @@ class AdaptiveClimateOptionsFlow(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry):
         """Initialize options flow."""
         self.config_entry = config_entry
+        self.config_data = {}
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -348,14 +349,153 @@ class AdaptiveClimateOptionsFlow(config_entries.OptionsFlow):
         if errors:
             return self.async_show_form(
                 step_id="init", 
-                data_schema=vol.Schema({}),  # Will be rebuilt
+                data_schema=reconfigure_schema,
                 errors=errors
             )
 
+        # Store entity data and move to configuration step
+        self.config_data.update(user_input)
+        return await self.async_step_configuration()
+
+    async def async_step_configuration(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle configuration parameters reconfiguration."""
+        if user_input is None:
+            # Get current configuration values from the config entry
+            current_data = self.config_entry.data
+            
+            configuration_schema = vol.Schema(
+                {
+                    # Temperature Limits
+                    vol.Optional(
+                        "min_comfort_temp", 
+                        default=current_data.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=10, max=30, step=0.5, unit_of_measurement="°C",
+                            mode=selector.NumberSelectorMode.SLIDER
+                        )
+                    ),
+                    vol.Optional(
+                        "max_comfort_temp", 
+                        default=current_data.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP)
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=20, max=40, step=0.5, unit_of_measurement="°C",
+                            mode=selector.NumberSelectorMode.SLIDER
+                        )
+                    ),
+                    vol.Optional(
+                        "temperature_change_threshold", 
+                        default=current_data.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0.1, max=5.0, step=0.1, unit_of_measurement="°C",
+                            mode=selector.NumberSelectorMode.BOX
+                        )
+                    ),
+                    
+                    # Air Velocity & Natural Ventilation
+                    vol.Optional(
+                        "air_velocity", 
+                        default=current_data.get("air_velocity", DEFAULT_AIR_VELOCITY)
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0.0, max=2.0, step=0.1, unit_of_measurement="m/s",
+                            mode=selector.NumberSelectorMode.SLIDER
+                        )
+                    ),
+                    vol.Optional(
+                        "adaptive_air_velocity", 
+                        default=current_data.get("adaptive_air_velocity", False)
+                    ): selector.BooleanSelector(),
+                    vol.Optional(
+                        "natural_ventilation_enable", 
+                        default=current_data.get("natural_ventilation_enable", True)
+                    ): selector.BooleanSelector(),
+                    vol.Optional(
+                        "natural_ventilation_threshold", 
+                        default=current_data.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0.5, max=10.0, step=0.5, unit_of_measurement="°C",
+                            mode=selector.NumberSelectorMode.SLIDER
+                        )
+                    ),
+                    
+                    # Occupancy & Energy Settings
+                    vol.Optional(
+                        "use_occupancy_features", 
+                        default=current_data.get("use_occupancy_features", True)
+                    ): selector.BooleanSelector(),
+                    vol.Optional(
+                        "energy_save_mode", 
+                        default=current_data.get("energy_save_mode", True)
+                    ): selector.BooleanSelector(),
+                    vol.Optional(
+                        "setback_temperature_offset", 
+                        default=current_data.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=-5.0, max=5.0, step=0.5, unit_of_measurement="°C",
+                            mode=selector.NumberSelectorMode.SLIDER
+                        )
+                    ),
+                    vol.Optional(
+                        "prolonged_absence_minutes", 
+                        default=current_data.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES)
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=5, max=480, step=5, unit_of_measurement="min",
+                            mode=selector.NumberSelectorMode.BOX
+                        )
+                    ),
+                    vol.Optional(
+                        "auto_shutdown_enable", 
+                        default=current_data.get("auto_shutdown_enable", False)
+                    ): selector.BooleanSelector(),
+                    vol.Optional(
+                        "auto_shutdown_minutes", 
+                        default=current_data.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES)
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=30, max=1440, step=30, unit_of_measurement="min",
+                            mode=selector.NumberSelectorMode.BOX
+                        )
+                    ),
+                    
+                    # Advanced Settings
+                    vol.Optional(
+                        "comfort_precision_mode", 
+                        default=current_data.get("comfort_precision_mode", False)
+                    ): selector.BooleanSelector(),
+                    vol.Optional(
+                        "use_operative_temperature", 
+                        default=current_data.get("use_operative_temperature", False)
+                    ): selector.BooleanSelector(),
+                    vol.Optional(
+                        "humidity_comfort_enable", 
+                        default=current_data.get("humidity_comfort_enable", True)
+                    ): selector.BooleanSelector(),
+                }
+            )
+
+            return self.async_show_form(
+                step_id="configuration",
+                data_schema=configuration_schema,
+                description_placeholders={
+                    "name": self.config_entry.data.get(CONF_NAME, "Adaptive Climate")
+                }
+            )
+
+        # Merge all configuration data
+        self.config_data.update(user_input)
+
         # Clean up empty optional fields
-        cleaned_data = {k: v for k, v in user_input.items() if v}
+        cleaned_data = {k: v for k, v in self.config_data.items() if v}
         
-        # Update the config entry with new entity selections
+        # Update the config entry with new selections
         new_data = {**self.config_entry.data, **cleaned_data}
         
         self.hass.config_entries.async_update_entry(

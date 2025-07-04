@@ -52,8 +52,8 @@
   "options": {
     "step": {
       "init": {
-        "title": "Reconfigure Adaptive Climate",
-        "description": "Update the sensor entities used by {name}. Detailed settings are available as entities in the Controls tab.",
+        "title": "Reconfigure Entities",
+        "description": "Update the sensor entities used by {name}.",
         "data": {
           "climate_entity": "Climate Entity",
           "indoor_temp_sensor": "Indoor Temperature Sensor",
@@ -61,6 +61,28 @@
           "occupancy_sensor": "Occupancy Sensor (Optional)",
           "indoor_humidity_sensor": "Indoor Humidity Sensor (Optional)",
           "mean_radiant_temp_sensor": "Mean Radiant Temperature Sensor (Optional)"
+        }
+      },
+      "configuration": {
+        "title": "Reconfigure Parameters",
+        "description": "Update comfort and energy parameters for {name}. These settings control how the adaptive climate system operates.",
+        "data": {
+          "min_comfort_temp": "Minimum Comfort Temperature",
+          "max_comfort_temp": "Maximum Comfort Temperature", 
+          "temperature_change_threshold": "Temperature Change Threshold",
+          "air_velocity": "Air Velocity",
+          "adaptive_air_velocity": "Adaptive Air Velocity",
+          "natural_ventilation_enable": "Enable Natural Ventilation",
+          "natural_ventilation_threshold": "Natural Ventilation Temperature Threshold",
+          "use_occupancy_features": "Use Occupancy Features",
+          "energy_save_mode": "Energy Save Mode",
+          "setback_temperature_offset": "Setback Temperature Offset",
+          "prolonged_absence_minutes": "Prolonged Absence Detection (minutes)",
+          "auto_shutdown_enable": "Enable Auto Shutdown",
+          "auto_shutdown_minutes": "Auto Shutdown After (minutes)",
+          "comfort_precision_mode": "High Precision Mode",
+          "use_operative_temperature": "Use Operative Temperature",
+          "humidity_comfort_enable": "Enable Humidity Corrections"
         }
       }
     },
