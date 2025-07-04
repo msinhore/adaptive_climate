@@ -3,7 +3,17 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any
+from typing import Any, Dict
+
+_LOGGER = logging.getLogger(__name__)
+
+try:
+    from pythermalcomfort.models import adaptive_ashrae
+    PYTHERMALCOMFORT_AVAILABLE = True
+    _LOGGER.info("pythermalcomfort library loaded successfully")
+except ImportError:
+    PYTHERMALCOMFORT_AVAILABLE = False
+    _LOGGER.warning("pythermalcomfort library not available. Using fallback calculations.")
 
 from .const import (
     ASHRAE_BASE_TEMP,
@@ -341,3 +351,73 @@ class AdaptiveComfortCalculator:
         # Update air velocity if specified in config
         if "air_velocity" in config:
             self._air_velocity = config["air_velocity"]
+
+    def calculate_adaptive_ashrae(
+        self,
+        tdb: float,
+        tr: float,
+        t_running_mean: float,
+        v: float,
+        standard: str = "ashrae"
+    ) -> Dict[str, Any]:
+        """Calculate adaptive comfort temperature using pythermalcomfort library.
+        
+        This is a wrapper function for pythermalcomfort.models.adaptive_ashrae
+        that provides standardized output format for the Adaptive Climate integration.
+        
+        Args:
+            tdb: Indoor dry bulb temperature (°C)
+            tr: Mean radiant temperature (°C) 
+            t_running_mean: 7-day outdoor running mean temperature (°C)
+            v: Air velocity (m/s)
+            standard: Standard to use ("ashrae" or "en")
+            
+        Returns:
+            Dictionary with:
+            - adaptive_comfort_temp: Adaptive comfort temperature (°C)
+            - ashrae_compliant: True if conditions are within acceptable range
+            
+        Raises:
+            ImportError: If pythermalcomfort library is not available
+            ValueError: If input parameters are invalid
+        """
+        if not PYTHERMALCOMFORT_AVAILABLE:
+            raise ImportError(
+                "pythermalcomfort library is not available. "
+                "Install with: pip install pythermalcomfort==2.8.0"
+            )
+        
+        _LOGGER.debug(
+            "calculate_adaptive_ashrae: tdb=%s, tr=%s, t_running_mean=%s, v=%s, standard=%s",
+            tdb, tr, t_running_mean, v, standard
+        )
+        
+        try:
+            # Call pythermalcomfort adaptive_ashrae function
+            result = adaptive_ashrae(
+                tdb=tdb,
+                tr=tr,
+                t_running_mean=t_running_mean,
+                v=v,
+                standard=standard
+            )
+            
+            # Extract key values from result
+            output = {
+                "adaptive_comfort_temp": result["tmp_cmf"],
+                "ashrae_compliant": result["acceptability"]
+            }
+            
+            _LOGGER.debug(
+                "calculate_adaptive_ashrae result: adaptive_comfort_temp=%s, ashrae_compliant=%s",
+                output["adaptive_comfort_temp"], output["ashrae_compliant"]
+            )
+            
+            return output
+            
+        except Exception as err:
+            _LOGGER.error(
+                "Error in calculate_adaptive_ashrae: tdb=%s, tr=%s, t_running_mean=%s, v=%s, error=%s",
+                tdb, tr, t_running_mean, v, err
+            )
+            raise ValueError(f"Failed to calculate adaptive comfort: {err}") from err
