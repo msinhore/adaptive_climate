@@ -9,14 +9,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-# Removed EntityCategory import since we no longer use EntityCategory.CONFIG
-# from homeassistant.helpers.entity import EntityCategory
 
 from .const import DOMAIN, VERSION
 from .coordinator import AdaptiveClimateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -35,7 +32,6 @@ async def async_setup_entry(
         AdaptiveAirVelocitySwitch(coordinator, config_entry),
         HumidityComfortEnableSwitch(coordinator, config_entry),
         AutoShutdownEnableSwitch(coordinator, config_entry),
-        # Removed duplicate AdaptiveClimateConfigSwitch entities since main switches now appear in Controls tab
     ]
     
     async_add_entities(entities)
@@ -55,9 +51,6 @@ class AdaptiveClimateSwitchBase(CoordinatorEntity, SwitchEntity):
             "model": "Adaptive Climate Controller",
             "sw_version": VERSION,
         }
-        # Removed EntityCategory.CONFIG to show switches in Controls tab instead of Configuration
-        # self._attr_entity_category = EntityCategory.CONFIG
-
 
 class UseOperativeTemperatureSwitch(AdaptiveClimateSwitchBase):
     """Switch entity for using operative temperature."""
@@ -290,6 +283,3 @@ class AutoShutdownEnableSwitch(AdaptiveClimateSwitchBase):
         """Return if entity is available."""
         return self.coordinator.last_update_success
 
-
-# Removed AdaptiveClimateConfigSwitch class since main switches now appear in Controls tab
-# instead of Configuration tab after removing EntityCategory.CONFIG

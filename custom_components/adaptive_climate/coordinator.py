@@ -44,6 +44,8 @@ from .const import (
     EVENT_ADAPTIVE_CLIMATE_MODE_CHANGE,
     EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP,
     DEFAULT_SETBACK_TEMPERATURE_OFFSET,
+    DEFAULT_ABSOLUTE_MIN_TEMP,
+    DEFAULT_ABSOLUTE_MAX_TEMP,
 )
 from .ashrae_calculator import AdaptiveComfortCalculator
 
@@ -538,15 +540,19 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         if not self._occupied:
             setback_offset = self.config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
             
+            # Get absolute safety limits (wider than comfort limits for energy savings)
+            absolute_min = self.config.get("absolute_min_temp", DEFAULT_ABSOLUTE_MIN_TEMP)  # Safety minimum  
+            absolute_max = self.config.get("absolute_max_temp", DEFAULT_ABSOLUTE_MAX_TEMP)  # Safety maximum
+            
             # Determine if we need heating or cooling based on current indoor temperature
             if indoor_temp > comfort_temp:
                 # If too warm, apply setback by allowing higher temperature (less cooling)
-                # But never exceed max comfort temperature
-                target_temp = min(comfort_temp + setback_offset, comfort_max)
+                # Allow going beyond comfort_max but respect absolute_max for safety
+                target_temp = min(comfort_temp + setback_offset, absolute_max)
             else:
-                # If too cool, apply setback by allowing lower temperature (less heating)  
-                # But never go below min comfort temperature
-                target_temp = max(comfort_temp - setback_offset, comfort_min)
+                # If too cool, apply setback by allowing lower temperature (less heating)
+                # Allow going beyond comfort_min but respect absolute_min for safety
+                target_temp = max(comfort_temp - setback_offset, absolute_min)
             
             # Log the setback logic for debugging
             original_setback = comfort_temp + setback_offset if indoor_temp > comfort_temp else comfort_temp - setback_offset
@@ -554,13 +560,19 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             
             if was_clamped:
                 if indoor_temp > comfort_temp:
-                    actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset, clamped to max comfort {comfort_max:.1f}°C"
+                    actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset, clamped to safety max {absolute_max:.1f}°C"
                 else:
-                    actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset, clamped to min comfort {comfort_min:.1f}°C"
+                    actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset, clamped to safety min {absolute_min:.1f}°C"
             else:
-                actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset"
+                beyond_comfort = ""
+                if indoor_temp > comfort_temp and target_temp > comfort_max:
+                    beyond_comfort = f" (beyond comfort max {comfort_max:.1f}°C for energy saving)"
+                elif indoor_temp < comfort_temp and target_temp < comfort_min:
+                    beyond_comfort = f" (beyond comfort min {comfort_min:.1f}°C for energy saving)"
+                actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset{beyond_comfort}"
             
-            _LOGGER.debug("Setback applied: target_temp=%.1f°C, was_clamped=%s", target_temp, was_clamped)
+            _LOGGER.debug("Setback applied: target_temp=%.1f°C, was_clamped=%s, comfort_range=[%.1f-%.1f]°C, safety_range=[%.1f-%.1f]°C", 
+                         target_temp, was_clamped, comfort_min, comfort_max, absolute_min, absolute_max)
         else:
             # When occupied, use the comfort temperature directly
             target_temp = comfort_temp
