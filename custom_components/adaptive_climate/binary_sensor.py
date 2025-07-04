@@ -39,12 +39,12 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Adaptive Climate binary sensors."""
+    """Set up Adaptive Climate binary sensor."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     
+    # Only one entity per device - ASHRAE Compliance with all data as attributes
     entities = [
         ASHRAEComplianceSensor(coordinator, config_entry),
-        NaturalVentilationSensor(coordinator, config_entry),
     ]
     
     async_add_entities(entities)
@@ -155,6 +155,9 @@ class ASHRAEComplianceSensor(AdaptiveClimateBinarySensorBase):
             "manual_override": self.coordinator.data.get("manual_override", False),
             "natural_ventilation_active": self.coordinator.data.get("natural_ventilation_active", False),
             
+            # Natural ventilation diagnostics (consolidated from separate sensor)
+            "natural_ventilation_conditions": self._get_natural_ventilation_diagnostics(),
+            
             # Offset diagnostics (read-only)  
             "air_velocity_offset": round(self.coordinator.data.get("air_velocity_offset", 0), 2),
             "humidity_offset": round(self.coordinator.data.get("humidity_offset", 0), 2),
@@ -183,37 +186,9 @@ class ASHRAEComplianceSensor(AdaptiveClimateBinarySensorBase):
         except Exception as err:
             _LOGGER.debug("Error formatting compliance calculation: %s", err)
             return "Calculating compliance range..."
-
-
-class NaturalVentilationSensor(AdaptiveClimateBinarySensorBase):
-    """Binary sensor for natural ventilation opportunity."""
-
-    def __init__(self, coordinator: AdaptiveClimateCoordinator, config_entry: ConfigEntry) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator, config_entry)
-        self._attr_unique_id = f"{config_entry.entry_id}_natural_ventilation_optimal"
-        self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} Natural Ventilation Optimal"
-        self._attr_icon = "mdi:window-open"
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if natural ventilation is optimal."""
-        if self.coordinator.data and self.coordinator.data.get("natural_ventilation_active") is not None:
-            return self.coordinator.data.get("natural_ventilation_active", False)
-        return False  # Default to not active when no data
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return (
-            self.coordinator.last_update_success and
-            self.coordinator.data is not None and
-            self.coordinator.data.get("status") != "entities_unavailable"
-        )
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the state attributes.""" 
+    
+    def _get_natural_ventilation_diagnostics(self):
+        """Get natural ventilation diagnostic information."""
         if not self.coordinator.data:
             return {}
         

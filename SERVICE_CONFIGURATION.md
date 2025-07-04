@@ -63,7 +63,7 @@ data:
 
 ## Configurable Parameters
 
-All parameters are visible as attributes on the main binary sensor and editable via services:
+All parameters are visible as attributes on the single binary sensor and editable via services:
 
 ### Temperature Limits (18-30°C range for safety)
 - `min_comfort_temp`: Minimum comfort temperature (default: 18.0°C)
