@@ -97,21 +97,32 @@ class RefactoredNumberBridgeEntity(CoordinatorEntity, NumberEntity):
             # Use coordinator method for clean attribute access
             value = self.coordinator.get_bridge_attribute_value(self._attribute_name)
             
+            # Detailed logging for Stage 1b validation
+            source = "coordinator_cache" if self.coordinator.data and self._attribute_name in self.coordinator.data else "binary_sensor_fallback"
+            _LOGGER.debug(
+                "NumberBridge %s native_value READ: value=%s, source=%s, coordinator_available=%s, data_exists=%s",
+                self._attribute_name,
+                value,
+                source,
+                self.coordinator.last_update_success,
+                self.coordinator.data is not None
+            )
+            
             if value is not None:
                 float_value = float(value)
                 _LOGGER.debug(
-                    "Retrieved value for %s: %s (from coordinator)",
-                    self._attribute_name, float_value
+                    "NumberBridge %s value conversion: raw=%s -> float=%s",
+                    self._attribute_name, value, float_value
                 )
                 return float_value
             else:
-                _LOGGER.debug("No value found for %s", self._attribute_name)
+                _LOGGER.debug("NumberBridge %s no value found, returning None", self._attribute_name)
                 return None
                 
         except (ValueError, TypeError) as err:
             _LOGGER.warning(
-                "Invalid value for %s: %s (error: %s)", 
-                self._attribute_name, value, err
+                "NumberBridge %s value conversion error: raw_value=%s, error_type=%s, error=%s", 
+                self._attribute_name, value, type(err).__name__, err
             )
             return None
 
@@ -122,20 +133,32 @@ class RefactoredNumberBridgeEntity(CoordinatorEntity, NumberEntity):
         manipulating hass.states, providing better integration with
         the coordinator's state management.
         """
+        # Get old value for comparison logging
+        old_value = self.native_value
+        
+        _LOGGER.debug(
+            "NumberBridge %s SET_VALUE START: old_value=%s, new_value=%s, entity_id=%s, unique_id=%s",
+            self._attribute_name,
+            old_value,
+            value,
+            getattr(self, 'entity_id', 'unknown'),
+            self.unique_id
+        )
+        
         try:
-            _LOGGER.info(
-                "Refactored bridge entity setting %s = %s",
-                self._attribute_name, value
-            )
-            
-            # Validate value range
+            # Validate value range before update
             if value < self.native_min_value or value > self.native_max_value:
                 _LOGGER.warning(
-                    "Value %s for %s is outside valid range [%s, %s]",
-                    value, self._attribute_name, 
+                    "NumberBridge %s VALUE_OUT_OF_RANGE: value=%s, valid_range=[%s, %s] - rejecting update",
+                    self._attribute_name, value, 
                     self.native_min_value, self.native_max_value
                 )
                 return
+            
+            _LOGGER.info(
+                "NumberBridge %s VALUE_UPDATE_REQUEST: %s -> %s (CoordinatorEntity pattern)",
+                self._attribute_name, old_value, value
+            )
             
             # Update via coordinator (cleaner than hass.states.async_set)
             await self.coordinator.update_bridge_attribute(self._attribute_name, value)
@@ -143,15 +166,15 @@ class RefactoredNumberBridgeEntity(CoordinatorEntity, NumberEntity):
             # Use async_write_ha_state() for proper HA integration
             self.async_write_ha_state()
             
-            _LOGGER.debug(
-                "Successfully updated %s = %s via coordinator",
-                self._attribute_name, value
+            _LOGGER.info(
+                "NumberBridge %s VALUE_UPDATED_SUCCESS: %s -> %s via CoordinatorEntity",
+                self._attribute_name, old_value, value
             )
             
         except Exception as err:
             _LOGGER.error(
-                "Error setting value for %s = %s: %s",
-                self._attribute_name, value, err
+                "NumberBridge %s SET_VALUE_FAILED: old_value=%s, attempted_value=%s, error_type=%s, error=%s",
+                self._attribute_name, old_value, value, type(err).__name__, err
             )
             raise
 
@@ -435,6 +458,40 @@ class RefactoredSensorBridgeEntity(CoordinatorEntity, SensorEntity):
             return None
 
 
+# Stage 1b validation configuration - entities for testing
+STAGE1B_TEST_ENTITIES = {
+    "number": {
+        "min_comfort_temp": {
+            "name": "Minimum Comfort Temperature (Test)",
+            "min_value": 15.0,
+            "max_value": 25.0,
+            "step": 0.5,
+            "unit": "°C",
+            "icon": "mdi:thermometer-low",
+            "default": 20.0,
+        },
+        "max_comfort_temp": {
+            "name": "Maximum Comfort Temperature (Test)",
+            "min_value": 25.0,
+            "max_value": 35.0,
+            "step": 0.5,
+            "unit": "°C",
+            "icon": "mdi:thermometer-high",
+            "default": 26.0,
+        },
+        "air_velocity": {
+            "name": "Air Velocity (Test)",
+            "min_value": 0.0,
+            "max_value": 2.0,
+            "step": 0.1,
+            "unit": "m/s",
+            "icon": "mdi:weather-windy",
+            "default": 0.1,
+        },
+    }
+}
+
+
 def create_refactored_outdoor_temp_entity(
     coordinator: AdaptiveClimateCoordinator,
     config_entry: ConfigEntry,
@@ -501,3 +558,41 @@ def create_refactored_bridge_entities(
     )
     
     return entities
+
+
+def create_stage1b_test_entities(
+    coordinator: AdaptiveClimateCoordinator,
+    config_entry: ConfigEntry,
+) -> list[RefactoredNumberBridgeEntity]:
+    """Create specific test entities for Stage 1b validation.
+    
+    These entities are specifically configured for testing the CoordinatorEntity
+    migration and will be clearly labeled as test entities.
+    """
+    test_entities = []
+    
+    for attribute_name, entity_config in STAGE1B_TEST_ENTITIES["number"].items():
+        entity = RefactoredNumberBridgeEntity(
+            coordinator=coordinator,
+            config_entry=config_entry,
+            attribute_name=attribute_name,
+            entity_config=entity_config,
+        )
+        test_entities.append(entity)
+        
+        _LOGGER.info(
+            "STAGE1B_TEST: Created test entity %s for attribute %s (range: %s-%s %s)",
+            entity_config["name"],
+            attribute_name,
+            entity_config["min_value"],
+            entity_config["max_value"],
+            entity_config["unit"]
+        )
+    
+    _LOGGER.info(
+        "STAGE1B_TEST: Created %d test entities for validation: %s",
+        len(test_entities),
+        [e._attribute_name for e in test_entities]
+    )
+    
+    return test_entities

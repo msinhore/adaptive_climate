@@ -1128,39 +1128,58 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         attributes without directly manipulating hass.states. The coordinator
         handles the update and triggers appropriate refreshes.
         
+        IMPORTANT: This method does NOT provide persistence. Values will reset 
+        to defaults after Home Assistant restart unless persistence is implemented.
+        
         Args:
             attribute_name: Name of the attribute to update
             value: New value for the attribute
         """
+        _LOGGER.debug(
+            "BRIDGE_UPDATE START: attribute=%s, new_value=%s (type=%s), entry_id=%s",
+            attribute_name,
+            value,
+            type(value).__name__,
+            self.config_entry.entry_id if self.config_entry else "unknown"
+        )
+        
         try:
-            _LOGGER.debug(
-                "Bridge attribute update requested: %s = %s (type: %s)",
-                attribute_name, value, type(value).__name__
-            )
-            
             # Get current binary sensor state
             binary_sensor_entity_id = self._get_binary_sensor_entity_id()
             if not binary_sensor_entity_id:
-                _LOGGER.warning("Cannot update bridge attribute: binary sensor entity ID not found")
+                _LOGGER.warning(
+                    "BRIDGE_UPDATE FAILED: Cannot determine binary sensor entity ID for attribute %s",
+                    attribute_name
+                )
                 return
+                
+            _LOGGER.debug(
+                "BRIDGE_UPDATE binary_sensor_target: %s",
+                binary_sensor_entity_id
+            )
                 
             current_state = self.hass.states.get(binary_sensor_entity_id)
             if not current_state:
                 _LOGGER.warning(
-                    "Cannot update bridge attribute %s: binary sensor %s not found",
-                    attribute_name, binary_sensor_entity_id
+                    "BRIDGE_UPDATE FAILED: binary_sensor %s not found (attribute=%s will not be updated)",
+                    binary_sensor_entity_id,
+                    attribute_name
                 )
                 return
             
+            # Get old value for detailed logging
+            old_value = current_state.attributes.get(attribute_name) if current_state.attributes else None
+            
             # Update attributes dict
-            new_attributes = dict(current_state.attributes)
-            old_value = new_attributes.get(attribute_name)
+            new_attributes = dict(current_state.attributes) if current_state.attributes else {}
             new_attributes[attribute_name] = value
             
-            # Log the change
-            _LOGGER.info(
-                "Updating bridge attribute '%s': %s → %s via coordinator",
-                attribute_name, old_value, value
+            _LOGGER.debug(
+                "BRIDGE_UPDATE attribute_change: %s: %s -> %s (binary_sensor: %s)",
+                attribute_name,
+                old_value,
+                value,
+                binary_sensor_entity_id
             )
             
             # Update binary sensor state with new attributes
@@ -1173,16 +1192,30 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             # Update internal coordinator data if it exists
             if self.data:
                 self.data[attribute_name] = value
-                _LOGGER.debug("Updated coordinator internal data: %s = %s", attribute_name, value)
+                _LOGGER.debug(
+                    "BRIDGE_UPDATE coordinator_data_updated: %s = %s",
+                    attribute_name, value
+                )
+            
+            _LOGGER.info(
+                "BRIDGE_UPDATE SUCCESS: %s.%s = %s (was: %s) [NO PERSISTENCE - IN-MEMORY ONLY]",
+                binary_sensor_entity_id,
+                attribute_name,
+                value,
+                old_value
+            )
             
             # Trigger coordinator refresh to propagate changes
-            _LOGGER.debug("Triggering coordinator refresh after bridge attribute update")
+            _LOGGER.debug("BRIDGE_UPDATE triggering coordinator refresh")
             await self.async_request_refresh()
             
         except Exception as err:
             _LOGGER.error(
-                "Error updating bridge attribute %s = %s: %s",
-                attribute_name, value, err
+                "BRIDGE_UPDATE FAILED: attribute=%s, value=%s, error_type=%s, error=%s",
+                attribute_name,
+                value,
+                type(err).__name__,
+                err
             )
             raise
     
@@ -1206,10 +1239,19 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         Returns:
             Current value of the attribute, or None if not found
         """
+        _LOGGER.debug(
+            "BRIDGE_READ START: attribute=%s, coordinator_data_available=%s",
+            attribute_name,
+            self.data is not None
+        )
+        
         # First try to get from coordinator data
         if self.data and attribute_name in self.data:
             value = self.data[attribute_name]
-            _LOGGER.debug("Retrieved bridge attribute '%s' from coordinator data: %s", attribute_name, value)
+            _LOGGER.debug(
+                "BRIDGE_READ SUCCESS: attribute=%s, value=%s, source=coordinator_data",
+                attribute_name, value
+            )
             return value
         
         # Fallback to binary sensor attributes
@@ -1218,8 +1260,22 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             current_state = self.hass.states.get(binary_sensor_entity_id)
             if current_state and current_state.attributes:
                 value = current_state.attributes.get(attribute_name)
-                _LOGGER.debug("Retrieved bridge attribute '%s' from binary sensor: %s", attribute_name, value)
+                _LOGGER.debug(
+                    "BRIDGE_READ FALLBACK: attribute=%s, value=%s, source=binary_sensor_attributes",
+                    attribute_name, value
+                )
                 return value
+            else:
+                _LOGGER.debug(
+                    "BRIDGE_READ binary_sensor_unavailable: entity_id=%s, state_exists=%s",
+                    binary_sensor_entity_id,
+                    current_state is not None
+                )
         
-        _LOGGER.debug("Bridge attribute '%s' not found", attribute_name)
+        _LOGGER.debug(
+            "BRIDGE_READ NOT_FOUND: attribute=%s, coordinator_data=%s, binary_sensor=%s",
+            attribute_name,
+            list(self.data.keys()) if self.data else "None",
+            binary_sensor_entity_id
+        )
         return None

@@ -29,7 +29,7 @@ from .const import (
 from .coordinator import AdaptiveClimateCoordinator
 from .bridge_entity import create_bridge_entities
 # Import refactored entity for testing
-from .bridge_entity_refactored import create_refactored_outdoor_temp_entity
+from .bridge_entity_refactored import create_refactored_outdoor_temp_entity, create_stage1b_test_entities
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,6 +69,16 @@ async def async_setup_entry(
     # Add refactored outdoor temperature entity for testing
     refactored_entity = create_refactored_outdoor_temp_entity(coordinator, config_entry)
     entities.append(refactored_entity)
+    
+    # Add Stage 1b test entities
+    stage1b_entities = create_stage1b_test_entities(coordinator, config_entry)
+    entities.extend(stage1b_entities)
+    
+    _LOGGER.info(
+        "STAGE1B_SETUP: Added %d test entities for validation. Total entities: %d",
+        len(stage1b_entities),
+        len(entities)
+    )
     
     async_add_entities(entities)
 

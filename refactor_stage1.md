@@ -261,3 +261,98 @@ self.async_write_ha_state()
 - 🧹 Clean Code: Eliminação de boilerplate manual
 - 📊 Logging: Tracking detalhado de todas as mudanças
 - 🏗️ Architecture: Melhor separação de responsabilidades
+
+## 🧪 **STAGE 1B - VALIDAÇÃO PoC IMPLEMENTADA**
+
+### ✅ **Logging Detalhado Implementado**
+
+**1. NumberBridgeEntity (bridge_entity_refactored.py)**:
+- ✅ `native_value`: DEBUG - valor, source, coordinator status, conversão de tipos
+- ✅ `async_set_native_value`: DEBUG/INFO/ERROR - old/new values, validação, resultado
+- ✅ Validação de range antes de update
+- ✅ Tracking completo de sucesso/falha
+
+**2. Coordinator (coordinator.py)**:
+- ✅ `update_bridge_attribute`: DEBUG/INFO/ERROR - update completo, persistência documentada
+- ✅ `get_bridge_attribute_value`: DEBUG - source tracking (coordinator vs binary_sensor)
+- ✅ Binary sensor target identification
+- ✅ **IMPORTANTE**: Documentação clara de "NO PERSISTENCE - IN-MEMORY ONLY"
+
+### ✅ **Entidades de Teste Criadas**
+
+**Configuração Stage 1b (STAGE1B_TEST_ENTITIES)**:
+- ✅ `min_comfort_temp`: 15-25°C, step 0.5°C (Temperatura Mínima de Conforto)
+- ✅ `max_comfort_temp`: 25-35°C, step 0.5°C (Temperatura Máxima de Conforto)  
+- ✅ `air_velocity`: 0-2 m/s, step 0.1 m/s (Velocidade do Ar)
+
+**Entity IDs Esperados**:
+- `number.adaptive_climate_min_comfort_temp_bridge_v2`
+- `number.adaptive_climate_max_comfort_temp_bridge_v2`
+- `number.adaptive_climate_air_velocity_bridge_v2`
+
+### ✅ **Script de Validação Manual**
+
+**Arquivo**: [`validation_stage1b.py`](validation_stage1b.py)
+- ✅ Função `run_stage1b_validation()` - sequência completa
+- ✅ Verificação de entidades disponíveis
+- ✅ Exemplos de service calls para teste
+- ✅ Padrões de log esperados documentados
+- ✅ Checagem de comportamento de persistência
+
+### ✅ **Integração Completa**
+
+**number.py**: 
+- ✅ Import das funções de teste
+- ✅ Criação automática das entidades Stage 1b
+- ✅ Logging de setup para tracking
+
+### 🔬 **Critérios de Validação**
+
+**Testes Funcionais**:
+- [ ] ✅ Bridge entities aparecem na UI do HA
+- [ ] ✅ Mudanças via UI refletem instantaneamente  
+- [ ] ✅ Binary sensor attributes são atualizados
+- [ ] ⚠️ Valores resetam após restart (comportamento esperado)
+- [ ] ✅ Logs DEBUG/INFO/ERROR aparecem conforme implementado
+
+**Testes de Logging**:
+- [ ] ✅ Pattern "STAGE1B_SETUP: Added * test entities"
+- [ ] ✅ Pattern "NumberBridge * native_value READ"
+- [ ] ✅ Pattern "BRIDGE_UPDATE SUCCESS: * [NO PERSISTENCE - IN-MEMORY ONLY]"
+- [ ] ✅ Pattern "NumberBridge * VALUE_UPDATED_SUCCESS"
+
+**Testes de Performance**:
+- [ ] ✅ Latência de updates não aumenta
+- [ ] ✅ Coordinator refresh funciona corretamente
+- [ ] ✅ Memory usage estável
+
+### ❌ **Limitação Confirmada e Documentada**
+
+**PERSISTÊNCIA**: 
+- ⚠️ `update_bridge_attribute()` **NÃO persiste** valores
+- ⚠️ Apenas atualiza atributos do binary_sensor em memória
+- ⚠️ Valores resetam para defaults após restart do HA
+- ✅ **Documentado nos logs**: "[NO PERSISTENCE - IN-MEMORY ONLY]"
+- ✅ **Planejado para Stage 2**: Implementação de persistência via Store
+
+### 🎯 **Status Stage 1b**
+
+**IMPLEMENTAÇÃO**: ✅ **COMPLETA**
+**VALIDAÇÃO**: ⏳ **PRONTA PARA TESTES MANUAIS**
+**PRÓXIMO**: 🚀 **Stage 2 - Persistência + Migração Completa**
+
+### 📋 **Passos para Validação Manual**
+
+1. **Setup**: Instalar integration com entities Stage 1b
+2. **UI Test**: Verificar entities na UI (Developer Tools > States)
+3. **Functionality**: Testar mudanças via sliders/inputs
+4. **Logging**: Monitor logs em nível DEBUG
+5. **Persistence**: Testar restart (valores devem resetar)
+6. **Service Calls**: Usar exemplos do validation script
+
+### 🔄 **Plano Stage 2 (Próximo)**
+
+1. **Persistência**: Implementar Store para bridge attributes
+2. **Migração**: Converter todas bridge entities para CoordinatorEntity
+3. **Cleanup**: Remover entities legacy após validação
+4. **Testing**: Testes automatizados + performance benchmarks
