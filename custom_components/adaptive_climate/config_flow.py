@@ -353,106 +353,146 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle an option flow for Adaptive Climate."""
 
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    def _get_options_schema(self) -> vol.Schema:
+        """Generate the options schema with current values."""
+        return vol.Schema({
+            vol.Optional("comfort_category"): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"value": "I", "label": f"Category I {COMFORT_CATEGORIES['I']['description']}"},
+                        {"value": "II", "label": f"Category II {COMFORT_CATEGORIES['II']['description']}"},
+                        {"value": "III", "label": f"Category III {COMFORT_CATEGORIES['III']['description']}"},
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Optional("min_comfort_temp"): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=15.0,
+                    max=22.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="°C"
+                )
+            ),
+            vol.Optional("max_comfort_temp"): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=25.0,
+                    max=32.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="°C"
+                )
+            ),
+            vol.Optional("temperature_change_threshold"): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.1,
+                    max=3.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="°C"
+                )
+            ),
+            vol.Optional("air_velocity"): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.0,
+                    max=2.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="m/s"
+                )
+            ),
+            vol.Optional("natural_ventilation_threshold"): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.5,
+                    max=5.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="°C"
+                )
+            ),
+            vol.Optional("setback_temperature_offset"): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=1.0,
+                    max=5.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="°C"
+                )
+            ),
+            vol.Optional("prolonged_absence_minutes"): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=10,
+                    max=240,
+                    step=1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="min"
+                )
+            ),
+            vol.Optional("auto_shutdown_minutes"): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=15,
+                    max=480,
+                    step=1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="min"
+                )
+            ),
+            vol.Optional("use_operative_temperature"): selector.BooleanSelector(),
+            vol.Optional("energy_save_mode"): selector.BooleanSelector(),
+            vol.Optional("comfort_precision_mode"): selector.BooleanSelector(),
+            vol.Optional("use_occupancy_features"): selector.BooleanSelector(),
+            vol.Optional("natural_ventilation_enable"): selector.BooleanSelector(),
+            vol.Optional("adaptive_air_velocity"): selector.BooleanSelector(),
+            vol.Optional("humidity_comfort_enable"): selector.BooleanSelector(),
+            vol.Optional("auto_shutdown_enable"): selector.BooleanSelector(),
+        })
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
         """Manage the options."""
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            # Validate temperature ranges
+            min_temp = user_input.get("min_comfort_temp")
+            max_temp = user_input.get("max_comfort_temp")
+            
+            if min_temp is not None and max_temp is not None and min_temp >= max_temp:
+                errors["min_comfort_temp"] = "min_greater_than_max"
+                errors["max_comfort_temp"] = "min_greater_than_max"
+
+            # Validate time values
+            prolonged_absence = user_input.get("prolonged_absence_minutes")
+            auto_shutdown = user_input.get("auto_shutdown_minutes")
+            
+            if prolonged_absence is not None and auto_shutdown is not None:
+                if prolonged_absence >= auto_shutdown:
+                    errors["prolonged_absence_minutes"] = "invalid_time_sequence"
+                    errors["auto_shutdown_minutes"] = "invalid_time_sequence"
+
+            # Additional validation for air velocity when adaptive is enabled
+            air_velocity = user_input.get("air_velocity")
+            adaptive_air_velocity = user_input.get("adaptive_air_velocity", False)
+            
+            if adaptive_air_velocity and air_velocity is not None and air_velocity > 1.5:
+                errors["air_velocity"] = "high_air_velocity_warning"
+
+            if not errors:
+                return self.async_create_entry(title="", data=user_input)
 
         return self.async_show_form(
             step_id="init",
             data_schema=self.add_suggested_values_to_schema(
-                vol.Schema({
-                    vol.Optional("comfort_category"): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=["I", "II", "III"],
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                        )
-                    ),
-                    vol.Optional("min_comfort_temp"): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=15.0,
-                            max=22.0,
-                            step=0.1,
-                            mode=selector.NumberSelectorMode.BOX,
-                            unit_of_measurement="°C"
-                        )
-                    ),
-                    vol.Optional("max_comfort_temp"): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=25.0,
-                            max=32.0,
-                            step=0.1,
-                            mode=selector.NumberSelectorMode.BOX,
-                            unit_of_measurement="°C"
-                        )
-                    ),
-                    vol.Optional("temperature_change_threshold"): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0.1,
-                            max=3.0,
-                            step=0.1,
-                            mode=selector.NumberSelectorMode.BOX,
-                            unit_of_measurement="°C"
-                        )
-                    ),
-                    vol.Optional("air_velocity"): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0.0,
-                            max=2.0,
-                            step=0.1,
-                            mode=selector.NumberSelectorMode.BOX,
-                            unit_of_measurement="m/s"
-                        )
-                    ),
-                    vol.Optional("natural_ventilation_threshold"): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0.5,
-                            max=5.0,
-                            step=0.1,
-                            mode=selector.NumberSelectorMode.BOX,
-                            unit_of_measurement="°C"
-                        )
-                    ),
-                    vol.Optional("setback_temperature_offset"): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=1.0,
-                            max=5.0,
-                            step=0.1,
-                            mode=selector.NumberSelectorMode.BOX,
-                            unit_of_measurement="°C"
-                        )
-                    ),
-                    vol.Optional("prolonged_absence_minutes"): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=10,
-                            max=240,
-                            step=1,
-                            mode=selector.NumberSelectorMode.BOX,
-                            unit_of_measurement="min"
-                        )
-                    ),
-                    vol.Optional("auto_shutdown_minutes"): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=15,
-                            max=480,
-                            step=1,
-                            mode=selector.NumberSelectorMode.BOX,
-                            unit_of_measurement="min"
-                        )
-                    ),
-                    vol.Optional("use_operative_temperature"): selector.BooleanSelector(),
-                    vol.Optional("energy_save_mode"): selector.BooleanSelector(),
-                    vol.Optional("comfort_precision_mode"): selector.BooleanSelector(),
-                    vol.Optional("use_occupancy_features"): selector.BooleanSelector(),
-                    vol.Optional("natural_ventilation_enable"): selector.BooleanSelector(),
-                    vol.Optional("adaptive_air_velocity"): selector.BooleanSelector(),
-                    vol.Optional("humidity_comfort_enable"): selector.BooleanSelector(),
-                    vol.Optional("auto_shutdown_enable"): selector.BooleanSelector(),
-                }),
+                self._get_options_schema(),
                 self.config_entry.options
             ),
+            errors=errors,
         )
 
 

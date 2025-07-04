@@ -47,7 +47,10 @@
       }
     },
     "error": {
-      "entity_not_found": "Entity not found. Please check that the entity exists and is available."
+      "entity_not_found": "Entity not found. Please check that the entity exists and is available.",
+      "min_greater_than_max": "Minimum comfort temperature must be less than maximum comfort temperature",
+      "invalid_time_sequence": "Prolonged absence time must be less than auto shutdown time",
+      "high_air_velocity_warning": "High air velocity (>1.5 m/s) with adaptive velocity enabled may cause discomfort"
     }
   },
   "options": {
@@ -112,6 +115,11 @@
           "reset_to_defaults": "Reset all configuration parameters to their default values"
         }
       }
+    },
+    "error": {
+      "min_greater_than_max": "Minimum comfort temperature must be less than maximum comfort temperature",
+      "invalid_time_sequence": "Prolonged absence time must be less than auto shutdown time",
+      "high_air_velocity_warning": "High air velocity (>1.5 m/s) with adaptive velocity enabled may cause discomfort"
     }
   },
   "entity": {

@@ -47,7 +47,10 @@
       }
     },
     "error": {
-      "entity_not_found": "Entidade não encontrada. Verifique se a entidade existe e está disponível."
+      "entity_not_found": "Entidade não encontrada. Verifique se a entidade existe e está disponível.",
+      "min_greater_than_max": "A temperatura mínima de conforto deve ser menor que a temperatura máxima de conforto",
+      "invalid_time_sequence": "O tempo de ausência prolongada deve ser menor que o tempo de desligamento automático",
+      "high_air_velocity_warning": "Alta velocidade do ar (>1.5 m/s) com velocidade adaptativa ativada pode causar desconforto"
     }
   },
   "options": {
@@ -112,6 +115,11 @@
           "reset_to_defaults": "Resetar todos os parâmetros de configuração para seus valores padrão"
         }
       }
+    },
+    "error": {
+      "min_greater_than_max": "A temperatura mínima de conforto deve ser menor que a temperatura máxima de conforto",
+      "invalid_time_sequence": "O tempo de ausência prolongada deve ser menor que o tempo de desligamento automático",
+      "high_air_velocity_warning": "Alta velocidade do ar (>1.5 m/s) com velocidade adaptativa ativada pode causar desconforto"
     }
   },
   "entity": {
