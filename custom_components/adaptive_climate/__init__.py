@@ -44,14 +44,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Store coordinator
     hass.data[DOMAIN][entry.entry_id] = coordinator
     
+    _LOGGER.info("Created coordinator for entry %s with data: %s", entry.entry_id, entry.data)
+    
     # Perform initial data fetch with retry logic
     try:
         await coordinator.async_config_entry_first_refresh()
+        _LOGGER.info("Initial data fetch successful for %s", entry.entry_id)
     except Exception as err:
         _LOGGER.warning("Initial data fetch failed, will retry on next update: %s", err)
         # Don't fail setup, just log and continue - sensors will show as unavailable until data is available
     
     # Set up platforms (sensors only, no climate entity)
+    _LOGGER.info("Setting up platforms %s for entry %s", PLATFORMS, entry.entry_id)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
     # Set up services

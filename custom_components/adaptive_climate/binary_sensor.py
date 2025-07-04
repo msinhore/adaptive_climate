@@ -46,6 +46,7 @@ async def async_setup_entry(
         ASHRAEComplianceSensor(coordinator, config_entry),
     ]
     
+    _LOGGER.info("Setting up Adaptive Climate binary sensor entities: %s", [e.unique_id for e in entities])
     async_add_entities(entities)
 
 
@@ -71,9 +72,14 @@ class ASHRAEComplianceSensor(AdaptiveClimateBinarySensorBase):
     def __init__(self, coordinator: AdaptiveClimateCoordinator, config_entry: ConfigEntry) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, config_entry)
-        self._attr_unique_id = f"{config_entry.entry_id}_ashrae_compliance"
+        # Ensure unique_id is clean and valid
+        entry_id = config_entry.entry_id.replace("-", "_")
+        self._attr_unique_id = f"{entry_id}_ashrae_compliance"
         self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} ASHRAE Compliance"
         self._attr_icon = "mdi:check-circle-outline"
+        # Set explicit entity_id for better predictability
+        device_name = config_entry.data.get('name', 'adaptive_climate').lower().replace(' ', '_')
+        self._attr_entity_id = f"binary_sensor.{device_name}_ashrae_compliance"
 
     @property
     def is_on(self) -> bool | None:
@@ -224,7 +230,7 @@ class ASHRAEComplianceSensor(AdaptiveClimateBinarySensorBase):
             "conditions": {
                 "indoor_too_warm": conditions["indoor_above_comfort_max"],
                 "outdoor_is_cooler": conditions["outdoor_cooler_than_indoor"],
-                "sufficient_temp_difference": conditions["temp_difference_sufficient"],
+                "sufficient_temp_difference": conditions["temperature_difference_sufficient"],
             },
             "summary": f"Indoor {indoor_temp:.1f}°C, Outdoor {outdoor_temp:.1f}°C, Diff {temp_diff:.1f}°C (need ≥{threshold}°C)",
         }
