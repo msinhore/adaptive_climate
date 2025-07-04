@@ -1152,10 +1152,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             "energy_save_mode": "energy_save_mode",
             "comfort_precision_mode": "comfort_precision_mode",
             "use_occupancy_features": "use_occupancy_features",
-            "natural_ventilation_enable": "natural_ventilation_enabled",
-            "adaptive_air_velocity": "air_velocity_correction_enabled",
-            "humidity_comfort_enable": "humidity_correction_enabled",
-            "auto_shutdown_enable": "auto_shutdown_enabled",
+            "natural_ventilation_enable": "natural_ventilation_enable",
+            "adaptive_air_velocity": "adaptive_air_velocity",
+            "humidity_comfort_enable": "humidity_comfort_enable",
+            "auto_shutdown_enable": "auto_shutdown_enable",
             
             # Select entities
             "comfort_category": "comfort_category",
