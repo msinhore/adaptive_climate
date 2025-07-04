@@ -1,6 +1,13 @@
-"""Device entities for Adaptive Climate integration."""
+"""Bridge entities for Adaptive Climate integration.
+
+This module implements bridge entities that act as UI interface for config_entry.data,
+providing user-friendly controls without affecting the core coordinator logic.
+The coordinator continues to work normally, consulting the binary_sensor for configuration.
+Bridge entities only serve as a configuration UI layer.
+"""
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from homeassistant.components.button import ButtonEntity
@@ -13,8 +20,126 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, COMFORT_CATEGORIES
+from .const import (
+    DOMAIN, 
+    COMFORT_CATEGORIES,
+    DEFAULT_MIN_COMFORT_TEMP,
+    DEFAULT_MAX_COMFORT_TEMP,
+    DEFAULT_AIR_VELOCITY,
+    DEFAULT_SETBACK_TEMPERATURE_OFFSET,
+    DEFAULT_NATURAL_VENTILATION_THRESHOLD,
+    DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+# Configuration mapping for bridge UI entities - only for initial setup interface
+BRIDGE_CONFIG_MAPPING = {
+    # Number entities for config_entry.data
+    "min_comfort_temp": {
+        "type": "number",
+        "name": "Minimum Comfort Temperature", 
+        "min": 15.0, "max": 25.0, "step": 0.5, "unit": "°C",
+        "default": DEFAULT_MIN_COMFORT_TEMP,
+        "icon": "mdi:thermometer-low"
+    },
+    "max_comfort_temp": {
+        "type": "number", 
+        "name": "Maximum Comfort Temperature",
+        "min": 25.0, "max": 35.0, "step": 0.5, "unit": "°C", 
+        "default": DEFAULT_MAX_COMFORT_TEMP,
+        "icon": "mdi:thermometer-high"
+    },
+    "air_velocity": {
+        "type": "number",
+        "name": "Air Velocity",
+        "min": 0.0, "max": 2.0, "step": 0.1, "unit": "m/s",
+        "default": DEFAULT_AIR_VELOCITY, 
+        "icon": "mdi:weather-windy"
+    },
+    "setback_temperature_offset": {
+        "type": "number",
+        "name": "Setback Temperature Offset", 
+        "min": 0.0, "max": 5.0, "step": 0.5, "unit": "°C",
+        "default": DEFAULT_SETBACK_TEMPERATURE_OFFSET,
+        "icon": "mdi:thermometer-minus"
+    },
+    "natural_ventilation_threshold": {
+        "type": "number",
+        "name": "Natural Ventilation Threshold",
+        "min": 0.5, "max": 10.0, "step": 0.5, "unit": "°C", 
+        "default": DEFAULT_NATURAL_VENTILATION_THRESHOLD,
+        "icon": "mdi:window-open"
+    },
+    "temperature_change_threshold": {
+        "type": "number", 
+        "name": "Temperature Change Threshold",
+        "min": 0.1, "max": 3.0, "step": 0.1, "unit": "°C",
+        "default": DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
+        "icon": "mdi:thermometer-alert"
+    },
+    
+    # Switch entities for config_entry.data
+    "energy_save_mode": {
+        "type": "switch",
+        "name": "Energy Save Mode",
+        "default": True,
+        "icon": "mdi:leaf"
+    },
+    "natural_ventilation_enable": {
+        "type": "switch", 
+        "name": "Natural Ventilation",
+        "default": True,
+        "icon": "mdi:window-open-variant"
+    },
+    "adaptive_air_velocity": {
+        "type": "switch",
+        "name": "Adaptive Air Velocity", 
+        "default": False,
+        "icon": "mdi:fan-auto"
+    },
+    "humidity_comfort_enable": {
+        "type": "switch",
+        "name": "Humidity Comfort",
+        "default": True, 
+        "icon": "mdi:water-percent"
+    },
+    "comfort_precision_mode": {
+        "type": "switch",
+        "name": "Precision Mode",
+        "default": False,
+        "icon": "mdi:target"
+    },
+    "use_occupancy_features": {
+        "type": "switch", 
+        "name": "Occupancy Features",
+        "default": True,
+        "icon": "mdi:account-check"
+    },
+    "auto_shutdown_enable": {
+        "type": "switch",
+        "name": "Auto Shutdown",
+        "default": False,
+        "icon": "mdi:power-standby"
+    },
+    "use_operative_temperature": {
+        "type": "switch",
+        "name": "Use Operative Temperature", 
+        "default": False,
+        "icon": "mdi:thermometer-check"
+    },
+    
+    # Select entities for config_entry.data
+    "comfort_category": {
+        "type": "select",
+        "name": "Comfort Category",
+        "options": ["I", "II", "III"],
+        "default": "II",
+        "icon": "mdi:chart-bell-curve"
+    }
+}
 
 
 def async_setup_device_entities(
@@ -22,7 +147,11 @@ def async_setup_device_entities(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up device entities for Controls and Sensors tabs."""
+    """Set up bridge entities for UI configuration interface.
+    
+    Creates bridge entities that provide user-friendly UI controls for config_entry.data
+    without affecting the core coordinator logic. Coordinator continues to work normally.
+    """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     
     # Create device info shared by all entities
@@ -30,174 +159,194 @@ def async_setup_device_entities(
         identifiers={(DOMAIN, config_entry.entry_id)},
         name=config_entry.title,
         manufacturer="Adaptive Climate",
-        model="ASHRAE 55 Controller",
+        model="ASHRAE 55 Controller", 
         sw_version="1.0.0",
         configuration_url=f"homeassistant://config/integrations/integration/{DOMAIN}",
     )
     
     entities = []
     
-    # Controls (SwitchEntity, ButtonEntity, SelectEntity, NumberEntity)
+    # Create bridge entities for UI configuration (affecting config_entry.data only)
+    for config_key, config_info in BRIDGE_CONFIG_MAPPING.items():
+        entity_type = config_info["type"]
+        
+        if entity_type == "number":
+            entities.append(
+                AdaptiveClimateConfigBridge(
+                    hass, config_entry, device_info, config_key, config_info
+                )
+            )
+        elif entity_type == "switch":
+            entities.append(
+                AdaptiveClimateSwitchBridge(
+                    hass, config_entry, device_info, config_key, config_info
+                )
+            )
+        elif entity_type == "select":
+            entities.append(
+                AdaptiveClimateSelectBridge(
+                    hass, config_entry, device_info, config_key, config_info
+                )
+            )
+    
+    # Add utility buttons for configuration
     entities.extend([
-        # Feature Switches
-        AdaptiveClimateFeatureSwitch(coordinator, config_entry, device_info, "energy_save_mode", "Energy Save Mode"),
-        AdaptiveClimateFeatureSwitch(coordinator, config_entry, device_info, "natural_ventilation_enable", "Natural Ventilation"),
-        AdaptiveClimateFeatureSwitch(coordinator, config_entry, device_info, "adaptive_air_velocity", "Adaptive Air Velocity"),
-        AdaptiveClimateFeatureSwitch(coordinator, config_entry, device_info, "humidity_comfort_enable", "Humidity Comfort"),
-        AdaptiveClimateFeatureSwitch(coordinator, config_entry, device_info, "comfort_precision_mode", "Precision Mode"),
-        AdaptiveClimateFeatureSwitch(coordinator, config_entry, device_info, "use_occupancy_features", "Occupancy Features"),
-        AdaptiveClimateFeatureSwitch(coordinator, config_entry, device_info, "auto_shutdown_enable", "Auto Shutdown"),
-        
-        # Configuration Selects
-        AdaptiveClimateComfortCategorySelect(coordinator, config_entry, device_info),
-        
-        # Configuration Numbers
-        AdaptiveClimateConfigNumber(coordinator, config_entry, device_info, "min_comfort_temp", "Min Comfort Temperature", 15.0, 22.0, 0.1, "°C"),
-        AdaptiveClimateConfigNumber(coordinator, config_entry, device_info, "max_comfort_temp", "Max Comfort Temperature", 25.0, 32.0, 0.1, "°C"),
-        AdaptiveClimateConfigNumber(coordinator, config_entry, device_info, "temperature_change_threshold", "Temperature Threshold", 0.1, 3.0, 0.1, "°C"),
-        AdaptiveClimateConfigNumber(coordinator, config_entry, device_info, "air_velocity", "Air Velocity", 0.0, 2.0, 0.1, "m/s"),
-        AdaptiveClimateConfigNumber(coordinator, config_entry, device_info, "setback_temperature_offset", "Setback Offset", 1.0, 5.0, 0.1, "°C"),
-        
-        # Action Buttons  
-        AdaptiveClimateActionButton(coordinator, config_entry, device_info, "reset_outdoor_history", "Reset Outdoor History"),
-        AdaptiveClimateActionButton(coordinator, config_entry, device_info, "reconfigure_entities", "Reconfigure Entities"),
+        AdaptiveClimateActionButton(
+            hass, config_entry, device_info, 
+            "reset_outdoor_history", "Reset Outdoor History"
+        ),
     ])
     
-    # Sensors (SensorEntity)
+    # Add diagnostic sensors (read-only, from coordinator data)
     entities.extend([
-        # Diagnostic Sensors
-        AdaptiveClimateDiagnosticSensor(coordinator, config_entry, device_info, "current_comfort_temp", "Current Comfort Temperature", "°C"),
-        AdaptiveClimateDiagnosticSensor(coordinator, config_entry, device_info, "outdoor_running_mean", "Outdoor Running Mean", "°C"),
-        AdaptiveClimateDiagnosticSensor(coordinator, config_entry, device_info, "comfort_range_min", "Comfort Range Min", "°C"),
-        AdaptiveClimateDiagnosticSensor(coordinator, config_entry, device_info, "comfort_range_max", "Comfort Range Max", "°C"),
-        
-        # Configuration Status Sensors
-        AdaptiveClimateConfigSensor(coordinator, config_entry, device_info, "climate_entity", "Climate Entity"),
-        AdaptiveClimateConfigSensor(coordinator, config_entry, device_info, "indoor_temp_sensor", "Indoor Temperature Sensor"),
-        AdaptiveClimateConfigSensor(coordinator, config_entry, device_info, "outdoor_temp_sensor", "Outdoor Temperature Sensor"),
-        AdaptiveClimateConfigSensor(coordinator, config_entry, device_info, "occupancy_sensor", "Occupancy Sensor"),
+        AdaptiveClimateDiagnosticSensor(
+            coordinator, config_entry, device_info, 
+            "adaptive_comfort_temp", "Adaptive Comfort Temperature", "°C"
+        ),
+        AdaptiveClimateDiagnosticSensor(
+            coordinator, config_entry, device_info,
+            "outdoor_running_mean", "Outdoor Running Mean", "°C"
+        ),
+        AdaptiveClimateDiagnosticSensor(
+            coordinator, config_entry, device_info,
+            "comfort_temp_min", "Comfort Range Min", "°C"
+        ),
+        AdaptiveClimateDiagnosticSensor(
+            coordinator, config_entry, device_info,
+            "comfort_temp_max", "Comfort Range Max", "°C" 
+        ),
     ])
     
     async_add_entities(entities)
 
 
-class AdaptiveClimateFeatureSwitch(SwitchEntity):
-    """Switch entity for controlling adaptive climate features."""
+# === BRIDGE ENTITY BASE CLASS (UI ONLY) ===
+
+class AdaptiveClimateUIBridgeEntity:
+    """Base class for bridge entities that provide UI interface to config_entry.data.
     
-    def __init__(self, coordinator, config_entry: ConfigEntry, device_info: DeviceInfo, option_key: str, name: str):
-        """Initialize the switch."""
-        self.coordinator = coordinator
+    These entities act only as UI configuration interface without affecting the core
+    coordinator logic. The coordinator continues to work normally consulting binary_sensor.
+    """
+    
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, device_info: DeviceInfo, 
+                 config_key: str, config_info: dict[str, Any]):
+        """Initialize the UI bridge entity."""
+        self.hass = hass
         self.config_entry = config_entry
         self._device_info = device_info
-        self._option_key = option_key
-        self._attr_name = name
-        self._attr_unique_id = f"{config_entry.entry_id}_{option_key}"
-        # Removed EntityCategory.CONFIG to show entities in Controls tab instead of Configuration
-        # self._attr_entity_category = EntityCategory.CONFIG
+        self._config_key = config_key
+        self._config_info = config_info
         
+        # Set entity attributes
+        self._attr_unique_id = f"{config_entry.entry_id}_ui_{config_key}"
+        self._attr_name = config_info["name"]
+        self._attr_icon = config_info.get("icon")
+        
+        # Show in Controls tab for easy access
+        # self._attr_entity_category = EntityCategory.CONFIG
+    
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info."""
         return self._device_info
+    
+    @property
+    def native_value(self) -> Any:
+        """Return current value from config_entry.data."""
+        default_value = self._config_info.get("default")
+        return self.config_entry.data.get(self._config_key, default_value)
+    
+    async def async_set_native_value(self, value: Any) -> None:
+        """Update value in config_entry.data (UI interface only)."""
+        try:
+            # Update config_entry.data for persistence
+            new_data = {**self.config_entry.data, self._config_key: value}
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data=new_data
+            )
+            
+            _LOGGER.debug("UI Bridge updated config_entry.data: %s = %s", self._config_key, value)
+            
+        except Exception as err:
+            _LOGGER.error("Error updating config_entry.data via UI bridge %s = %s: %s", 
+                         self._config_key, value, err)
+            raise
+
+
+# === BRIDGE ENTITY IMPLEMENTATIONS (UI ONLY) ===
+
+class AdaptiveClimateConfigBridge(AdaptiveClimateUIBridgeEntity, NumberEntity):
+    """Number entity bridge for UI configuration of numeric values."""
+    
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, device_info: DeviceInfo,
+                 config_key: str, config_info: dict[str, Any]):
+        """Initialize the number bridge entity."""
+        super().__init__(hass, config_entry, device_info, config_key, config_info)
+        
+        # Set number-specific attributes from config mapping
+        self._attr_native_min_value = config_info.get("min", 0)
+        self._attr_native_max_value = config_info.get("max", 100) 
+        self._attr_native_step = config_info.get("step", 1)
+        self._attr_native_unit_of_measurement = config_info.get("unit")
+        self._attr_mode = "slider"  # Use slider mode for better UX
+
+
+class AdaptiveClimateSwitchBridge(AdaptiveClimateUIBridgeEntity, SwitchEntity):
+    """Switch entity bridge for UI configuration of boolean values."""
     
     @property
     def is_on(self) -> bool:
         """Return if the switch is on."""
-        return self.config_entry.options.get(self._option_key, False)
+        value = self.native_value
+        return bool(value) if value is not None else False
     
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        new_options = dict(self.config_entry.options)
-        new_options[self._option_key] = True
-        self.hass.config_entries.async_update_entry(self.config_entry, options=new_options)
+        await self.async_set_native_value(True)
         
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        new_options = dict(self.config_entry.options)
-        new_options[self._option_key] = False
-        self.hass.config_entries.async_update_entry(self.config_entry, options=new_options)
+        await self.async_set_native_value(False)
 
 
-class AdaptiveClimateComfortCategorySelect(SelectEntity):
-    """Select entity for comfort category selection."""
+class AdaptiveClimateSelectBridge(AdaptiveClimateUIBridgeEntity, SelectEntity):
+    """Select entity bridge for UI configuration of choice values."""
     
-    def __init__(self, coordinator, config_entry: ConfigEntry, device_info: DeviceInfo):
-        """Initialize the select."""
-        self.coordinator = coordinator
-        self.config_entry = config_entry
-        self._device_info = device_info
-        self._attr_name = "Comfort Category"
-        self._attr_unique_id = f"{config_entry.entry_id}_comfort_category"
-        # Removed EntityCategory.CONFIG to show entities in Controls tab instead of Configuration
-        # self._attr_entity_category = EntityCategory.CONFIG
-        self._attr_options = ["I", "II", "III"]
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, device_info: DeviceInfo,
+                 config_key: str, config_info: dict[str, Any]):
+        """Initialize the select bridge entity."""
+        super().__init__(hass, config_entry, device_info, config_key, config_info)
         
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device info."""
-        return self._device_info
+        # Set select-specific attributes
+        self._attr_options = config_info.get("options", [])
     
     @property
     def current_option(self) -> str | None:
         """Return current option."""
-        return self.config_entry.options.get("comfort_category", self.config_entry.data.get("comfort_category", "II"))
+        value = self.native_value
+        return str(value) if value is not None else None
     
     async def async_select_option(self, option: str) -> None:
         """Select new option."""
-        new_options = dict(self.config_entry.options)
-        new_options["comfort_category"] = option
-        self.hass.config_entries.async_update_entry(self.config_entry, options=new_options)
+        await self.async_set_native_value(option)
 
 
-class AdaptiveClimateConfigNumber(NumberEntity):
-    """Number entity for configuration values."""
-    
-    def __init__(self, coordinator, config_entry: ConfigEntry, device_info: DeviceInfo, 
-                 option_key: str, name: str, min_val: float, max_val: float, step: float, unit: str):
-        """Initialize the number."""
-        self.coordinator = coordinator
-        self.config_entry = config_entry
-        self._device_info = device_info
-        self._option_key = option_key
-        self._attr_name = name
-        self._attr_unique_id = f"{config_entry.entry_id}_{option_key}"
-        # Removed EntityCategory.CONFIG to show entities in Controls tab instead of Configuration
-        # self._attr_entity_category = EntityCategory.CONFIG
-        self._attr_native_min_value = min_val
-        self._attr_native_max_value = max_val
-        self._attr_native_step = step
-        self._attr_native_unit_of_measurement = unit
-        
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device info."""
-        return self._device_info
-    
-    @property
-    def native_value(self) -> float | None:
-        """Return current value."""
-        return self.config_entry.options.get(self._option_key)
-    
-    async def async_set_native_value(self, value: float) -> None:
-        """Set new value."""
-        new_options = dict(self.config_entry.options)
-        new_options[self._option_key] = value
-        self.hass.config_entries.async_update_entry(self.config_entry, options=new_options)
-
+# === UTILITY ENTITIES ===
 
 class AdaptiveClimateActionButton(ButtonEntity):
-    """Button entity for actions."""
+    """Button entity for utility actions (UI only)."""
     
-    def __init__(self, coordinator, config_entry: ConfigEntry, device_info: DeviceInfo, action: str, name: str):
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, device_info: DeviceInfo, 
+                 action: str, name: str):
         """Initialize the button."""
-        self.coordinator = coordinator
+        self.hass = hass
         self.config_entry = config_entry
         self._device_info = device_info
         self._action = action
         self._attr_name = name
-        self._attr_unique_id = f"{config_entry.entry_id}_{action}"
-        # Removed EntityCategory.CONFIG to show entities in Controls tab instead of Configuration
-        # self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_unique_id = f"{config_entry.entry_id}_action_{action}"
+        self._attr_icon = "mdi:refresh" if "reset" in action else "mdi:cog"
         
     @property
     def device_info(self) -> DeviceInfo:
@@ -207,60 +356,28 @@ class AdaptiveClimateActionButton(ButtonEntity):
     async def async_press(self) -> None:
         """Handle button press."""
         if self._action == "reset_outdoor_history":
-            # Reset outdoor temperature history
-            if hasattr(self.coordinator, 'reset_outdoor_history'):
-                await self.coordinator.reset_outdoor_history()
-        elif self._action == "reconfigure_entities":
-            # Remove and reconfigure - best approach for entity reconfiguration
-            await self._reconfigure_entities()
-    
-    async def _reconfigure_entities(self) -> None:
-        """Remove entry and trigger reconfiguration."""
-        # This is the recommended approach for reconfiguring entities
-        # since HA doesn't officially support entity reconfiguration in OptionsFlow
-        entry_id = self.config_entry.entry_id
-        title = self.config_entry.title
-        
-        # Store current data for potential recovery
-        import json
-        backup_data = {
-            "data": dict(self.config_entry.data),
-            "options": dict(self.config_entry.options),
-            "title": title
-        }
-        
-        # Store backup in hass.data temporarily
-        if "adaptive_climate_backup" not in self.hass.data:
-            self.hass.data["adaptive_climate_backup"] = {}
-        self.hass.data["adaptive_climate_backup"][entry_id] = backup_data
-        
-        # Remove current entry
-        await self.hass.config_entries.async_remove(entry_id)
-        
-        # Trigger flow discovery to show reconfiguration option
-        self.hass.async_create_task(
-            self.hass.config_entries.flow.async_init(
-                DOMAIN,
-                context={"source": "reconfigure"},
-                data={"previous_entry_id": entry_id}
-            )
-        )
+            # Call coordinator method if available
+            coordinator = self.hass.data[DOMAIN].get(self.config_entry.entry_id)
+            if coordinator and hasattr(coordinator, 'reset_outdoor_history'):
+                await coordinator.reset_outdoor_history()
+                _LOGGER.info("Outdoor temperature history reset via UI button")
 
 
-class AdaptiveClimateDiagnosticSensor(SensorEntity):
-    """Sensor entity for diagnostic information."""
+class AdaptiveClimateDiagnosticSensor(CoordinatorEntity, SensorEntity):
+    """Sensor entity for diagnostic information (read-only)."""
     
-    def __init__(self, coordinator, config_entry: ConfigEntry, device_info: DeviceInfo, 
+    def __init__(self, coordinator, config_entry: ConfigEntry, device_info: DeviceInfo,
                  sensor_key: str, name: str, unit: str | None = None):
-        """Initialize the sensor."""
-        self.coordinator = coordinator
+        """Initialize the diagnostic sensor.""" 
+        super().__init__(coordinator)
         self.config_entry = config_entry
         self._device_info = device_info
         self._sensor_key = sensor_key
         self._attr_name = name
-        self._attr_unique_id = f"{config_entry.entry_id}_{sensor_key}"
+        self._attr_unique_id = f"{config_entry.entry_id}_diag_{sensor_key}"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_native_unit_of_measurement = unit
+        self._attr_icon = "mdi:information"
         
     @property
     def device_info(self) -> DeviceInfo:
@@ -269,40 +386,19 @@ class AdaptiveClimateDiagnosticSensor(SensorEntity):
     
     @property
     def native_value(self) -> Any:
-        """Return sensor value."""
+        """Return sensor value from coordinator data."""
         if hasattr(self.coordinator, 'data') and self.coordinator.data:
-            return self.coordinator.data.get(self._sensor_key)
+            value = self.coordinator.data.get(self._sensor_key)
+            # Round temperature values for better display
+            if isinstance(value, (int, float)) and self._attr_native_unit_of_measurement == "°C":
+                return round(float(value), 1)
+            return value
         return None
-
-
-class AdaptiveClimateConfigSensor(SensorEntity):
-    """Sensor entity for configuration information."""
-    
-    def __init__(self, coordinator, config_entry: ConfigEntry, device_info: DeviceInfo, 
-                 config_key: str, name: str):
-        """Initialize the sensor."""
-        self.coordinator = coordinator
-        self.config_entry = config_entry
-        self._device_info = device_info
-        self._config_key = config_key
-        self._attr_name = name
-        self._attr_unique_id = f"{config_entry.entry_id}_config_{config_key}"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device info."""
-        return self._device_info
     
     @property
-    def native_value(self) -> str | None:
-        """Return config value."""
-        value = self.config_entry.data.get(self._config_key)
-        if value:
-            # Return friendly name if it's an entity
-            if "." in str(value):
-                state = self.hass.states.get(value)
-                if state:
-                    return state.attributes.get("friendly_name", value)
-            return str(value)
-        return "Not configured"
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return (
+            self.coordinator.last_update_success and 
+            self.coordinator.data is not None
+        )
