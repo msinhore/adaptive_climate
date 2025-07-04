@@ -27,7 +27,6 @@ from .const import (
     DEFAULT_AUTO_SHUTDOWN_MINUTES,
     COMFORT_CATEGORIES,
 )
-from .area_helper import AreaBasedConfigHelper
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -210,15 +209,6 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # All entity selectors will show all relevant entities directly
         if user_input is not None:
             _LOGGER.debug("Processing user input: %s", user_input)
-        
-        # Diagnóstico de problemas de áreas e entidades (mantido para debugging)
-        area_helper = AreaBasedConfigHelper(self.hass)
-        issues = area_helper.diagnose_area_entity_issues()
-        if issues:
-            _LOGGER.warning(
-                "Diagnóstico de problemas com áreas e entidades: %s", 
-                issues
-            )
         
         # Create schema without area selector - using only entity selectors
         schema = vol.Schema(

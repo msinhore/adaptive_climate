@@ -7,8 +7,6 @@ from typing import Any, Callable
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import TemplateError
 from homeassistant.helpers import template, area_registry, entity_registry
-
-from .area_helper import get_entities_by_area_and_domain
 from .template_helpers import safe_state, safe_states_list
 
 _LOGGER = logging.getLogger(__name__)
@@ -131,39 +129,64 @@ def _area_domain_entities_function(hass: HomeAssistant) -> Callable:
             else:
                 domain_list = list(domains)
         
-        return get_entities_by_area_and_domain(
-            hass, area_name_or_id, domain_list
-        )
+        # Inline implementation of get_entities_by_area_and_domain
+        area_reg = area_registry.async_get(hass)
+        
+        # Find area by name or ID
+        area_id = area_name_or_id
+        if area_name_or_id and not area_name_or_id.startswith(("area_", "0123456789abcdef")):
+            for a_id, area in area_reg.areas.items():
+                if area.name.lower() == area_name_or_id.lower():
+                    area_id = a_id
+                    break
+        
+        if not area_id:
+            return []
+        
+        ent_reg = entity_registry.async_get(hass)
+        entities = []
+        
+        for entity in ent_reg.entities.values():
+            if entity.disabled:
+                continue
+                
+            if entity.area_id == area_id:
+                if domain_list and entity.domain not in domain_list:
+                    continue
+                    
+                entities.append(entity.entity_id)
+        
+        return entities
     
     return area_domain_entities
 
 
 def _check_area_entities_function(hass: HomeAssistant) -> Callable:
-    """Criar uma função para verificar problemas de entidades em áreas para templates."""
+    """Create a function to check area entity problems for templates."""
     
     def check_area_entities(area_name_or_id: str) -> dict[str, Any]:
-        """Verificar entidades em uma área específica e retornar informações de diagnóstico.
+        """Check entities in a specific area and return diagnostic information.
         
         Args:
-            area_name_or_id: Nome ou ID da área para verificar.
+            area_name_or_id: Name or ID of the area to check.
             
         Returns:
-            Um dicionário com informações sobre entidades na área e possíveis problemas.
+            A dictionary with information about entities in the area and possible issues.
             
-        Exemplo:
+        Example:
             {{ check_area_entities('Living Room') }}
         """
         if not area_name_or_id:
-            return {"error": "É necessário fornecer um nome ou ID de área"}
+            return {"error": "Area name or ID is required"}
         
         area_reg = area_registry.async_get(hass)
         ent_reg = entity_registry.async_get(hass)
         
-        # Encontrar área por nome ou ID
+        # Find area by name or ID
         area = None
         area_id = area_name_or_id
         
-        # Se não for um ID, procurar pelo nome
+        # If not an ID, search by name
         if not area_name_or_id.startswith(("area_", "0123456789abcdef")):
             for a_id, a in area_reg.areas.items():
                 if a.name.lower() == area_name_or_id.lower():
@@ -174,9 +197,9 @@ def _check_area_entities_function(hass: HomeAssistant) -> Callable:
             area = area_reg.async_get_area(area_id)
             
         if not area:
-            return {"error": f"Área '{area_name_or_id}' não encontrada"}
+            return {"error": f"Area '{area_name_or_id}' not found"}
             
-        # Contar entidades por domínio
+        # Count entities by domain
         domain_counts = {}
         entities = []
         
@@ -189,12 +212,12 @@ def _check_area_entities_function(hass: HomeAssistant) -> Callable:
                 domain_counts[domain] = domain_counts.get(domain, 0) + 1
                 entities.append(entity.entity_id)
         
-        # Verificar se há entidades de clima na área
+        # Check if there are climate entities in the area
         climate_entities = [e for e in entities if e.startswith("climate.")]
         sensor_entities = [e for e in entities if e.startswith("sensor.")]
         binary_sensor_entities = [e for e in entities if e.startswith("binary_sensor.")]
         
-        # Verificar se há sensores de temperatura e umidade
+        # Check if there are temperature and humidity sensors
         temp_sensors = []
         humidity_sensors = []
         motion_sensors = []
