@@ -21,10 +21,45 @@
           "indoor_humidity_sensor": "Indoor Humidity Sensor",
           "outdoor_humidity_sensor": "Outdoor Humidity Sensor"
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Adaptive Climate",
+        "description": "Reconfigure the basic entities for your adaptive climate system.",
+        "data": {
+          "name": "Name",
+          "climate_entity": "Climate Entity",
+          "indoor_temp_sensor": "Indoor Temperature Sensor",
+          "outdoor_temp_sensor": "Outdoor Temperature Sensor",
+          "comfort_category": "ASHRAE 55 Comfort Category"
+        }
+      },
+      "optional_sensors_reconfigure": {
+        "title": "Reconfigure Optional Sensors",
+        "description": "Reconfigure optional sensors to enhance comfort calculations.",
+        "data": {
+          "occupancy_sensor": "Occupancy Sensor",
+          "mean_radiant_temp_sensor": "Mean Radiant Temperature Sensor",
+          "indoor_humidity_sensor": "Indoor Humidity Sensor",
+          "outdoor_humidity_sensor": "Outdoor Humidity Sensor"
+        }
       }
     },
     "error": {
-      "entity_not_found": "Entity not found or not available"
+      "entity_not_found": "Entity not found or not available",
+      "min_greater_than_max": "Minimum comfort temperature must be less than maximum comfort temperature",
+      "invalid_time_sequence": "Prolonged absence time must be less than auto shutdown time",
+      "high_air_velocity_warning": "High air velocity (>1.5 m/s) with adaptive velocity enabled may cause discomfort"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Adaptive Climate Options",
+        "description": "Configuration options for Adaptive Climate.\n\nNote: Most settings can be adjusted using the configuration entities in the Controls tab of this device page.",
+        "data": {
+          "action": "Action"
+        }
+      }
     }
   },
   "entity": {
