@@ -92,7 +92,8 @@ class AdaptiveClimateFeatureSwitch(SwitchEntity):
         self._option_key = option_key
         self._attr_name = name
         self._attr_unique_id = f"{config_entry.entry_id}_{option_key}"
-        self._attr_entity_category = EntityCategory.CONFIG
+        # Removed EntityCategory.CONFIG to show entities in Controls tab instead of Configuration
+        # self._attr_entity_category = EntityCategory.CONFIG
         
     @property
     def device_info(self) -> DeviceInfo:
@@ -127,7 +128,8 @@ class AdaptiveClimateComfortCategorySelect(SelectEntity):
         self._device_info = device_info
         self._attr_name = "Comfort Category"
         self._attr_unique_id = f"{config_entry.entry_id}_comfort_category"
-        self._attr_entity_category = EntityCategory.CONFIG
+        # Removed EntityCategory.CONFIG to show entities in Controls tab instead of Configuration
+        # self._attr_entity_category = EntityCategory.CONFIG
         self._attr_options = ["I", "II", "III"]
         
     @property
@@ -159,7 +161,8 @@ class AdaptiveClimateConfigNumber(NumberEntity):
         self._option_key = option_key
         self._attr_name = name
         self._attr_unique_id = f"{config_entry.entry_id}_{option_key}"
-        self._attr_entity_category = EntityCategory.CONFIG
+        # Removed EntityCategory.CONFIG to show entities in Controls tab instead of Configuration
+        # self._attr_entity_category = EntityCategory.CONFIG
         self._attr_native_min_value = min_val
         self._attr_native_max_value = max_val
         self._attr_native_step = step
@@ -193,7 +196,8 @@ class AdaptiveClimateActionButton(ButtonEntity):
         self._action = action
         self._attr_name = name
         self._attr_unique_id = f"{config_entry.entry_id}_{action}"
-        self._attr_entity_category = EntityCategory.CONFIG
+        # Removed EntityCategory.CONFIG to show entities in Controls tab instead of Configuration
+        # self._attr_entity_category = EntityCategory.CONFIG
         
     @property
     def device_info(self) -> DeviceInfo:
