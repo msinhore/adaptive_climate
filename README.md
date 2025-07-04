@@ -8,7 +8,28 @@
 
 A Home Assistant custom component that acts as an intelligent controller for your existing climate entities using the ASHRAE 55 adaptive comfort model. It provides energy-saving features, natural ventilation detection, and comprehensive diagnostic sensors.
 
-**Development Version: 0.1.7**
+**Development Version: 0.1.36**
+
+## 🆕 What's New in 2025.7+ (Modern Device Page)
+
+This version brings a completely modernized device page experience compatible with Home Assistant 2025.7+:
+
+### 📱 Organized Device Interface
+- **Controls Tab**: All configuration switches, numbers, and action buttons
+- **Sensors Tab**: Temperature readings and status information  
+- **Diagnostic Tab**: ASHRAE compliance and system health indicators
+
+### ⚙️ Enhanced Configuration
+- **Dynamic reconfiguration**: Change linked entities without reinstalling
+- **Modern UI selectors**: Improved dropdowns with entity filtering
+- **Real-time validation**: Immediate feedback on configuration changes
+- **Current value defaults**: All options show existing values when editing
+
+### 🎛️ New Control Entities
+- **Comfort Category Selector**: Choose ASHRAE 55 category (I, II, III) 
+- **Temperature Controls**: Adjust target temp, tolerance, and limits
+- **Energy Settings**: Configure setback offsets and auto-shutdown timers
+- **Reconfigure Button**: Easily change linked climate and sensor entities
 
 ## Overview
 
@@ -65,7 +86,30 @@ This component acts as a smart controller/coordinator that enhances your existin
 
 The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
 
-### Basic Configuration
+### 🎯 Device Page Experience
+
+Once configured, navigate to your device page (**Settings** → **Devices & Services** → **Adaptive Climate** → **[Your Device]**) to access:
+
+#### Controls Tab
+- **Adaptive Climate Enabled**: Master on/off switch
+- **Comfort Category**: Select ASHRAE 55 category (I, II, III)
+- **Target Temperature**: Set desired temperature
+- **Temperature Tolerance**: Comfort range adjustment
+- **Min/Max Comfort Temperatures**: Safety limits
+- **Air Velocity**: Natural ventilation factor
+- **Energy Settings**: Setback offsets and timers
+- **Reconfigure Entities**: Change linked devices
+
+#### Sensors Tab  
+- **Indoor/Outdoor Temperatures**: Current readings
+- **Comfort Range**: Calculated min/max comfort temperatures
+- **Status**: System operational state
+
+#### Diagnostic Tab
+- **ASHRAE Compliance**: Real-time comfort standard compliance
+- **Natural Ventilation**: Optimal ventilation conditions indicator
+
+### 🔧 Initial Setup
 
 - **Name**: Unique name for your adaptive climate controller
 - **Area**: Select the area to filter relevant entities
@@ -202,11 +246,17 @@ data:
 
 ## Compatibility
 
-- **Home Assistant**: 2025.6.0+
+- **Home Assistant**: 2025.6.0+ (Full 2025.7+ device page features)
 - **Python**: 3.12+
 - **HACS**: 2.0.0+
 - **SmartIR**: Full compatibility with IR-controlled devices
 - **Generic Thermostats**: Works with any Home Assistant climate entity
+
+### 🆕 2025.7+ Features
+- Modern device page with organized Controls/Sensors/Diagnostic tabs
+- Dynamic entity reconfiguration without reinstalling integration
+- Enhanced selectors with current value defaults
+- Improved entity categorization for better UI organization
 
 ## Troubleshooting
 
@@ -249,4 +299,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Development Version**: 0.1.7
+**Development Version**: 0.1.36  
+**Device Page**: Modernized for Home Assistant 2025.7+  
+**Testing Guide**: See [TESTING_GUIDE.md](TESTING_GUIDE.md) for validation steps

@@ -34,6 +34,14 @@ async def async_setup_entry(
         AdaptiveAirVelocitySwitch(coordinator, config_entry),
         HumidityComfortEnableSwitch(coordinator, config_entry),
         AutoShutdownEnableSwitch(coordinator, config_entry),
+        # New configuration switches for Controls tab
+        AdaptiveClimateConfigSwitch(coordinator, config_entry, "energy_save_mode", "Energy Save Mode", "mdi:leaf"),
+        AdaptiveClimateConfigSwitch(coordinator, config_entry, "natural_ventilation_enable", "Natural Ventilation", "mdi:window-open"),
+        AdaptiveClimateConfigSwitch(coordinator, config_entry, "adaptive_air_velocity", "Adaptive Air Velocity", "mdi:fan"),
+        AdaptiveClimateConfigSwitch(coordinator, config_entry, "humidity_comfort_enable", "Humidity Comfort", "mdi:water-percent"),
+        AdaptiveClimateConfigSwitch(coordinator, config_entry, "comfort_precision_mode", "Precision Mode", "mdi:target"),
+        AdaptiveClimateConfigSwitch(coordinator, config_entry, "use_occupancy_features", "Occupancy Features", "mdi:motion-sensor"),
+        AdaptiveClimateConfigSwitch(coordinator, config_entry, "auto_shutdown_enable", "Auto Shutdown", "mdi:power"),
     ]
     
     async_add_entities(entities)
@@ -281,6 +289,50 @@ class AutoShutdownEnableSwitch(AdaptiveClimateSwitchBase):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
         await self.coordinator.update_config({"auto_shutdown_enable": False})
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.last_update_success
+
+
+class AdaptiveClimateConfigSwitch(CoordinatorEntity, SwitchEntity):
+    """Switch entity for configuration options (appears in Controls tab)."""
+
+    def __init__(self, coordinator: AdaptiveClimateCoordinator, config_entry: ConfigEntry, 
+                 option_key: str, name: str, icon: str) -> None:
+        """Initialize the config switch entity."""
+        super().__init__(coordinator)
+        self.config_entry = config_entry
+        self._option_key = option_key
+        self._attr_unique_id = f"{config_entry.entry_id}_config_{option_key}"
+        self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} {name}"
+        self._attr_icon = icon
+        self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, config_entry.entry_id)},
+            "name": config_entry.data.get("name", "Adaptive Climate"),
+            "manufacturer": "ASHRAE",
+            "model": "Adaptive Climate Controller",
+            "sw_version": VERSION,
+        }
+
+    @property
+    def is_on(self) -> bool:
+        """Return true if the option is enabled."""
+        return self.config_entry.options.get(self._option_key, False)
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn the option on."""
+        new_options = dict(self.config_entry.options)
+        new_options[self._option_key] = True
+        self.hass.config_entries.async_update_entry(self.config_entry, options=new_options)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn the option off."""
+        new_options = dict(self.config_entry.options)
+        new_options[self._option_key] = False
+        self.hass.config_entries.async_update_entry(self.config_entry, options=new_options)
 
     @property
     def available(self) -> bool:

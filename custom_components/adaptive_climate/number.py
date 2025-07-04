@@ -48,6 +48,14 @@ async def async_setup_entry(
         SetbackTemperatureOffsetNumber(coordinator, config_entry),
         ProlongedAbsenceMinutesNumber(coordinator, config_entry),
         AutoShutdownMinutesNumber(coordinator, config_entry),
+        # Configuration numbers for Controls tab
+        AdaptiveClimateConfigNumber(coordinator, config_entry, "min_comfort_temp", "Min Comfort Temperature", 15.0, 22.0, 0.1, "°C"),
+        AdaptiveClimateConfigNumber(coordinator, config_entry, "max_comfort_temp", "Max Comfort Temperature", 25.0, 32.0, 0.1, "°C"),
+        AdaptiveClimateConfigNumber(coordinator, config_entry, "temperature_change_threshold", "Temperature Threshold", 0.1, 3.0, 0.1, "°C"),
+        AdaptiveClimateConfigNumber(coordinator, config_entry, "air_velocity", "Air Velocity", 0.0, 2.0, 0.1, "m/s"),
+        AdaptiveClimateConfigNumber(coordinator, config_entry, "setback_temperature_offset", "Setback Offset", 1.0, 5.0, 0.1, "°C"),
+        AdaptiveClimateConfigNumber(coordinator, config_entry, "prolonged_absence_minutes", "Prolonged Absence", 10, 240, 1, "min"),
+        AdaptiveClimateConfigNumber(coordinator, config_entry, "auto_shutdown_minutes", "Auto Shutdown", 15, 480, 1, "min"),
     ]
     
     async_add_entities(entities)
@@ -314,6 +322,58 @@ class ProlongedAbsenceMinutesNumber(AdaptiveClimateNumberBase):
         """Set the value."""
         self._attr_native_value = value
         await self.coordinator.update_config({"prolonged_absence_minutes": value})
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.last_update_success
+
+
+class AdaptiveClimateConfigNumber(CoordinatorEntity, NumberEntity):
+    """Number entity for configuration values (appears in Controls tab)."""
+    
+    def __init__(self, coordinator: AdaptiveClimateCoordinator, config_entry: ConfigEntry, 
+                 option_key: str, name: str, min_val: float, max_val: float, step: float, unit: str):
+        """Initialize the number."""
+        super().__init__(coordinator)
+        self.config_entry = config_entry
+        self._option_key = option_key
+        self._attr_unique_id = f"{config_entry.entry_id}_config_{option_key}"
+        self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} {name}"
+        self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_native_min_value = min_val
+        self._attr_native_max_value = max_val
+        self._attr_native_step = step
+        self._attr_native_unit_of_measurement = unit
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, config_entry.entry_id)},
+            "name": config_entry.data.get("name", "Adaptive Climate"),
+            "manufacturer": "ASHRAE",
+            "model": "Adaptive Climate Controller",
+            "sw_version": VERSION,
+        }
+        
+        # Set appropriate device class and icon based on unit
+        if unit == "°C":
+            self._attr_device_class = NumberDeviceClass.TEMPERATURE
+            self._attr_icon = "mdi:thermometer"
+        elif unit == "m/s":
+            self._attr_icon = "mdi:fan"
+        elif unit == "min":
+            self._attr_icon = "mdi:clock-outline"
+        else:
+            self._attr_icon = "mdi:tune"
+        
+    @property
+    def native_value(self) -> float | None:
+        """Return current value."""
+        return self.config_entry.options.get(self._option_key)
+    
+    async def async_set_native_value(self, value: float) -> None:
+        """Set new value."""
+        new_options = dict(self.config_entry.options)
+        new_options[self._option_key] = value
+        self.hass.config_entries.async_update_entry(self.config_entry, options=new_options)
 
     @property
     def available(self) -> bool:

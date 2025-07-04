@@ -239,6 +239,114 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.config_data.update(user_input)
         return await self.async_step_optional_sensors()
 
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle reconfiguration flow."""
+        # Check if we have backup data
+        previous_entry_id = self.context.get("previous_entry_id")
+        if previous_entry_id and "adaptive_climate_backup" in self.hass.data:
+            backup_data = self.hass.data["adaptive_climate_backup"].get(previous_entry_id)
+            if backup_data:
+                # Pre-populate with backup data
+                self.config_data = backup_data["data"].copy()
+        
+        if user_input is None:
+            # Create schema with previous values as defaults if available
+            schema = vol.Schema(
+                {
+                    vol.Required(CONF_NAME, default=self.config_data.get(CONF_NAME, "Adaptive Climate")): str,
+                    vol.Required("climate_entity", default=self.config_data.get("climate_entity", "")): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="climate")
+                    ),
+                    vol.Required("indoor_temp_sensor", default=self.config_data.get("indoor_temp_sensor", "")): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor", "input_number", "weather"],
+                            device_class=["temperature"]
+                        )
+                    ),
+                    vol.Required("outdoor_temp_sensor", default=self.config_data.get("outdoor_temp_sensor", "")): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor", "input_number", "weather"],
+                            device_class=["temperature", "weather"]
+                        )
+                    ),
+                    vol.Optional("comfort_category", default=self.config_data.get("comfort_category", DEFAULT_COMFORT_CATEGORY)): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[
+                                {"value": "I", "label": f"Category I - {COMFORT_CATEGORIES['I']['description']}"},
+                                {"value": "II", "label": f"Category II - {COMFORT_CATEGORIES['II']['description']}"},
+                                {"value": "III", "label": f"Category III - {COMFORT_CATEGORIES['III']['description']}"},
+                            ],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                }
+            )
+            return self.async_show_form(step_id="reconfigure", data_schema=schema)
+
+        errors = {}
+
+        # Validate that entities exist
+        registry = async_get_entity_registry(self.hass)
+        for field in ["climate_entity", "indoor_temp_sensor", "outdoor_temp_sensor"]:
+            entity_id = user_input[field]
+            if not registry.async_is_registered(entity_id):
+                if entity_id not in self.hass.states.async_entity_ids():
+                    errors[field] = "entity_not_found"
+
+        if errors:
+            schema = vol.Schema(
+                {
+                    vol.Required(CONF_NAME, default=user_input.get(CONF_NAME, "Adaptive Climate")): str,
+                    vol.Required("climate_entity", default=user_input.get("climate_entity", "")): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="climate")
+                    ),
+                    vol.Required("indoor_temp_sensor", default=user_input.get("indoor_temp_sensor", "")): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor", "input_number", "weather"],
+                            device_class=["temperature"]
+                        )
+                    ),
+                    vol.Required("outdoor_temp_sensor", default=user_input.get("outdoor_temp_sensor", "")): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor", "input_number", "weather"],
+                            device_class=["temperature", "weather"]
+                        )
+                    ),
+                    vol.Optional("comfort_category", default=user_input.get("comfort_category", DEFAULT_COMFORT_CATEGORY)): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[
+                                {"value": "I", "label": f"Category I - {COMFORT_CATEGORIES['I']['description']}"},
+                                {"value": "II", "label": f"Category II - {COMFORT_CATEGORIES['II']['description']}"},
+                                {"value": "III", "label": f"Category III - {COMFORT_CATEGORIES['III']['description']}"},
+                            ],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                }
+            )
+            return self.async_show_form(
+                step_id="reconfigure", data_schema=schema, errors=errors
+            )
+
+        # Update config data with user inputs
+        self.config_data.update(user_input)
+        
+        # Restore previous options if available
+        previous_entry_id = self.context.get("previous_entry_id")
+        if previous_entry_id and "adaptive_climate_backup" in self.hass.data:
+            backup_data = self.hass.data["adaptive_climate_backup"].get(previous_entry_id)
+            if backup_data:
+                # Use previous options
+                previous_options = backup_data.get("options", {})
+            else:
+                previous_options = {}
+        else:
+            previous_options = {}
+        
+        return await self.async_step_optional_sensors_reconfigure(previous_options)
+
     async def async_step_optional_sensors(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:

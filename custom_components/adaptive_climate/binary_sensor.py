@@ -44,7 +44,8 @@ class AdaptiveClimateBinarySensorBase(CoordinatorEntity, BinarySensorEntity):
         super().__init__(coordinator)
         self.config_entry = config_entry
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, config_entry.entry_id)},            "name": config_entry.data.get("name", "Adaptive Climate"),
+            "identifiers": {(DOMAIN, config_entry.entry_id)},
+            "name": config_entry.data.get("name", "Adaptive Climate"),
             "manufacturer": "ASHRAE",
             "model": "Adaptive Climate Controller",
             "sw_version": VERSION,

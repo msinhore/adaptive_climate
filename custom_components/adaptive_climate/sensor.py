@@ -33,6 +33,14 @@ async def async_setup_entry(
     entities = [
         AdaptiveComfortTemperatureSensor(coordinator, config_entry),
         OutdoorRunningMeanSensor(coordinator, config_entry),
+        # Diagnostic sensors for Controls/Sensors tabs
+        AdaptiveClimateConfigSensor(coordinator, config_entry, "climate_entity", "Climate Entity"),
+        AdaptiveClimateConfigSensor(coordinator, config_entry, "indoor_temp_sensor", "Indoor Temperature Sensor"),
+        AdaptiveClimateConfigSensor(coordinator, config_entry, "outdoor_temp_sensor", "Outdoor Temperature Sensor"),
+        AdaptiveClimateConfigSensor(coordinator, config_entry, "occupancy_sensor", "Occupancy Sensor"),
+        AdaptiveClimateConfigSensor(coordinator, config_entry, "mean_radiant_temp_sensor", "Mean Radiant Temperature Sensor"),
+        AdaptiveClimateConfigSensor(coordinator, config_entry, "indoor_humidity_sensor", "Indoor Humidity Sensor"),
+        AdaptiveClimateConfigSensor(coordinator, config_entry, "outdoor_humidity_sensor", "Outdoor Humidity Sensor"),
     ]
     
     async_add_entities(entities)
@@ -139,3 +147,61 @@ class OutdoorRunningMeanSensor(AdaptiveClimateSensorBase):
             "calculation_period": "7 days",
             "current_outdoor_temp": self.coordinator.data.get("outdoor_temperature"),
         }
+
+
+class AdaptiveClimateConfigSensor(CoordinatorEntity, SensorEntity):
+    """Sensor entity for configuration information (appears in Sensors tab)."""
+    
+    def __init__(self, coordinator: AdaptiveClimateCoordinator, config_entry: ConfigEntry, 
+                 config_key: str, name: str):
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self.config_entry = config_entry
+        self._config_key = config_key
+        self._attr_unique_id = f"{config_entry.entry_id}_config_{config_key}"
+        self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} {name}"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_icon = "mdi:information-outline"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, config_entry.entry_id)},
+            "name": config_entry.data.get("name", "Adaptive Climate"),
+            "manufacturer": "ASHRAE",
+            "model": "Adaptive Climate Controller",
+            "sw_version": VERSION,
+        }
+        
+    @property
+    def native_value(self) -> str | None:
+        """Return config value."""
+        value = self.config_entry.data.get(self._config_key)
+        if value:
+            # Return friendly name if it's an entity
+            if "." in str(value):
+                state = self.hass.states.get(value)
+                if state:
+                    return state.attributes.get("friendly_name", value)
+            return str(value)
+        return "Not configured"
+    
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes."""
+        value = self.config_entry.data.get(self._config_key)
+        attributes = {}
+        
+        if value and "." in str(value):
+            # Add entity information for configured entities
+            state = self.hass.states.get(value)
+            if state:
+                attributes["entity_id"] = value
+                attributes["domain"] = value.split(".")[0]
+                attributes["device_class"] = state.attributes.get("device_class")
+                attributes["unit_of_measurement"] = state.attributes.get("unit_of_measurement")
+                attributes["current_state"] = state.state
+                
+        return attributes
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.last_update_success
