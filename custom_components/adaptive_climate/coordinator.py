@@ -453,34 +453,119 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         # Determine target temperature
         target_temp = comfort_temp
         
-        # Verificar se desligamento automático está ativo e se não está ocupado
+        # Check if auto shutdown is enabled and environment is unoccupied
         auto_shutdown_enable = self.config.get("auto_shutdown_enable", False)
         prolonged_absence_minutes = self.config.get("prolonged_absence_minutes", 60)
-        
+
+        _LOGGER.debug(
+            "Auto shutdown check: occupied=%s, auto_shutdown_enable=%s, prolonged_absence_minutes=%d",
+            self._occupied, auto_shutdown_enable, prolonged_absence_minutes
+        )
+
         if not self._occupied and auto_shutdown_enable:
-            # Verificar há quanto tempo está desocupado
+            # Check how long the environment has been unoccupied
             occupancy_state = self.hass.states.get(self.occupancy_entity_id) if self.occupancy_entity_id else None
+
+            _LOGGER.debug(
+                "Occupancy entity: %s, state: %s", 
+                self.occupancy_entity_id, 
+                occupancy_state.state if occupancy_state else "None"
+            )
+
             if occupancy_state and occupancy_state.last_changed:
                 time_since_last_presence = dt_util.now() - occupancy_state.last_changed
                 minutes_absent = time_since_last_presence.total_seconds() / 60
-                
-                # Se estiver ausente há mais tempo que o configurado, desligar o AC
+
+                _LOGGER.debug(
+                    "Absence calculation: last_changed=%s, time_since=%s, minutes_absent=%.1f, threshold=%d",
+                    occupancy_state.last_changed, time_since_last_presence, minutes_absent, prolonged_absence_minutes
+                )
+
+                # If absent for longer than configured threshold, turn off AC
                 if minutes_absent >= prolonged_absence_minutes:
                     current_hvac_mode = climate_state.state
+                    
+                    _LOGGER.info(
+                        "Auto shutdown condition met: absent for %.1f minutes (threshold: %d), current HVAC mode: %s",
+                        minutes_absent, prolonged_absence_minutes, current_hvac_mode
+                    )
+
                     if current_hvac_mode != HVACMode.OFF:
                         actions["set_hvac_mode"] = HVACMode.OFF
-                        actions["reason"] = f"auto_shutdown after {prolonged_absence_minutes} min absence"
+                        actions["reason"] = f"Auto shutdown after {minutes_absent:.1f} min absence (threshold: {prolonged_absence_minutes} min)"
+                        
+                        _LOGGER.warning(
+                            "AUTO SHUTDOWN TRIGGERED: Setting HVAC to OFF after %.1f minutes absence. "
+                            "Current mode: %s, Manual override: %s",
+                            minutes_absent, current_hvac_mode, self._manual_override
+                        )
+                        
+                        # Log the exact action that will be executed
+                        _LOGGER.info(
+                            "Auto shutdown action: %s", 
+                            {k: v for k, v in actions.items() if v is not None}
+                        )
+                        
+                        # Return immediately with shutdown action - skip all other logic
                         return actions
-        
-        # Apply occupancy setback if unoccupied
+                    else:
+                        # Already off due to auto shutdown - don't apply any setback or other logic
+                        actions["reason"] = f"Already off - absent for {minutes_absent:.1f} min"
+                        _LOGGER.debug("HVAC already off due to auto shutdown")
+                        
+                        # Return immediately since system is already off
+                        return actions
+                else:
+                    remaining_minutes = prolonged_absence_minutes - minutes_absent
+                    _LOGGER.debug(
+                        "Auto shutdown countdown: %.1f min absent, %.1f min remaining until shutdown",
+                        minutes_absent, remaining_minutes
+                    )
+            else:
+                _LOGGER.warning(
+                    "Cannot determine absence duration - occupancy_entity_id: %s, occupancy_state: %s, last_changed: %s",
+                    self.occupancy_entity_id,
+                    occupancy_state.state if occupancy_state else "None",
+                    occupancy_state.last_changed if occupancy_state else "None"
+                )
+        else:
+            if self._occupied:
+                _LOGGER.debug("Auto shutdown skipped: environment is occupied")
+            if not auto_shutdown_enable:
+                _LOGGER.debug("Auto shutdown skipped: feature is disabled")
+
+        # Apply occupancy setback if unoccupied (but only if auto shutdown didn't trigger)
         if not self._occupied:
             setback_offset = self.config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
+            
+            # Determine if we need heating or cooling based on current indoor temperature
             if indoor_temp > comfort_temp:
-                target_temp = comfort_temp + setback_offset
+                # If too warm, apply setback by allowing higher temperature (less cooling)
+                # But never exceed max comfort temperature
+                target_temp = min(comfort_temp + setback_offset, comfort_max)
             else:
-                target_temp = comfort_temp - setback_offset
-            actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset"
-        
+                # If too cool, apply setback by allowing lower temperature (less heating)  
+                # But never go below min comfort temperature
+                target_temp = max(comfort_temp - setback_offset, comfort_min)
+            
+            # Log the setback logic for debugging
+            original_setback = comfort_temp + setback_offset if indoor_temp > comfort_temp else comfort_temp - setback_offset
+            was_clamped = original_setback != target_temp
+            
+            if was_clamped:
+                if indoor_temp > comfort_temp:
+                    actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset, clamped to max comfort {comfort_max:.1f}°C"
+                else:
+                    actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset, clamped to min comfort {comfort_min:.1f}°C"
+            else:
+                actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset"
+            
+            _LOGGER.debug("Setback applied: target_temp=%.1f°C, was_clamped=%s", target_temp, was_clamped)
+        else:
+            # When occupied, use the comfort temperature directly
+            target_temp = comfort_temp
+            actions["reason"] = "Occupied - using comfort temperature"
+
         # Check if temperature change is significant enough
         current_target = float(climate_state.attributes.get(ATTR_TEMPERATURE, 0))
         temp_threshold = self.config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
