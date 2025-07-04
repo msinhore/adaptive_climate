@@ -17,6 +17,14 @@ from .const import (
     DOMAIN,
     DEFAULT_COMFORT_CATEGORY,
     COMFORT_CATEGORIES,
+    DEFAULT_MIN_COMFORT_TEMP,
+    DEFAULT_MAX_COMFORT_TEMP,
+    DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
+    DEFAULT_AIR_VELOCITY,
+    DEFAULT_NATURAL_VENTILATION_THRESHOLD,
+    DEFAULT_SETBACK_TEMPERATURE_OFFSET,
+    DEFAULT_PROLONGED_ABSENCE_MINUTES,
+    DEFAULT_AUTO_SHUTDOWN_MINUTES,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -83,6 +91,75 @@ OPTIONAL_SENSORS_SCHEMA = vol.Schema(
     }
 )
 
+# Configuration parameters schema for third step
+CONFIGURATION_SCHEMA = vol.Schema(
+    {
+        # Temperature Limits
+        vol.Optional("min_comfort_temp", default=DEFAULT_MIN_COMFORT_TEMP): selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=10, max=30, step=0.5, unit_of_measurement="°C",
+                mode=selector.NumberSelectorMode.SLIDER
+            )
+        ),
+        vol.Optional("max_comfort_temp", default=DEFAULT_MAX_COMFORT_TEMP): selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=20, max=40, step=0.5, unit_of_measurement="°C",
+                mode=selector.NumberSelectorMode.SLIDER
+            )
+        ),
+        vol.Optional("temperature_change_threshold", default=DEFAULT_TEMPERATURE_CHANGE_THRESHOLD): selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=0.1, max=5.0, step=0.1, unit_of_measurement="°C",
+                mode=selector.NumberSelectorMode.BOX
+            )
+        ),
+        
+        # Air Velocity & Natural Ventilation
+        vol.Optional("air_velocity", default=DEFAULT_AIR_VELOCITY): selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=0.0, max=2.0, step=0.1, unit_of_measurement="m/s",
+                mode=selector.NumberSelectorMode.SLIDER
+            )
+        ),
+        vol.Optional("adaptive_air_velocity", default=False): selector.BooleanSelector(),
+        vol.Optional("natural_ventilation_enable", default=True): selector.BooleanSelector(),
+        vol.Optional("natural_ventilation_threshold", default=DEFAULT_NATURAL_VENTILATION_THRESHOLD): selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=0.5, max=10.0, step=0.5, unit_of_measurement="°C",
+                mode=selector.NumberSelectorMode.SLIDER
+            )
+        ),
+        
+        # Occupancy & Energy Settings
+        vol.Optional("use_occupancy_features", default=True): selector.BooleanSelector(),
+        vol.Optional("energy_save_mode", default=True): selector.BooleanSelector(),
+        vol.Optional("setback_temperature_offset", default=DEFAULT_SETBACK_TEMPERATURE_OFFSET): selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=-5.0, max=5.0, step=0.5, unit_of_measurement="°C",
+                mode=selector.NumberSelectorMode.SLIDER
+            )
+        ),
+        vol.Optional("prolonged_absence_minutes", default=DEFAULT_PROLONGED_ABSENCE_MINUTES): selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=5, max=480, step=5, unit_of_measurement="min",
+                mode=selector.NumberSelectorMode.BOX
+            )
+        ),
+        vol.Optional("auto_shutdown_enable", default=False): selector.BooleanSelector(),
+        vol.Optional("auto_shutdown_minutes", default=DEFAULT_AUTO_SHUTDOWN_MINUTES): selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=30, max=1440, step=30, unit_of_measurement="min",
+                mode=selector.NumberSelectorMode.BOX
+            )
+        ),
+        
+        # Advanced Settings
+        vol.Optional("comfort_precision_mode", default=False): selector.BooleanSelector(),
+        vol.Optional("use_operative_temperature", default=False): selector.BooleanSelector(),
+        vol.Optional("humidity_comfort_enable", default=True): selector.BooleanSelector(),
+    }
+)
+
 
 class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Adaptive Climate."""
@@ -137,6 +214,23 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         # Update config data with optional sensors
+        self.config_data.update(user_input)
+        return await self.async_step_configuration()
+
+    async def async_step_configuration(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle configuration parameters step."""
+        if user_input is None:
+            return self.async_show_form(
+                step_id="configuration", 
+                data_schema=CONFIGURATION_SCHEMA,
+                description_placeholders={
+                    "device_name": self.config_data.get(CONF_NAME, "Adaptive Climate")
+                }
+            )
+
+        # Update config data with configuration parameters
         self.config_data.update(user_input)
 
         # Create unique ID based on climate entity to prevent duplicates

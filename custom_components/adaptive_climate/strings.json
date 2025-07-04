@@ -21,6 +21,28 @@
           "indoor_humidity_sensor": "Indoor Humidity Sensor",
           "outdoor_humidity_sensor": "Outdoor Humidity Sensor"
         }
+      },
+      "configuration": {
+        "title": "Configuration Parameters",
+        "description": "Configure initial comfort and energy parameters for {device_name}. These can be adjusted later using Home Assistant services.",
+        "data": {
+          "min_comfort_temp": "Minimum Comfort Temperature",
+          "max_comfort_temp": "Maximum Comfort Temperature", 
+          "temperature_change_threshold": "Temperature Change Threshold",
+          "air_velocity": "Air Velocity",
+          "adaptive_air_velocity": "Adaptive Air Velocity",
+          "natural_ventilation_enable": "Enable Natural Ventilation",
+          "natural_ventilation_threshold": "Natural Ventilation Temperature Threshold",
+          "use_occupancy_features": "Use Occupancy Features",
+          "energy_save_mode": "Energy Save Mode",
+          "setback_temperature_offset": "Setback Temperature Offset",
+          "prolonged_absence_minutes": "Prolonged Absence Detection (minutes)",
+          "auto_shutdown_enable": "Enable Auto Shutdown",
+          "auto_shutdown_minutes": "Auto Shutdown After (minutes)",
+          "comfort_precision_mode": "High Precision Mode",
+          "use_operative_temperature": "Use Operative Temperature",
+          "humidity_comfort_enable": "Enable Humidity Corrections"
+        }
       }
     },
     "error": {
