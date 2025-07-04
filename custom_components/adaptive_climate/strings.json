@@ -44,6 +44,16 @@
           "prolonged_absence_minutes": "Prolonged Absence Time (minutes)",
           "auto_shutdown_minutes": "Auto Shutdown Time (minutes)"
         }
+      },
+      "optional_sensors": {
+        "title": "Optional Sensors",
+        "description": "Configure optional sensors to enhance comfort calculations. All sensors are optional and can be added later.",
+        "data": {
+          "occupancy_sensor": "Occupancy Sensor (Optional)",
+          "mean_radiant_temp_sensor": "Mean Radiant Temperature Sensor (Optional)",
+          "indoor_humidity_sensor": "Indoor Humidity Sensor (Optional)",
+          "outdoor_humidity_sensor": "Outdoor Humidity Sensor (Optional)"
+        }
       }
     },
     "error": {

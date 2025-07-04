@@ -44,6 +44,16 @@
           "prolonged_absence_minutes": "Tempo de Ausência Prolongada (minutos)",
           "auto_shutdown_minutes": "Tempo para Desligamento Automático (minutos)"
         }
+      },
+      "optional_sensors": {
+        "title": "Sensores Opcionais",
+        "description": "Configure sensores opcionais para melhorar os cálculos de conforto. Todos os sensores são opcionais e podem ser adicionados posteriormente.",
+        "data": {
+          "occupancy_sensor": "Sensor de Ocupação (Opcional)",
+          "mean_radiant_temp_sensor": "Sensor de Temperatura Radiante Média (Opcional)",
+          "indoor_humidity_sensor": "Sensor de Umidade Interna (Opcional)",
+          "outdoor_humidity_sensor": "Sensor de Umidade Externa (Opcional)"
+        }
       }
     },
     "error": {
