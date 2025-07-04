@@ -83,8 +83,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             self.config = dict(config_entry_data)
             
         # Merge options into config if config_entry is available
-        if config_entry and config_entry.options:
-            self.config.update(config_entry.options)
+        # Note: Options flow removed - all config managed via services
             
         self.calculator = AdaptiveComfortCalculator(self.config)
         
@@ -1099,12 +1098,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Error during timezone recovery: %s", err)
 
     def _sync_options_to_config(self) -> None:
-        """Sync entity values and config_entry options into config for calculator access."""
-        # First merge config_entry options if available
-        if self.config_entry and self.config_entry.options:
-            self.config.update(self.config_entry.options)
+        """Sync entity values into config for calculator access."""
+        # Note: Options flow removed - all config managed via services
         
-        # Then sync values from actual entities in Home Assistant
+        # Sync values from actual entities in Home Assistant
         entity_values = self._get_entity_values()
         if entity_values:
             self.config.update(entity_values)

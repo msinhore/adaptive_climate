@@ -61,9 +61,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Set up services
     await async_setup_services(hass)
     
-    # Add update listener for options flow
-    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
-    
     return True
 
 
@@ -99,21 +96,6 @@ async def _async_setup_logbook(hass: HomeAssistant) -> None:
         _LOGGER.debug("Error setting up logbook integration: %s", err)
     
     return True
-
-
-async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Update listener for options flow."""
-    _LOGGER.debug("Updating Adaptive Climate coordinator with new options")
-    try:
-        coordinator = hass.data[DOMAIN][entry.entry_id]
-        
-        # Update coordinator configuration
-        await coordinator.update_config({**entry.data, **entry.options})
-        
-        # Request refresh to apply new configuration
-        await coordinator.async_request_refresh()
-    except Exception as err:
-        _LOGGER.error("Error updating coordinator configuration: %s", err)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
