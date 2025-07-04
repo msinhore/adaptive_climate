@@ -42,7 +42,8 @@ class AdaptiveClimateComfortCategorySelect(CoordinatorEntity, SelectEntity):
         self._attr_unique_id = f"{config_entry.entry_id}_comfort_category"
         self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} Comfort Category"
         self._attr_icon = "mdi:account-group"
-        self._attr_entity_category = EntityCategory.CONFIG
+        # Remove entity_category to make select appear in Controls tab
+        # self._attr_entity_category = EntityCategory.CONFIG
         self._attr_options = ["I", "II", "III"]
         self._attr_device_info = {
             "identifiers": {(DOMAIN, config_entry.entry_id)},

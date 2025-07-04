@@ -47,7 +47,8 @@ class AdaptiveClimateActionButton(CoordinatorEntity, ButtonEntity):
         self._attr_unique_id = f"{config_entry.entry_id}_action_{action}"
         self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} {name}"
         self._attr_icon = icon
-        self._attr_entity_category = EntityCategory.CONFIG
+        # Remove entity_category to make buttons appear in Controls tab
+        # self._attr_entity_category = EntityCategory.CONFIG
         self._attr_device_info = {
             "identifiers": {(DOMAIN, config_entry.entry_id)},
             "name": config_entry.data.get("name", "Adaptive Climate"),

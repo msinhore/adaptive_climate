@@ -75,7 +75,8 @@ class AdaptiveClimateNumberBase(CoordinatorEntity, NumberEntity):
             "model": "Adaptive Climate Controller",
             "sw_version": VERSION,
         }
-        self._attr_entity_category = EntityCategory.CONFIG
+        # Remove entity_category to make numbers appear in Controls tab
+        # self._attr_entity_category = EntityCategory.CONFIG
 
 
 class MinComfortTempNumber(AdaptiveClimateNumberBase):
@@ -340,7 +341,8 @@ class AdaptiveClimateConfigNumber(CoordinatorEntity, NumberEntity):
         self._option_key = option_key
         self._attr_unique_id = f"{config_entry.entry_id}_config_{option_key}"
         self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} {name}"
-        self._attr_entity_category = EntityCategory.CONFIG
+        # Remove entity_category to make config numbers appear in Controls tab
+        # self._attr_entity_category = EntityCategory.CONFIG
         self._attr_native_min_value = min_val
         self._attr_native_max_value = max_val
         self._attr_native_step = step
