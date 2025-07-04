@@ -8,28 +8,34 @@
 
 A Home Assistant custom component that acts as an intelligent controller for your existing climate entities using the ASHRAE 55 adaptive comfort model. It provides energy-saving features, natural ventilation detection, and comprehensive diagnostic sensors.
 
-**Development Version: 0.1.36**
+**Development Version: 0.1.37**
 
-## 🆕 What's New in 2025.7+ (Modern Device Page)
+## 🆕 What's New in 2025.7+ (Service-Based Configuration)
 
-This version brings a completely modernized device page experience compatible with Home Assistant 2025.7+:
+This version brings a completely modernized experience compatible with Home Assistant 2025.7+ best practices:
 
-### 📱 Organized Device Interface
-- **Controls Tab**: All configuration switches, numbers, and action buttons
-- **Sensors Tab**: Temperature readings and status information  
-- **Diagnostic Tab**: ASHRAE compliance and system health indicators
+### 🎯 Clean Device Page
+- **Only 4 essential entities** visible on device page
+- **All configuration as attributes** on the main binary sensor
+- **Service-based management** for all parameter changes
+- **No entity clutter** - follows modern HA patterns
 
-### ⚙️ Enhanced Configuration
-- **Dynamic reconfiguration**: Change linked entities without reinstalling
-- **Modern UI selectors**: Improved dropdowns with entity filtering
-- **Real-time validation**: Immediate feedback on configuration changes
-- **Current value defaults**: All options show existing values when editing
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
 
-### 🎛️ New Control Entities
-- **Comfort Category Selector**: Choose ASHRAE 55 category (I, II, III) 
-- **Temperature Controls**: Adjust target temp, tolerance, and limits
-- **Energy Settings**: Configure setback offsets and auto-shutdown timers
-- **Reconfigure Button**: Easily change linked climate and sensor entities
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
 
 ## Overview
 
@@ -42,6 +48,12 @@ This component acts as a smart controller/coordinator that enhances your existin
 - Supports three comfort categories (I, II, III) with different tolerance levels
 - Accounts for air velocity and humidity corrections
 - Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
 
 ### Intelligent Climate Control
 - Automatically controls your existing climate entities (thermostats, HVAC systems)
@@ -86,219 +98,1701 @@ This component acts as a smart controller/coordinator that enhances your existin
 
 The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
 
-### 🎯 Device Page Experience
+### 📋 Service-Based Configuration
 
-Once configured, navigate to your device page (**Settings** → **Devices & Services** → **Adaptive Climate** → **[Your Device]**) to access:
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
 
-#### Controls Tab
-- **Adaptive Climate Enabled**: Master on/off switch
-- **Comfort Category**: Select ASHRAE 55 category (I, II, III)
-- **Target Temperature**: Set desired temperature
-- **Temperature Tolerance**: Comfort range adjustment
-- **Min/Max Comfort Temperatures**: Safety limits
-- **Air Velocity**: Natural ventilation factor
-- **Energy Settings**: Setback offsets and timers
-- **Reconfigure Entities**: Change linked devices
-
-#### Sensors Tab  
-- **Indoor/Outdoor Temperatures**: Current readings
-- **Comfort Range**: Calculated min/max comfort temperatures
-- **Status**: System operational state
-
-#### Diagnostic Tab
-- **ASHRAE Compliance**: Real-time comfort standard compliance
-- **Natural Ventilation**: Optimal ventilation conditions indicator
-
-### 🔧 Initial Setup
-
-- **Name**: Unique name for your adaptive climate controller
-- **Area**: Select the area to filter relevant entities
-- **Climate Entity**: Target HVAC system or smart thermostat
-- **Indoor Temperature Sensor**: Primary indoor temperature measurement
-- **Outdoor Temperature Sensor**: External temperature for adaptive calculations
-- **Comfort Category**: ASHRAE 55 category (I=±2°C, II=±3°C, III=±4°C)
-
-### Advanced Options
-
-- **Occupancy Sensor**: Motion or presence detection for energy savings
-- **Humidity Sensor**: Indoor humidity for enhanced comfort calculations
-- **Radiant Temperature Sensor**: For operative temperature calculations
-- **Natural Ventilation Control**: Enable intelligent ventilation management
-- **Adaptive Fan Speed**: Automatic fan speed optimization
-- **Precision Mode**: High-accuracy calculations for critical environments
-
-### Limits & Timeouts
-
-- **Temperature Limits**: Minimum/maximum bounds for safety
-- **Setback Settings**: Unoccupied temperature offsets and timers
-- **Auto-off Timer**: Extended absence shutdown delay
-- **Override Timeout**: Manual override automatic expiration
-
-## Usage Examples
-
-### Basic Smart Thermostat Control
-
-The component automatically adjusts your existing thermostat based on outdoor temperature:
-
+#### Quick Examples:
 ```yaml
-# When outdoor temp = 20°C, comfort temp = 24.0°C
-# When outdoor temp = 25°C, comfort temp = 25.3°C
-# When outdoor temp = 30°C, comfort temp = 26.6°C
-# The component automatically sets these temperatures on your climate entity
-```
-
-### Energy-Saving Automations
-
-```yaml
-automation:
-  - alias: "Natural Ventilation Alert"
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.adaptive_climate_natural_ventilation_optimal
-        to: "on"
-    action:
-      - service: notify.mobile_app
-        data:
-          message: "Perfect weather for natural ventilation! Consider opening windows."
-
-  - alias: "Comfort Zone Status"
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.adaptive_climate_ashrae_compliance
-        to: "off"
-    action:
-      - service: notify.mobile_app
-        data:
-          message: "Climate is outside comfort zone. Adjusting automatically."
-```
-
-### Dashboard Integration
-
-```yaml
-type: entities
-entities:
-  - entity: climate.your_existing_thermostat  # Your actual climate entity
-  - entity: sensor.adaptive_climate_comfort_temperature
-    name: "Optimal Temperature"
-  - entity: sensor.adaptive_climate_comfort_range_min
-    name: "Comfort Range Min"
-  - entity: sensor.adaptive_climate_comfort_range_max  
-    name: "Comfort Range Max"
-  - entity: binary_sensor.adaptive_climate_ashrae_compliance
-    name: "In Comfort Zone"
-  - entity: binary_sensor.adaptive_climate_natural_ventilation_optimal
-    name: "Natural Ventilation OK"
-```
-
-## Diagnostic Sensors
-
-The component automatically creates diagnostic sensors:
-
-| Sensor | Description | Unit |
-|--------|-------------|------|
-| `comfort_temperature` | ASHRAE 55 calculated optimal temperature | °C |
-| `comfort_range_min` | Lower bound of comfort zone | °C |  
-| `comfort_range_max` | Upper bound of comfort zone | °C |
-| `outdoor_running_mean` | 7-day running mean of outdoor temperature | °C |
-| `ashrae_compliance` | Current compliance with ASHRAE 55 standard | boolean |
-| `natural_ventilation_optimal` | Natural ventilation recommended | boolean |
-
-## Services
-
-### `adaptive_climate.clear_override`
-Clears any manual temperature override and returns to adaptive control.
-
-```yaml
-service: adaptive_climate.clear_override
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
 data:
-  config_entry_id: "your_config_entry_id"
-```
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
 
-### `adaptive_climate.set_comfort_category`
-Changes the ASHRAE 55 comfort category.
-
-```yaml
-service: adaptive_climate.set_comfort_category
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
 data:
-  config_entry_id: "your_config_entry_id"
-  category: "I"  # I, II, or III
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
 ```
 
-### `adaptive_climate.update_calculations`
-Forces immediate recalculation of comfort parameters.
+### 🎯 Clean Device Page
 
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
+
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
+
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
+
+## Overview
+
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
+
+## Key Features
+
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
 ```yaml
-service: adaptive_climate.update_calculations
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
 data:
-  config_entry_id: "your_config_entry_id"
-```
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
 
-### `adaptive_climate.set_temporary_override`
-Sets a temporary manual override with automatic expiration.
-
-```yaml
-service: adaptive_climate.set_temporary_override
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
 data:
-  config_entry_id: "your_config_entry_id"
-  temperature: 22
-  duration: 3600  # seconds
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
 ```
 
-## Compatibility
+### 🎯 Clean Device Page
 
-- **Home Assistant**: 2025.6.0+ (Full 2025.7+ device page features)
-- **Python**: 3.12+
-- **HACS**: 2.0.0+
-- **SmartIR**: Full compatibility with IR-controlled devices
-- **Generic Thermostats**: Works with any Home Assistant climate entity
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
 
-### 🆕 2025.7+ Features
-- Modern device page with organized Controls/Sensors/Diagnostic tabs
-- Dynamic entity reconfiguration without reinstalling integration
-- Enhanced selectors with current value defaults
-- Improved entity categorization for better UI organization
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
 
-## Troubleshooting
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
 
-### Common Issues
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
 
-1. **Entity Not Found**: Ensure all selected entities exist and are available
-2. **No Temperature Changes**: Check temperature change threshold settings
-3. **HVAC Not Responding**: Verify climate entity supports the required services
-4. **Occupancy Not Working**: Ensure occupancy sensor is properly configured
+## Overview
 
-### Debug Logging
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
 
-Add the following to your `configuration.yaml` for debug logging:
+## Key Features
 
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
 ```yaml
-logger:
-  logs:
-    custom_components.adaptive_climate: debug
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
+
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
 ```
 
-## Support
+### 🎯 Clean Device Page
 
-- **Issues**: [GitHub Issues](https://github.com/msinhore/adaptive-climate/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/msinhore/adaptive-climate/discussions)
-- **Community**: [Home Assistant Community Forum](https://community.home-assistant.io)
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
 
-## Contributing
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
 
-Contributions are welcome! Please read our contributing guidelines and submit pull requests for any improvements.
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
 
-## License
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## Overview
 
-## Acknowledgments
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
 
-- Based on ASHRAE 55-2020 Adaptive Comfort Model
-- Inspired by the CBE Thermal Comfort Tool
-- Home Assistant community for testing and feedback
+## Key Features
 
----
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
 
-**Development Version**: 0.1.36  
-**Device Page**: Modernized for Home Assistant 2025.7+  
-**Testing Guide**: See [TESTING_GUIDE.md](TESTING_GUIDE.md) for validation steps
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
+```yaml
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
+
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
+```
+
+### 🎯 Clean Device Page
+
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
+
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
+
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
+
+## Overview
+
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
+
+## Key Features
+
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
+```yaml
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
+
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
+```
+
+### 🎯 Clean Device Page
+
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
+
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
+
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
+
+## Overview
+
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
+
+## Key Features
+
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
+```yaml
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
+
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
+```
+
+### 🎯 Clean Device Page
+
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
+
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
+
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
+
+## Overview
+
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
+
+## Key Features
+
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
+```yaml
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
+
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
+```
+
+### 🎯 Clean Device Page
+
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
+
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
+
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
+
+## Overview
+
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
+
+## Key Features
+
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
+```yaml
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
+
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
+```
+
+### 🎯 Clean Device Page
+
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
+
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
+
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
+
+## Overview
+
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
+
+## Key Features
+
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
+```yaml
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
+
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
+```
+
+### 🎯 Clean Device Page
+
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
+
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
+
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
+
+## Overview
+
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
+
+## Key Features
+
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
+```yaml
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
+
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
+```
+
+### 🎯 Clean Device Page
+
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
+
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
+
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
+
+## Overview
+
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
+
+## Key Features
+
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
+```yaml
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
+
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
+```
+
+### 🎯 Clean Device Page
+
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
+
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
+
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
+
+## Overview
+
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
+
+## Key Features
+
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
+```yaml
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
+
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
+```
+
+### 🎯 Clean Device Page
+
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
+
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
+
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
+
+## Overview
+
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
+
+## Key Features
+
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
+```yaml
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
+
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
+```
+
+### 🎯 Clean Device Page
+
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
+
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
+
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
+
+## Overview
+
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
+
+## Key Features
+
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
+```yaml
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
+
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
+```
+
+### 🎯 Clean Device Page
+
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
+
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
+
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
+
+## Overview
+
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
+
+## Key Features
+
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
+```yaml
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
+
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
+```
+
+### 🎯 Clean Device Page
+
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
+
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
+
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
+
+## Overview
+
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
+
+## Key Features
+
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add repository URL: `https://github.com/msinhore/adaptive-climate`
+4. Category: **Integration**
+5. Search for "Adaptive Climate" and install
+6. Restart Home Assistant
+
+### Manual Installation
+
+1. Download the latest release from GitHub
+2. Extract to `custom_components/adaptive_climate/` in your config directory
+3. Restart Home Assistant
+
+## Configuration
+
+The component uses a modern UI-based configuration flow accessible through **Settings** → **Devices & Services** → **Add Integration** → **Adaptive Climate**.
+
+### 📋 Service-Based Configuration
+
+All configuration is now managed through Home Assistant services for a clean, modern experience. See the [Service Configuration Guide](SERVICE_CONFIGURATION.md) for complete details.
+
+#### Quick Examples:
+```yaml
+# Change minimum comfort temperature
+service: adaptive_climate.set_parameter
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  parameter: min_comfort_temp
+  value: 19.0
+
+# Set manual override for 2 hours
+service: adaptive_climate.set_manual_override
+data:
+  entity_id: binary_sensor.adaptive_climate_living_room_ashrae_compliance
+  temperature: 22.5
+  duration_hours: 2
+```
+
+### 🎯 Clean Device Page
+
+Your device page shows only essential entities:
+- **ASHRAE Compliance**: Main status with all config as attributes
+- **Natural Ventilation**: Ventilation opportunity detection  
+- **Comfort Temperature**: Real-time adaptive comfort calculation
+- **Running Mean**: 7-day outdoor temperature average
+
+### ⚙️ Service-Driven Configuration
+- **`adaptive_climate.set_parameter`**: Change any configuration value
+- **`adaptive_climate.reset_parameter`**: Reset to defaults
+- **`adaptive_climate.set_manual_override`**: Temporary manual control
+- **`adaptive_climate.clear_manual_override`**: Return to adaptive mode
+
+### 📊 Essential Entities Only
+- **ASHRAE Compliance Binary Sensor**: Main status + all config attributes
+- **Natural Ventilation Sensor**: Ventilation opportunity detection
+- **Adaptive Comfort Temperature**: Real-time comfort calculations
+- **Outdoor Running Mean**: 7-day temperature average
+
+### 🛡️ Safety & Standards
+- **18-30°C safety limits**: Prevents dangerous temperature settings
+- **ASHRAE 55 compliance**: Strict adherence to comfort standards
+- **User-configurable limits**: Set your own comfort boundaries within safe ranges
+
+## Overview
+
+This component acts as a smart controller/coordinator that enhances your existing climate entities (thermostats, HVAC systems) with ASHRAE 55 adaptive comfort intelligence. Instead of creating a new climate entity, it works behind the scenes to automatically adjust your existing climate systems based on adaptive comfort principles while providing rich diagnostic sensors for monitoring and automation.
+
+## Key Features
+
+### ASHRAE 55 Adaptive Comfort Model
+- Calculates optimal comfort temperatures using the adaptive model: `18.9 + 0.255 × Outdoor Temperature`
+- Supports three comfort categories (I, II, III) with different tolerance levels
+- Accounts for air velocity and humidity corrections
+- Uses operative temperature when radiant temperature sensors are available
+
+### Service-Based Configuration
+- **All parameters as attributes**: View all settings in one place
+- **Service management**: Use Home Assistant services to change any setting
+- **No UI clutter**: Clean device page with only essential status
+- **Future-proof architecture**: Follows HA 2025.7+ patterns
+
+### Intelligent Climate Control
+- Automatically controls your existing climate entities (thermostats, HVAC systems)
+- Calculates optimal comfort temperatures and applies them to your hardware
+- Natural ventilation detection and recommendation  
+- Adaptive fan speed control based on comfort requirements
+- Manual override with automatic timeout functionality
+- Works as a coordinator - no new climate entity created
+
+### Energy Efficiency
+- Occupancy-based setback with configurable temperature offsets
+- Automatic system shutdown during extended absence periods
+- Dynamic comfort zones that adapt to seasonal changes
+- Natural ventilation prioritization when conditions are suitable
+
+### Rich Diagnostic Sensors
+- Real-time ASHRAE 55 compliance monitoring
+- Comfort temperature, range, and outdoor running mean sensors
+- Binary sensors for natural ventilation and compliance status
+- Comprehensive attributes for Home Assistant automations
+- All sensors are automatically created for monitoring and dashboards
+- Rich attributes for integration with Home Assistant automations
+
+## Installation
+
+### HACS (Recommended)
+
+1. Open HACS in your Home Assistant
+2. Go to **Integrations** → **⋮** → **Custom repositories**
+3. Add
