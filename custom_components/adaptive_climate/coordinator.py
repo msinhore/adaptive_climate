@@ -1114,79 +1114,12 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         self.calculator.update_config(self.config)
     
     def _get_entity_values(self) -> dict[str, Any]:
-        """Get current values from all adaptive climate entities."""
+        """Get current values from configuration and entity attributes."""
         if not self.config_entry:
             return {}
         
-        entity_values = {}
-        entry_id = self.config_entry.entry_id
-        
-        # Map of entity suffixes to config keys
-        entity_mappings = {
-            # Number entities - Core temperature settings
-            "min_comfort_temp": "min_comfort_temp",
-            "max_comfort_temp": "max_comfort_temp", 
-            "temperature_change_threshold": "temperature_change_threshold",
-            
-            # Number entities - Air velocity and natural ventilation
-            "air_velocity": "air_velocity",
-            "natural_ventilation_threshold": "natural_ventilation_threshold",
-            
-            # Number entities - Setback and occupancy settings
-            "setback_temperature_offset": "setback_temperature_offset",
-            "prolonged_absence_minutes": "prolonged_absence_minutes",
-            "auto_shutdown_minutes": "auto_shutdown_minutes",
-            
-            # Number entities - Advanced comfort zone offsets
-            "comfort_temp_min_offset": "comfort_range_min_offset",
-            "comfort_temp_max_offset": "comfort_range_max_offset",
-            
-            # Switch entities (using actual unique_ids from switch.py)
-            "use_operative_temperature": "use_operative_temperature",
-            "energy_save_mode": "energy_save_mode",
-            "comfort_precision_mode": "comfort_precision_mode",
-            "use_occupancy_features": "use_occupancy_features",
-            "natural_ventilation_enable": "natural_ventilation_enable",
-            "adaptive_air_velocity": "adaptive_air_velocity",
-            "humidity_comfort_enable": "humidity_comfort_enable",
-            "auto_shutdown_enable": "auto_shutdown_enable",
-            
-            # Select entities
-            "comfort_category": "comfort_category",
-            
-            # Binary sensor entities (using actual unique_ids from binary_sensor.py)
-            "ashrae_compliance": "ashrae_compliance_status",
-            "natural_ventilation_optimal": "natural_ventilation_optimal",
-        }
-        
-        for suffix, config_key in entity_mappings.items():
-            entity_id = f"{DOMAIN}.{entry_id}_{suffix}"
-            state = self.hass.states.get(entity_id)
-            
-            if state and state.state not in [STATE_UNKNOWN, STATE_UNAVAILABLE]:
-                try:
-                    # Handle different entity types
-                    if suffix in ["min_comfort_temp", "max_comfort_temp", "temperature_change_threshold", 
-                                "air_velocity", "natural_ventilation_threshold", "setback_temperature_offset",
-                                "comfort_temp_min_offset", "comfort_temp_max_offset"]:
-                        # Number entities - convert to float
-                        entity_values[config_key] = float(state.state)
-                    elif suffix in ["prolonged_absence_minutes", "auto_shutdown_minutes"]:
-                        # Integer number entities
-                        entity_values[config_key] = int(float(state.state))
-                    elif suffix in ["use_operative_temperature", "energy_save_mode", "comfort_precision_mode",
-                                  "use_occupancy_features", "natural_ventilation_enable", "adaptive_air_velocity",
-                                  "humidity_comfort_enable", "auto_shutdown_enable", "ashrae_compliance", 
-                                  "natural_ventilation_optimal"]:
-                        # Boolean entities (switches and binary sensors)
-                        entity_values[config_key] = state.state.lower() in ["on", "true", "1"]
-                    else:
-                        # String entities (selects)
-                        entity_values[config_key] = state.state
-                        
-                except (ValueError, TypeError) as err:
-                    _LOGGER.warning("Failed to convert entity %s value '%s' for config key %s: %s", 
-                                  entity_id, state.state, config_key, err)
-                    continue
-        
-        return entity_values
+        # Since we moved parameters to binary sensor attributes,
+        # we no longer need to sync from individual entities.
+        # The configuration is managed via services now.
+        # Return empty dict - config is managed in the coordinator itself.
+        return {}

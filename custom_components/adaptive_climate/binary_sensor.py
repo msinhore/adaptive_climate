@@ -14,7 +14,21 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import EntityCategory
 
-from .const import DOMAIN, VERSION
+from .const import (
+    DOMAIN, 
+    VERSION,
+    DEFAULT_MIN_COMFORT_TEMP,
+    DEFAULT_MAX_COMFORT_TEMP,
+    DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
+    DEFAULT_AIR_VELOCITY,
+    DEFAULT_NATURAL_VENTILATION_THRESHOLD,
+    DEFAULT_SETBACK_TEMPERATURE_OFFSET,
+    DEFAULT_PROLONGED_ABSENCE_MINUTES,
+    DEFAULT_AUTO_SHUTDOWN_MINUTES,
+    DEFAULT_COMFORT_TEMP_MIN_OFFSET,
+    DEFAULT_COMFORT_TEMP_MAX_OFFSET,
+    DEFAULT_COMFORT_CATEGORY,
+)
 from .coordinator import AdaptiveClimateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -81,7 +95,7 @@ class ASHRAEComplianceSensor(AdaptiveClimateBinarySensorBase):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the state attributes."""
+        """Return the state attributes with all configurable parameters."""
         if not self.coordinator.data:
             return {}
         
@@ -89,27 +103,68 @@ class ASHRAEComplianceSensor(AdaptiveClimateBinarySensorBase):
         effective_min = self.coordinator.data.get("effective_comfort_min", self.coordinator.data.get("comfort_temp_min"))
         effective_max = self.coordinator.data.get("effective_comfort_max", self.coordinator.data.get("comfort_temp_max"))
         
+        # Get all configurable parameters from coordinator config
+        config = self.coordinator.config
+        
         return {
-            # Current conditions
+            # Current status and calculations
             "indoor_temperature": self.coordinator.data.get("indoor_temperature"),
+            "outdoor_temperature": self.coordinator.data.get("outdoor_temperature"),
+            "outdoor_running_mean": self.coordinator.data.get("outdoor_running_mean"),
             
-            # Comfort ranges (diagnostic values)
+            # ASHRAE Comfort calculations (read-only diagnostic)
+            "adaptive_comfort_temp": round(self.coordinator.data.get("adaptive_comfort_temp", 0), 1),
             "comfort_range_min": round(self.coordinator.data.get("comfort_temp_min", 0), 1),
             "comfort_range_max": round(self.coordinator.data.get("comfort_temp_max", 0), 1),
             "effective_comfort_min": round(effective_min, 1) if effective_min else None,
             "effective_comfort_max": round(effective_max, 1) if effective_max else None,
             
-            # Configuration values (user-configurable)
-            "comfort_category": self.coordinator.config.get("comfort_category", "II"),
-            "min_comfort_temp_limit": self.coordinator.config.get("min_comfort_temp", 18.0),
-            "max_comfort_temp_limit": self.coordinator.config.get("max_comfort_temp", 28.0),
+            # User configurable temperature limits (editable via services)
+            "min_comfort_temp": config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP),
+            "max_comfort_temp": config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP),
+            "temperature_change_threshold": config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD),
             
-            # Offset diagnostics  
+            # Comfort category and precision (editable)
+            "comfort_category": config.get("comfort_category", DEFAULT_COMFORT_CATEGORY),
+            "comfort_precision_mode": config.get("comfort_precision_mode", False),
+            "use_operative_temperature": config.get("use_operative_temperature", False),
+            
+            # Air velocity and natural ventilation (editable)
+            "air_velocity": config.get("air_velocity", DEFAULT_AIR_VELOCITY),
+            "adaptive_air_velocity": config.get("adaptive_air_velocity", False),
+            "natural_ventilation_threshold": config.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD),
+            "natural_ventilation_enable": config.get("natural_ventilation_enable", True),
+            
+            # Setback and occupancy (editable)
+            "setback_temperature_offset": config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET),
+            "prolonged_absence_minutes": config.get("prolonged_absence_minutes", DEFAULT_PROLONGED_ABSENCE_MINUTES),
+            "auto_shutdown_minutes": config.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES),
+            "auto_shutdown_enable": config.get("auto_shutdown_enable", False),
+            "energy_save_mode": config.get("energy_save_mode", True),
+            "use_occupancy_features": config.get("use_occupancy_features", True),
+            
+            # Advanced comfort zone offsets (editable)
+            "comfort_temp_min_offset": config.get("comfort_range_min_offset", DEFAULT_COMFORT_TEMP_MIN_OFFSET),
+            "comfort_temp_max_offset": config.get("comfort_range_max_offset", DEFAULT_COMFORT_TEMP_MAX_OFFSET),
+            
+            # Humidity correction (editable)
+            "humidity_comfort_enable": config.get("humidity_comfort_enable", True),
+            
+            # Current occupancy and system status (read-only diagnostic)
+            "occupancy": self.coordinator.data.get("occupancy", "unknown"),
+            "manual_override": self.coordinator.data.get("manual_override", False),
+            "natural_ventilation_active": self.coordinator.data.get("natural_ventilation_active", False),
+            
+            # Offset diagnostics (read-only)  
             "air_velocity_offset": round(self.coordinator.data.get("air_velocity_offset", 0), 2),
             "humidity_offset": round(self.coordinator.data.get("humidity_offset", 0), 2),
             
-            # Compliance calculation explanation - protect against None values
+            # Compliance calculation explanation (read-only diagnostic)
             "compliance_calculation": self._safe_compliance_calculation(effective_min, effective_max),
+            
+            # Configuration instructions
+            "_editable_note": "Use adaptive_climate.set_parameter service to modify configurable parameters",
+            "_service_example": "service: adaptive_climate.set_parameter, data: {entity_id: this_entity, parameter: min_comfort_temp, value: 19.0}",
         }
     
     def _safe_compliance_calculation(self, effective_min, effective_max):

@@ -16,16 +16,13 @@ from .const import (
 from .coordinator import AdaptiveClimateCoordinator
 from .template import async_register_template_functions
 from .logbook import async_describe_events
+from .services import async_setup_services, async_unload_services
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR, 
     Platform.BINARY_SENSOR, 
-    Platform.NUMBER, 
-    Platform.SWITCH,
-    Platform.BUTTON,
-    Platform.SELECT,
 ]
 
 
@@ -59,7 +56,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
     # Set up services
-    await _async_setup_services(hass, coordinator)
+    await async_setup_services(hass)
     
     # Add update listener for options flow
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
@@ -131,41 +128,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         
         # Remove services if this was the last entry
         if not hass.data[DOMAIN]:
-            hass.services.async_remove(DOMAIN, "clear_override")
-            hass.services.async_remove(DOMAIN, "set_comfort_category")
-            hass.services.async_remove(DOMAIN, "update_calculations")
-            hass.services.async_remove(DOMAIN, "set_temporary_override")
+            async_unload_services(hass)
     
     return unload_ok
-
-
-async def _async_setup_services(hass: HomeAssistant, coordinator: AdaptiveClimateCoordinator) -> None:
-    """Set up services for the coordinator."""
-    
-    async def clear_override_service(call):
-        """Clear manual override."""
-        await coordinator.clear_manual_override()
-    
-    async def set_comfort_category_service(call):
-        """Set comfort category."""
-        category = call.data.get("category")
-        if category:
-            await coordinator.update_comfort_category(category)
-    
-    async def update_calculations_service(call):
-        """Force update calculations."""
-        await coordinator.async_request_refresh()
-    
-    async def set_temporary_override_service(call):
-        """Set temporary override."""
-        temperature = call.data.get("temperature")
-        duration = call.data.get("duration")
-        if temperature:
-            await coordinator.set_manual_override(temperature, duration)
-    
-    # Register services (only once for the domain)
-    if not hass.services.has_service(DOMAIN, "clear_override"):
-        hass.services.async_register(DOMAIN, "clear_override", clear_override_service)
-        hass.services.async_register(DOMAIN, "set_comfort_category", set_comfort_category_service)
-        hass.services.async_register(DOMAIN, "update_calculations", update_calculations_service)
-        hass.services.async_register(DOMAIN, "set_temporary_override", set_temporary_override_service)

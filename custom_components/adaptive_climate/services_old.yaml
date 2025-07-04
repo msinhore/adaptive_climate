@@ -1,0 +1,195 @@
+clear_override:
+  name: Clear Manual Override
+  description: Clear manual override and resume adaptive control
+  fields:
+    config_entry_id:
+      name: Config Entry ID
+      description: Adaptive Climate configuration entry to clear override from
+      required: true
+      selector:
+        text:
+
+set_comfort_category:
+  name: Set Comfort Category
+  description: Change the ASHRAE 55 comfort category
+  fields:
+    config_entry_id:
+      name: Config Entry ID
+      description: Adaptive Climate configuration entry to configure
+      required: true
+      selector:
+        text:
+    category:
+      name: Comfort Category
+      description: ASHRAE 55 comfort category
+      required: true
+      selector:
+        select:
+          options:
+            - value: "I"
+              label: "Category I (±2°C - 90% satisfaction)"
+            - value: "II"
+              label: "Category II (±3°C - 80% satisfaction)"
+            - value: "III"
+              label: "Category III (±4°C - 65% satisfaction)"
+
+update_calculations:
+  name: Update Calculations
+  description: Force update of adaptive comfort calculations
+  fields:
+    config_entry_id:
+      name: Config Entry ID
+      description: Adaptive Climate configuration entry to update
+      required: true
+      selector:
+        text:
+
+set_temporary_override:
+  name: Set Temporary Override
+  description: Set temporary manual control with automatic resume
+  fields:
+    config_entry_id:
+      name: Config Entry ID
+      description: Adaptive Climate configuration entry to override
+      required: true
+      selector:
+        text:
+    temperature:
+      name: Temperature
+      description: Target temperature (optional)
+      selector:
+        number:
+          min: 10
+          max: 40
+          step: 0.5
+          unit_of_measurement: "°C"
+    hvac_mode:
+      name: HVAC Mode
+      description: HVAC mode to set (optional)
+      selector:
+        select:
+          options:
+            - "heat"
+            - "cool"
+            - "auto"
+            - "fan_only"
+            - "off"
+    duration_hours:
+      name: Duration
+      description: Override duration in hours
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 24
+          step: 1
+          unit_of_measurement: "hours"
+
+# Event definitions for logbook
+adaptive_climate_mode_change:
+  event_type: adaptive_climate_mode_change
+  description: "Event triggered when HVAC mode changes"
+  data:
+    entity_id:
+      example: "climate.adaptive_climate_sala"
+      description: "Climate entity ID"
+    name:
+      example: "Adaptive Climate Sala"
+      description: "Friendly name of the entity"
+    old_mode:
+      example: "heat"
+      description: "Previous HVAC mode"
+    new_mode:
+      example: "cool"
+      description: "New HVAC mode"
+    reason:
+      example: "adaptive control"
+      description: "Reason for the change"
+
+adaptive_climate_target_temp:
+  event_type: adaptive_climate_target_temp
+  description: "Event triggered when target temperature changes"
+  data:
+    entity_id:
+      example: "climate.adaptive_climate_sala"
+      description: "Climate entity ID"
+    name:
+      example: "Adaptive Climate Sala"
+      description: "Friendly name of the entity"
+    old_temp:
+      example: "22.5"
+      description: "Previous temperature"
+    new_temp:
+      example: "23.5"
+      description: "New temperature"
+    reason:
+      example: "adaptive control"
+      description: "Reason for the change"
+
+update_config:
+  name: Update Configuration
+  description: Update adaptive climate configuration parameters
+  fields:
+    config_entry_id:
+      name: Config Entry ID
+      description: Adaptive Climate configuration entry to update
+      required: true
+      selector:
+        text:
+    air_velocity:
+      name: Air Velocity
+      description: Indoor air velocity (m/s)
+      required: false
+      selector:
+        number:
+          min: 0.0
+          max: 2.0
+          step: 0.1
+          unit_of_measurement: "m/s"
+    natural_ventilation_threshold:
+      name: Natural Ventilation Threshold
+      description: Temperature difference threshold for natural ventilation (°C)
+      required: false
+      selector:
+        number:
+          min: 0.5
+          max: 5.0
+          step: 0.5
+          unit_of_measurement: "°C"
+    temperature_change_threshold:
+      name: Temperature Change Threshold
+      description: Minimum temperature change to trigger HVAC adjustment (°C)
+      required: false
+      selector:
+        number:
+          min: 0.1
+          max: 3.0
+          step: 0.1
+          unit_of_measurement: "°C"
+    setback_temperature_offset:
+      name: Setback Temperature Offset
+      description: Temperature offset when unoccupied (°C)
+      required: false
+      selector:
+        number:
+          min: 0.5
+          max: 5.0
+          step: 0.5
+          unit_of_measurement: "°C"
+    adaptive_air_velocity:
+      name: Adaptive Air Velocity
+      description: Enable adaptive fan speed control
+      required: false
+      selector:
+        boolean:
+
+reset_outdoor_history:
+  name: Reset Outdoor History
+  description: Reset outdoor temperature history and running mean
+  fields:
+    config_entry_id:
+      name: Config Entry ID
+      description: Adaptive Climate configuration entry to reset
+      required: true
+      selector:
+        text:
