@@ -5,6 +5,123 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.39] - 2025-07-05
+
+### 🚀 Stage 4: HACS Production Ready - Options Flow & Multi-Language Support
+
+#### ✨ Added
+- **Options Flow Implementation**: Complete UI-based configuration through Home Assistant's options flow
+  - Real-time parameter updates without HA restart
+  - Validation and error handling for all inputs
+  - User-friendly forms with proper field descriptions
+- **Multi-Language Support**: Complete translations for 6 languages
+  - English (en) - Primary language
+  - Portuguese Brazil (pt-BR) - Complete translation
+  - Italian (it) - Full localization
+  - French (fr) - Complete French translation
+  - Spanish (es) - Full Spanish support
+  - German (de) - Complete German translation
+- **Enhanced Configuration Management**: 
+  - `async_update_options()` method in coordinator
+  - Real-time config updates through options flow
+  - Validation schemas for all configuration parameters
+- **HACS Production Standards**:
+  - `integration_type`: "device" for proper device grouping
+  - `pythermalcomfort>=2.7.4` requirement properly declared
+  - Options flow integrated with config_flow
+  - Complete translation coverage for all entities
+
+#### 🔧 Changed
+- **Manifest Updates**: 
+  - Version bumped to 0.1.39
+  - Added `pythermalcomfort>=2.7.4` to requirements
+  - Changed `integration_type` from "service" to "device"
+- **Config Flow Enhancement**:
+  - Added options flow support with `async_get_options_flow()`
+  - Updated import structure for options flow integration
+- **Coordinator Enhancements**:
+  - Added `async_update_options()` for real-time option updates
+  - Enhanced error handling and logging
+  - Options listener registration in __init__.py
+
+#### 📁 File Structure
+```
+translations/
+├── en.json      # English (primary)
+├── pt-BR.json   # Portuguese Brazil
+├── it.json      # Italian
+├── fr.json      # French
+├── es.json      # Spanish
+└── de.json      # German
+```
+
+#### 🌍 Translation Coverage
+- **Config Flow**: All setup steps and field descriptions
+- **Options Flow**: Complete UI labels and help text
+- **Entity Names**: All 21 entities fully translated
+- **Error Messages**: User-friendly error descriptions
+- **State Values**: ASHRAE comfort category translations
+
+#### 📋 Options Flow Parameters
+- **Temperature Settings**: Min/max comfort temps, ranges, thresholds
+- **Air & Ventilation**: Air velocity, natural ventilation settings
+- **Advanced Features**: Precision mode, humidity adjustments, operative temperature
+- **Energy Management**: Setback offsets, energy saving modes
+
+#### 🎯 HACS Submission Ready
+- ✅ Options flow implementation complete
+- ✅ Multi-language support (6 languages)
+- ✅ Production-grade manifest.json
+- ✅ Complete translation coverage
+- ✅ Real-time configuration updates
+- ✅ Proper validation and error handling
+
+## [0.1.38] - 2025-07-05
+
+### 🚀 Stage 3: Real Entity Architecture - HACS-Ready Implementation
+
+#### 🔥 BREAKING CHANGES
+- **Removed Bridge Entity Architecture**: Complete migration from bridge entities to real Home Assistant entities
+- **Entity ID Changes**: All entities now have new unique IDs based on `config_entry.entry_id`
+- **Device Integration**: All entities now appear under a single "Adaptive Climate" device
+- **Configuration Method**: Real entities replace service-based configuration for better HA integration
+
+#### ✨ Added
+- **Real NumberEntity Implementation**: 8 number entities for temperature controls, thresholds, and offsets
+- **Real SwitchEntity Implementation**: 6 switch entities for energy save, natural ventilation, and adaptive features  
+- **Real SelectEntity Implementation**: 1 select entity for ASHRAE comfort category (I, II, III)
+- **Real SensorEntity Implementation**: 5 sensor entities for diagnostic and calculated values
+- **CoordinatorEntity Pattern**: All entities use proper CoordinatorEntity inheritance
+- **Stable Unique IDs**: Entity persistence guaranteed with `{config_entry.entry_id}_{entity_key}` pattern
+- **Consistent Device Info**: Single device grouping with proper manufacturer, model, and version info
+- **Enhanced Coordinator Methods**: Added `async_update_config_value()` and `get_config_value()` methods
+
+#### 🔧 Changed
+- **Entity Architecture**: Migrated from bridge entities to real Home Assistant entities
+- **Device Info**: Standardized across all entities with consistent identifiers
+- **Configuration Updates**: Real-time entity updates through coordinator notifications
+- **Platform Registration**: Updated __init__.py to register all platforms properly
+
+#### 🗑️ Removed
+- **bridge_entity.py**: Removed bridge entity architecture completely
+- **bridge_entity_refactored.py**: Removed refactored bridge implementations
+- **Temporary Files**: Cleaned up all *_new.py development files
+
+#### 📊 Entity Summary
+- **Number Entities**: 8 (min/max comfort temp, air velocity, thresholds, offsets)
+- **Switch Entities**: 6 (energy save, natural ventilation, precision modes)
+- **Select Entities**: 1 (comfort category)
+- **Sensor Entities**: 5 (diagnostic and calculated values)
+- **Binary Sensor**: 1 (ASHRAE compliance with comprehensive attributes)
+
+#### 🎯 HACS Compliance
+- ✅ Real entities (no bridge architecture)
+- ✅ CoordinatorEntity pattern throughout
+- ✅ Consistent device_info implementation
+- ✅ Stable unique_ids for entity persistence
+- ✅ Proper entity categorization and device classes
+- ✅ Updated documentation and manifest
+
 ## [Unreleased]
 
 ### 🚀 Initial Release: ASHRAE 55 Adaptive Climate Component

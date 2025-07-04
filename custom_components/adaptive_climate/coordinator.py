@@ -46,7 +46,7 @@ from .const import (
     EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP,
     DEFAULT_SETBACK_TEMPERATURE_OFFSET,
 )
-from .ashrae_calculator import AdaptiveComfortCalculator
+from .ashrae_calculator import AdaptiveComfortCalculator, calculate_adaptive_ashrae
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -178,14 +178,53 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             # Sync options to config before calculations
             self._sync_options_to_config()
             
-            # Calculate adaptive parameters
-            comfort_data = self.calculator.calculate_comfort_parameters(
-                outdoor_temp=outdoor_temp,
-                indoor_temp=indoor_temp,
-                indoor_humidity=self._get_humidity(),
-                air_velocity=self.config.get("air_velocity", 0.1),
-                mean_radiant_temp=self._get_mean_radiant_temp(),
-            )
+            # Calculate adaptive parameters using pythermalcomfort
+            try:
+                # Use new pythermalcomfort wrapper for scientific accuracy
+                adaptive_result = calculate_adaptive_ashrae(
+                    tdb=indoor_temp,
+                    tr=self._get_mean_radiant_temp() or indoor_temp,  # Fallback to indoor temp
+                    t_running_mean=self._running_mean_outdoor_temp or outdoor_temp,
+                    v=self.config.get("air_velocity", 0.1),
+                    standard="ashrae"
+                )
+                
+                # Extract values from pythermalcomfort result
+                adaptive_comfort_temp = adaptive_result["adaptive_comfort_temp"]
+                ashrae_compliant = adaptive_result["ashrae_compliant"]
+                
+                _LOGGER.info(
+                    "STAGE2_PYTHERMALCOMFORT: adaptive_comfort_temp=%.1f°C, ashrae_compliant=%s (tdb=%.1f, tr=%.1f, t_rm=%.1f, v=%.2f)",
+                    adaptive_comfort_temp,
+                    ashrae_compliant,
+                    indoor_temp,
+                    self._get_mean_radiant_temp() or indoor_temp,
+                    self._running_mean_outdoor_temp or outdoor_temp,
+                    self.config.get("air_velocity", 0.1)
+                )
+                
+                # Build comfort_data structure compatible with existing code
+                comfort_data = {
+                    "adaptive_comfort_temp": adaptive_comfort_temp,
+                    "ashrae_compliant": ashrae_compliant,
+                    "comfort_temp_min": adaptive_comfort_temp - 2.5,  # Default tolerance
+                    "comfort_temp_max": adaptive_comfort_temp + 2.5,
+                    "outdoor_running_mean": self._running_mean_outdoor_temp or outdoor_temp,
+                }
+                
+            except Exception as err:
+                _LOGGER.warning(
+                    "STAGE2_PYTHERMALCOMFORT_FALLBACK: Error using pythermalcomfort, falling back to legacy calculator: %s",
+                    err
+                )
+                # Fallback to legacy calculator for backward compatibility
+                comfort_data = self.calculator.calculate_comfort_parameters(
+                    outdoor_temp=outdoor_temp,
+                    indoor_temp=indoor_temp,
+                    indoor_humidity=self._get_humidity(),
+                    air_velocity=self.config.get("air_velocity", 0.1),
+                    mean_radiant_temp=self._get_mean_radiant_temp(),
+                )
             
             # Update natural ventilation status
             self._update_natural_ventilation_status(outdoor_temp, indoor_temp, comfort_data)
@@ -1049,233 +1088,112 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         """Reset outdoor temperature history."""
         self._outdoor_temp_history.clear()
         self._running_mean_outdoor_temp = None
-        
-        # Create logbook entry
-        self._create_logbook_entry("Outdoor temperature history reset")
-        
         _LOGGER.info("Outdoor temperature history reset")
-        
-        # Trigger immediate update
-        await self.async_request_refresh()
 
-    async def async_shutdown(self) -> None:
-        """Shutdown coordinator and save final state."""
-        try:
-            if self.data:
-                await self._save_persisted_data(self.data)
-                _LOGGER.info("Final state saved to storage during shutdown")
-        except Exception as err:
-            _LOGGER.warning("Failed to save final state during shutdown: %s", err)
-
-    async def _force_timezone_update(self) -> None:
-        """Force update with correct timezone info to recover from timezone errors."""
-        try:
-            _LOGGER.info("Attempting to recover from timezone errors")
-            
-            # Reset counters and timestamps
-            self._error_count = 0
-            self._outdoor_temp_history = []
-            self._running_mean_outdoor_temp = None
-            
-            # Get a fresh timestamp with the correct timezone
-            current_time = dt_util.now()
-            
-            # Get current outdoor temperature
-            outdoor_temp_state = self.hass.states.get(self.outdoor_temp_entity_id)
-            if outdoor_temp_state and outdoor_temp_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-                try:
-                    outdoor_temp = float(outdoor_temp_state.state)
-                    # Initialize the history with the current temperature
-                    self._outdoor_temp_history = [(current_time, outdoor_temp)]
-                    _LOGGER.info("Temperature history reset with current time: %s", current_time)
-                except (ValueError, TypeError):
-                    pass
-                
-            # Force a refresh
-            await self.async_request_refresh()
-            
-        except Exception as err:
-            _LOGGER.error("Error during timezone recovery: %s", err)
-
-    def _sync_options_to_config(self) -> None:
-        """Sync entity values into config for calculator access."""
-        # Note: Options flow removed - all config managed via services
+    async def async_update_config_value(self, key: str, value: Any) -> None:
+        """Update a single configuration value and notify entities.
         
-        # Sync values from actual entities in Home Assistant
-        entity_values = self._get_entity_values()
-        if entity_values:
-            self.config.update(entity_values)
-            _LOGGER.debug("Synced %d entity values into config", len(entity_values))
-        
-        # Update calculator with merged config
-        self.calculator.update_config(self.config)
-    
-    def _get_entity_values(self) -> dict[str, Any]:
-        """Get current values from configuration and entity attributes."""
-        if not self.config_entry:
-            return {}
-        
-        # Since we moved parameters to binary sensor attributes,
-        # we no longer need to sync from individual entities.
-        # The configuration is managed via services now.
-        # Return empty dict - config is managed in the coordinator itself.
-        return {}
-
-    async def update_bridge_attribute(self, attribute_name: str, value: Any) -> None:
-        """Update a bridge entity attribute and notify coordinator.
-        
-        This method provides a clean interface for bridge entities to update
-        attributes without directly manipulating hass.states. The coordinator
-        handles the update and triggers appropriate refreshes.
-        
-        IMPORTANT: This method does NOT provide persistence. Values will reset 
-        to defaults after Home Assistant restart unless persistence is implemented.
-        
-        Args:
-            attribute_name: Name of the attribute to update
-            value: New value for the attribute
+        This method is thread-safe and prevents race conditions during
+        concurrent configuration updates.
         """
-        _LOGGER.debug(
-            "BRIDGE_UPDATE START: attribute=%s, new_value=%s (type=%s), entry_id=%s",
-            attribute_name,
-            value,
-            type(value).__name__,
-            self.config_entry.entry_id if self.config_entry else "unknown"
-        )
-        
+        # Use asyncio.Lock to prevent race conditions
+        if not hasattr(self, '_config_update_lock'):
+            import asyncio
+            self._config_update_lock = asyncio.Lock()
+            
+        async with self._config_update_lock:
+            try:
+                _LOGGER.debug("Acquiring config update lock for key: %s", key)
+                
+                # Always create a fresh mutable copy from the original config
+                if hasattr(self.config, "mapping"):
+                    # Handle MappingProxy objects
+                    updated_config = dict(self.config.mapping)
+                elif hasattr(self.config, "items"):
+                    # Handle dict-like objects
+                    updated_config = dict(self.config)
+                else:
+                    # Fallback for other cases
+                    _LOGGER.warning("Config object type not recognized: %s", type(self.config))
+                    updated_config = {}
+                    
+                # Validate value before updating
+                old_value = updated_config.get(key)
+                if old_value == value:
+                    _LOGGER.debug("Configuration value unchanged: %s = %s", key, value)
+                    return
+                    
+                # Update the specific key
+                updated_config[key] = value
+                
+                # Replace the original config with the updated copy
+                self.config = updated_config
+                
+                # Update calculator config
+                self.calculator.update_config(self.config)
+                
+                # Update the coordinator data to reflect the change atomically
+                if self.data is None:
+                    self.data = {}
+                self.data = dict(self.data)  # Create a copy to avoid mutations
+                self.data[key] = value
+                
+                _LOGGER.info("Configuration value updated: %s = %s (was: %s)", key, value, old_value)
+                
+                # Notify all entities of the update
+                self.async_update_listeners()
+                
+                # Trigger a refresh to recalculate with new config
+                # Use a slight delay to allow batching of multiple updates
+                if not hasattr(self, '_refresh_pending'):
+                    self._refresh_pending = True
+                    async def delayed_refresh():
+                        await asyncio.sleep(0.1)  # 100ms debounce
+                        self._refresh_pending = False
+                        await self.async_request_refresh()
+                    
+                    # Schedule the delayed refresh
+                    asyncio.create_task(delayed_refresh())
+                
+            except Exception as err:
+                _LOGGER.error("Failed to update configuration value %s: %s - %s", key, type(err).__name__, err)
+                raise
+
+    def get_config_value(self, key: str, default: Any = None) -> Any:
+        """Get a configuration value with optional default."""
         try:
-            # Get current binary sensor state
-            binary_sensor_entity_id = self._get_binary_sensor_entity_id()
-            if not binary_sensor_entity_id:
-                _LOGGER.warning(
-                    "BRIDGE_UPDATE FAILED: Cannot determine binary sensor entity ID for attribute %s",
-                    attribute_name
-                )
-                return
-                
-            _LOGGER.debug(
-                "BRIDGE_UPDATE binary_sensor_target: %s",
-                binary_sensor_entity_id
-            )
-                
-            current_state = self.hass.states.get(binary_sensor_entity_id)
-            if not current_state:
-                _LOGGER.warning(
-                    "BRIDGE_UPDATE FAILED: binary_sensor %s not found (attribute=%s will not be updated)",
-                    binary_sensor_entity_id,
-                    attribute_name
-                )
-                return
-            
-            # Get old value for detailed logging
-            old_value = current_state.attributes.get(attribute_name) if current_state.attributes else None
-            
-            # Update attributes dict
-            new_attributes = dict(current_state.attributes) if current_state.attributes else {}
-            new_attributes[attribute_name] = value
-            
-            _LOGGER.debug(
-                "BRIDGE_UPDATE attribute_change: %s: %s -> %s (binary_sensor: %s)",
-                attribute_name,
-                old_value,
-                value,
-                binary_sensor_entity_id
-            )
-            
-            # Update binary sensor state with new attributes
-            self.hass.states.async_set(
-                binary_sensor_entity_id,
-                current_state.state,
-                new_attributes,
-            )
-            
-            # Update internal coordinator data if it exists
-            if self.data:
-                self.data[attribute_name] = value
-                _LOGGER.debug(
-                    "BRIDGE_UPDATE coordinator_data_updated: %s = %s",
-                    attribute_name, value
-                )
-            
-            _LOGGER.info(
-                "BRIDGE_UPDATE SUCCESS: %s.%s = %s (was: %s) [NO PERSISTENCE - IN-MEMORY ONLY]",
-                binary_sensor_entity_id,
-                attribute_name,
-                value,
-                old_value
-            )
-            
-            # Trigger coordinator refresh to propagate changes
-            _LOGGER.debug("BRIDGE_UPDATE triggering coordinator refresh")
-            await self.async_request_refresh()
-            
+            return self.config.get(key, default)
         except Exception as err:
-            _LOGGER.error(
-                "BRIDGE_UPDATE FAILED: attribute=%s, value=%s, error_type=%s, error=%s",
-                attribute_name,
-                value,
-                type(err).__name__,
-                err
-            )
+            _LOGGER.error("Failed to get configuration value %s: %s - %s", key, type(err).__name__, err)
+            return default
+
+    async def async_update_options(self, options: dict[str, Any]) -> None:
+        """Update options from options flow."""
+        try:
+            async with self._update_lock:
+                _LOGGER.info("Updating coordinator options: %s", options)
+                
+                # Update configuration with new options
+                for key, value in options.items():
+                    if key in self.config:
+                        old_value = self.config[key]
+                        self.config[key] = value
+                        _LOGGER.debug("Updated option %s: %s -> %s", key, old_value, value)
+                    else:
+                        self.config[key] = value
+                        _LOGGER.debug("Added new option %s: %s", key, value)
+                
+                # Update the calculator with new config
+                self.calculator.update_config(self.config)
+                
+                # Notify all entities of the update
+                self.async_update_listeners()
+                
+                # Trigger a refresh to recalculate with new options
+                await self.async_request_refresh()
+                
+                _LOGGER.info("Options update completed successfully")
+                
+        except Exception as err:
+            _LOGGER.error("Failed to update options: %s - %s", type(err).__name__, err)
             raise
-    
-    def _get_binary_sensor_entity_id(self) -> str | None:
-        """Get the binary sensor entity ID for this coordinator instance."""
-        if not self.config_entry:
-            return None
-            
-        device_name = self.config_entry.data.get('name', 'adaptive_climate').lower().replace(' ', '_')
-        return f"binary_sensor.{device_name}_ashrae_compliance"
-    
-    def get_bridge_attribute_value(self, attribute_name: str) -> Any:
-        """Get current value of a bridge attribute from coordinator data.
-        
-        This provides a clean interface for bridge entities to read attribute
-        values without directly accessing hass.states.
-        
-        Args:
-            attribute_name: Name of the attribute to retrieve
-            
-        Returns:
-            Current value of the attribute, or None if not found
-        """
-        _LOGGER.debug(
-            "BRIDGE_READ START: attribute=%s, coordinator_data_available=%s",
-            attribute_name,
-            self.data is not None
-        )
-        
-        # First try to get from coordinator data
-        if self.data and attribute_name in self.data:
-            value = self.data[attribute_name]
-            _LOGGER.debug(
-                "BRIDGE_READ SUCCESS: attribute=%s, value=%s, source=coordinator_data",
-                attribute_name, value
-            )
-            return value
-        
-        # Fallback to binary sensor attributes
-        binary_sensor_entity_id = self._get_binary_sensor_entity_id()
-        if binary_sensor_entity_id:
-            current_state = self.hass.states.get(binary_sensor_entity_id)
-            if current_state and current_state.attributes:
-                value = current_state.attributes.get(attribute_name)
-                _LOGGER.debug(
-                    "BRIDGE_READ FALLBACK: attribute=%s, value=%s, source=binary_sensor_attributes",
-                    attribute_name, value
-                )
-                return value
-            else:
-                _LOGGER.debug(
-                    "BRIDGE_READ binary_sensor_unavailable: entity_id=%s, state_exists=%s",
-                    binary_sensor_entity_id,
-                    current_state is not None
-                )
-        
-        _LOGGER.debug(
-            "BRIDGE_READ NOT_FOUND: attribute=%s, coordinator_data=%s, binary_sensor=%s",
-            attribute_name,
-            list(self.data.keys()) if self.data else "None",
-            binary_sensor_entity_id
-        )
-        return None

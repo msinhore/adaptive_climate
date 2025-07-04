@@ -9,8 +9,10 @@ _LOGGER = logging.getLogger(__name__)
 
 try:
     from pythermalcomfort.models import adaptive_ashrae
+    import pythermalcomfort
     PYTHERMALCOMFORT_AVAILABLE = True
-    _LOGGER.info("pythermalcomfort library loaded successfully")
+    _LOGGER.info("pythermalcomfort library loaded successfully (version: %s)", 
+                 getattr(pythermalcomfort, '__version__', 'unknown'))
 except ImportError:
     PYTHERMALCOMFORT_AVAILABLE = False
     _LOGGER.warning("pythermalcomfort library not available. Using fallback calculations.")
@@ -87,6 +89,16 @@ class AdaptiveComfortCalculator:
     @property
     def base_adaptive_comfort_temp(self) -> float:
         """Calculate base adaptive comfort temperature using ASHRAE 55 model."""
+        if PYTHERMALCOMFORT_AVAILABLE:
+            try:
+                # Use pythermalcomfort for more accurate calculations
+                result = self._calculate_pythermalcomfort_adaptive()
+                if result and "adaptive_comfort_temp" in result:
+                    return result["adaptive_comfort_temp"]
+            except Exception as e:
+                _LOGGER.warning("pythermalcomfort calculation failed, using fallback: %s", e)
+        
+        # Fallback to manual calculation
         return ASHRAE_BASE_TEMP + ASHRAE_TEMP_COEFFICIENT * self._outdoor_temp
 
     @property
@@ -155,6 +167,17 @@ class AdaptiveComfortCalculator:
     @property
     def comfort_temp_min(self) -> float:
         """Calculate minimum comfort temperature."""
+        # Try to use pythermalcomfort first
+        if PYTHERMALCOMFORT_AVAILABLE:
+            try:
+                result = self._calculate_pythermalcomfort_adaptive()
+                if result and "comfort_temp_min" in result:
+                    # Use 80% acceptability range from pythermalcomfort
+                    return result["comfort_temp_min"]
+            except Exception as e:
+                _LOGGER.warning("pythermalcomfort min temp calculation failed, using fallback: %s", e)
+        
+        # Fallback to manual calculation
         from .const import DEFAULT_COMFORT_TEMP_MIN_OFFSET, DEFAULT_MIN_COMFORT_TEMP
         
         min_offset = self.config.get("comfort_range_min_offset", DEFAULT_COMFORT_TEMP_MIN_OFFSET)
@@ -165,6 +188,17 @@ class AdaptiveComfortCalculator:
     @property
     def comfort_temp_max(self) -> float:
         """Calculate maximum comfort temperature."""
+        # Try to use pythermalcomfort first
+        if PYTHERMALCOMFORT_AVAILABLE:
+            try:
+                result = self._calculate_pythermalcomfort_adaptive()
+                if result and "comfort_temp_max" in result:
+                    # Use 80% acceptability range from pythermalcomfort
+                    return result["comfort_temp_max"]
+            except Exception as e:
+                _LOGGER.warning("pythermalcomfort max temp calculation failed, using fallback: %s", e)
+        
+        # Fallback to manual calculation
         from .const import DEFAULT_COMFORT_TEMP_MAX_OFFSET, DEFAULT_MAX_COMFORT_TEMP
         
         max_offset = self.config.get("comfort_range_max_offset", DEFAULT_COMFORT_TEMP_MAX_OFFSET)
@@ -281,6 +315,11 @@ class AdaptiveComfortCalculator:
 
     def get_status_summary(self) -> dict[str, Any]:
         """Get comprehensive status summary."""
+        # Get pythermalcomfort results if available
+        pythermal_result = None
+        if PYTHERMALCOMFORT_AVAILABLE:
+            pythermal_result = self._calculate_pythermalcomfort_adaptive()
+        
         # Calculate effective comfort range considering all offsets
         # Air velocity offset is negative (expands upper range)
         # Humidity offset adjusts the range based on humidity levels
@@ -294,7 +333,14 @@ class AdaptiveComfortCalculator:
         # Determine compliance based on effective range
         is_compliant = effective_comfort_min <= self._indoor_temp <= effective_comfort_max
         
-        return {
+        # Enhanced compliance using pythermalcomfort if available
+        pythermal_compliant_80 = None
+        pythermal_compliant_90 = None
+        if pythermal_result:
+            pythermal_compliant_80 = pythermal_result.get("ashrae_compliant_80")
+            pythermal_compliant_90 = pythermal_result.get("ashrae_compliant_90")
+        
+        status = {
             "outdoor_temp": self._outdoor_temp,
             "indoor_temp": self._indoor_temp,
             "operative_temp": self.operative_temperature,
@@ -315,7 +361,72 @@ class AdaptiveComfortCalculator:
             "compliance_notes": self.compliance_notes,
             "outdoor_temp_valid": self.outdoor_temp_valid,
             "ashrae_compliant": is_compliant,
+            "pythermalcomfort_available": PYTHERMALCOMFORT_AVAILABLE,
         }
+        
+        # Add pythermalcomfort-specific results if available
+        if pythermal_result:
+            status.update({
+                "pythermalcomfort_compliant_80": pythermal_compliant_80,
+                "pythermalcomfort_compliant_90": pythermal_compliant_90,
+                "pythermalcomfort_comfort_min_90": pythermal_result.get("comfort_temp_min_90"),
+                "pythermalcomfort_comfort_max_90": pythermal_result.get("comfort_temp_max_90"),
+            })
+        
+        return status
+
+    def _calculate_pythermalcomfort_adaptive(self) -> dict[str, Any] | None:
+        """Calculate adaptive comfort using pythermalcomfort library.
+        
+        Returns:
+            Dictionary with adaptive comfort calculations or None if error.
+        """
+        if not PYTHERMALCOMFORT_AVAILABLE:
+            return None
+            
+        try:
+            # Use operative temperature (considers radiant temperature)
+            tdb = self.operative_temperature
+            tr = self._mean_radiant_temp if self._mean_radiant_temp is not None else tdb
+            t_running_mean = self._outdoor_temp  # Using current outdoor temp as proxy for running mean
+            v = self._air_velocity
+            
+            _LOGGER.debug(
+                "pythermalcomfort inputs: tdb=%.1f, tr=%.1f, t_running_mean=%.1f, v=%.3f",
+                tdb, tr, t_running_mean, v
+            )
+            
+            # Call pythermalcomfort adaptive_ashrae
+            result = adaptive_ashrae(
+                tdb=tdb,
+                tr=tr,
+                t_running_mean=t_running_mean,
+                v=v
+            )
+            
+            # Extract values from result object
+            output = {
+                "adaptive_comfort_temp": result.tmp_cmf,
+                "comfort_temp_min": result.tmp_cmf_80_low,
+                "comfort_temp_max": result.tmp_cmf_80_up,
+                "comfort_temp_min_90": result.tmp_cmf_90_low,
+                "comfort_temp_max_90": result.tmp_cmf_90_up,
+                "ashrae_compliant_80": result.acceptability_80,
+                "ashrae_compliant_90": result.acceptability_90,
+            }
+            
+            _LOGGER.debug(
+                "pythermalcomfort result: tmp_cmf=%.1f, compliant_80=%s, compliant_90=%s",
+                output["adaptive_comfort_temp"], 
+                output["ashrae_compliant_80"],
+                output["ashrae_compliant_90"]
+            )
+            
+            return output
+            
+        except Exception as e:
+            _LOGGER.error("Error in pythermalcomfort calculation: %s", e)
+            return None
 
     def calculate_comfort_parameters(
         self,
@@ -358,7 +469,8 @@ class AdaptiveComfortCalculator:
         tr: float,
         t_running_mean: float,
         v: float,
-        standard: str = "ashrae"
+        units: str = "SI",
+        limit_inputs: bool = True,
     ) -> Dict[str, Any]:
         """Calculate adaptive comfort temperature using pythermalcomfort library.
         
@@ -370,12 +482,18 @@ class AdaptiveComfortCalculator:
             tr: Mean radiant temperature (°C) 
             t_running_mean: 7-day outdoor running mean temperature (°C)
             v: Air velocity (m/s)
-            standard: Standard to use ("ashrae" or "en")
+            units: Units system ('SI' for metric, 'IP' for imperial)
+            limit_inputs: Whether to limit inputs to valid ranges
             
         Returns:
             Dictionary with:
             - adaptive_comfort_temp: Adaptive comfort temperature (°C)
-            - ashrae_compliant: True if conditions are within acceptable range
+            - comfort_temp_min: Lower acceptable temperature for 80% satisfaction (°C)
+            - comfort_temp_max: Upper acceptable temperature for 80% satisfaction (°C)
+            - comfort_temp_min_90: Lower acceptable temperature for 90% satisfaction (°C)
+            - comfort_temp_max_90: Upper acceptable temperature for 90% satisfaction (°C)
+            - ashrae_compliant_80: True if conditions are within 80% acceptable range
+            - ashrae_compliant_90: True if conditions are within 90% acceptable range
             
         Raises:
             ImportError: If pythermalcomfort library is not available
@@ -384,33 +502,41 @@ class AdaptiveComfortCalculator:
         if not PYTHERMALCOMFORT_AVAILABLE:
             raise ImportError(
                 "pythermalcomfort library is not available. "
-                "Install with: pip install pythermalcomfort==2.8.0"
+                "Install with: pip install pythermalcomfort>=2.7.4"
             )
         
         _LOGGER.debug(
-            "calculate_adaptive_ashrae: tdb=%s, tr=%s, t_running_mean=%s, v=%s, standard=%s",
-            tdb, tr, t_running_mean, v, standard
+            "calculate_adaptive_ashrae: tdb=%s, tr=%s, t_running_mean=%s, v=%s, units=%s",
+            tdb, tr, t_running_mean, v, units
         )
         
         try:
-            # Call pythermalcomfort adaptive_ashrae function
+            # Call pythermalcomfort adaptive_ashrae function with updated API
             result = adaptive_ashrae(
                 tdb=tdb,
                 tr=tr,
                 t_running_mean=t_running_mean,
                 v=v,
-                standard=standard
+                units=units,
+                limit_inputs=limit_inputs
             )
             
-            # Extract key values from result
+            # Extract key values from result object
             output = {
-                "adaptive_comfort_temp": result["tmp_cmf"],
-                "ashrae_compliant": result["acceptability"]
+                "adaptive_comfort_temp": result.tmp_cmf,
+                "comfort_temp_min": result.tmp_cmf_80_low,
+                "comfort_temp_max": result.tmp_cmf_80_up,
+                "comfort_temp_min_90": result.tmp_cmf_90_low,
+                "comfort_temp_max_90": result.tmp_cmf_90_up,
+                "ashrae_compliant_80": result.acceptability_80,
+                "ashrae_compliant_90": result.acceptability_90,
             }
             
             _LOGGER.debug(
-                "calculate_adaptive_ashrae result: adaptive_comfort_temp=%s, ashrae_compliant=%s",
-                output["adaptive_comfort_temp"], output["ashrae_compliant"]
+                "calculate_adaptive_ashrae result: adaptive_comfort_temp=%s, compliant_80=%s, compliant_90=%s",
+                output["adaptive_comfort_temp"], 
+                output["ashrae_compliant_80"], 
+                output["ashrae_compliant_90"]
             )
             
             return output

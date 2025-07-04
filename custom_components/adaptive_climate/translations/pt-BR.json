@@ -1,0 +1,141 @@
+{
+  "config": {
+    "title": "Clima Adaptativo",
+    "step": {
+      "user": {
+        "title": "Configurar Clima Adaptativo",
+        "description": "Configure seu controle de clima adaptativo baseado no padrão ASHRAE 55.",
+        "data": {
+          "name": "Nome da Integração",
+          "climate_entity": "Entidade de Clima",
+          "indoor_temp_sensor": "Sensor de Temperatura Interna",
+          "outdoor_temp_sensor": "Sensor de Temperatura Externa",
+          "comfort_category": "Categoria de Conforto"
+        }
+      },
+      "optional_sensors": {
+        "title": "Sensores Opcionais",
+        "description": "Adicione sensores opcionais para cálculos de conforto aprimorados.",
+        "data": {
+          "indoor_humidity_sensor": "Sensor de Umidade Interna",
+          "outdoor_humidity_sensor": "Sensor de Umidade Externa",
+          "mean_radiant_temp_sensor": "Sensor de Temperatura Radiante Média",
+          "occupancy_sensor": "Sensor de Ocupação"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Falha ao conectar",
+      "invalid_entity": "Entidade inválida selecionada",
+      "unknown": "Erro inesperado ocorreu"
+    },
+    "abort": {
+      "already_configured": "Dispositivo já está configurado"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opções do Clima Adaptativo",
+        "description": "Configure ajustes avançados para seu controle de clima adaptativo.",
+        "data": {
+          "min_comfort_temp": "Temperatura Mínima de Conforto (°C)",
+          "max_comfort_temp": "Temperatura Máxima de Conforto (°C)",
+          "comfort_range_min_offset": "Offset Inferior da Zona de Conforto (°C)",
+          "comfort_range_max_offset": "Offset Superior da Zona de Conforto (°C)",
+          "air_velocity": "Velocidade do Ar (m/s)",
+          "temperature_change_threshold": "Limiar de Mudança de Temperatura (°C)",
+          "natural_ventilation_threshold": "Limiar de Ventilação Natural (°C)",
+          "setback_temperature_offset": "Offset de Temperatura para Economia (°C)",
+          "comfort_category": "Categoria de Conforto ASHRAE 55",
+          "energy_save_mode": "Ativar Modo de Economia de Energia",
+          "natural_ventilation_enable": "Ativar Detecção de Ventilação Natural",
+          "adaptive_air_velocity": "Ativar Velocidade de Ar Adaptativa",
+          "humidity_comfort_enable": "Ativar Ajustes de Conforto por Umidade",
+          "comfort_precision_mode": "Ativar Modo de Precisão de Conforto",
+          "use_operative_temperature": "Usar Temperatura Operativa"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "comfort_temperature": {
+        "name": "Temperatura de Conforto"
+      },
+      "comfort_range_min": {
+        "name": "Mínimo da Zona de Conforto"
+      },
+      "comfort_range_max": {
+        "name": "Máximo da Zona de Conforto"
+      },
+      "running_mean_outdoor_temp": {
+        "name": "Temperatura Externa Média Móvel"
+      },
+      "ashrae_comfort_category": {
+        "name": "Categoria de Conforto ASHRAE"
+      }
+    },
+    "binary_sensor": {
+      "ashrae_compliance": {
+        "name": "Conformidade ASHRAE"
+      }
+    },
+    "number": {
+      "min_comfort_temp": {
+        "name": "Temperatura Mínima de Conforto"
+      },
+      "max_comfort_temp": {
+        "name": "Temperatura Máxima de Conforto"
+      },
+      "air_velocity": {
+        "name": "Velocidade do Ar"
+      },
+      "temperature_change_threshold": {
+        "name": "Limiar de Mudança de Temperatura"
+      },
+      "natural_ventilation_threshold": {
+        "name": "Limiar de Ventilação Natural"
+      },
+      "setback_temperature_offset": {
+        "name": "Offset de Recuo de Temperatura"
+      },
+      "comfort_range_min_offset": {
+        "name": "Offset Mínimo da Zona de Conforto"
+      },
+      "comfort_range_max_offset": {
+        "name": "Offset Máximo da Zona de Conforto"
+      }
+    },
+    "switch": {
+      "energy_save_mode": {
+        "name": "Modo de Economia de Energia"
+      },
+      "natural_ventilation_enable": {
+        "name": "Ativar Ventilação Natural"
+      },
+      "adaptive_air_velocity": {
+        "name": "Velocidade de Ar Adaptativa"
+      },
+      "humidity_comfort_enable": {
+        "name": "Ativar Conforto por Umidade"
+      },
+      "comfort_precision_mode": {
+        "name": "Modo de Precisão de Conforto"
+      },
+      "use_operative_temperature": {
+        "name": "Usar Temperatura Operativa"
+      }
+    },
+    "select": {
+      "comfort_category": {
+        "name": "Categoria de Conforto",
+        "state": {
+          "I": "Categoria I (90% satisfação)",
+          "II": "Categoria II (80% satisfação)",
+          "III": "Categoria III (70% satisfação)"
+        }
+      }
+    }
+  }
+}

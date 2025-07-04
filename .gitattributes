@@ -1,0 +1,13 @@
+# Arquivos de configuração de desenvolvimento remoto
+.devenv linguist-language=bash
+DEV_CONFIG.md linguist-documentation
+DEVELOPMENT.md linguist-documentation
+
+# Scripts de desenvolvimento remoto
+docker/*.sh linguist-language=bash
+start_test_environment.sh linguist-language=bash
+
+# Configurações do projeto
+*.md linguist-documentation
+*.yaml linguist-language=yaml
+*.yml linguist-language=yaml

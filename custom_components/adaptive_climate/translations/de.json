@@ -1,0 +1,141 @@
+{
+  "config": {
+    "title": "Adaptives Klima",
+    "step": {
+      "user": {
+        "title": "Adaptives Klima Konfigurieren",
+        "description": "Konfigurieren Sie Ihre adaptive Klimasteuerung basierend auf dem ASHRAE 55 Standard.",
+        "data": {
+          "name": "Integrations-Name",
+          "climate_entity": "Klima-Entität",
+          "indoor_temp_sensor": "Innentemperatur-Sensor",
+          "outdoor_temp_sensor": "Außentemperatur-Sensor",
+          "comfort_category": "Komfort-Kategorie"
+        }
+      },
+      "optional_sensors": {
+        "title": "Optionale Sensoren",
+        "description": "Fügen Sie optionale Sensoren für verbesserte Komfortberechnungen hinzu.",
+        "data": {
+          "indoor_humidity_sensor": "Innenluftfeuchtigkeits-Sensor",
+          "outdoor_humidity_sensor": "Außenluftfeuchtigkeits-Sensor",
+          "mean_radiant_temp_sensor": "Mittlere Strahlungstemperatur-Sensor",
+          "occupancy_sensor": "Belegungs-Sensor"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung fehlgeschlagen",
+      "invalid_entity": "Ungültige Entität ausgewählt",
+      "unknown": "Unerwarteter Fehler"
+    },
+    "abort": {
+      "already_configured": "Gerät bereits konfiguriert"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Adaptive Klima-Optionen",
+        "description": "Konfigurieren Sie erweiterte Einstellungen für Ihre adaptive Klimasteuerung.",
+        "data": {
+          "min_comfort_temp": "Minimale Komforttemperatur (°C)",
+          "max_comfort_temp": "Maximale Komforttemperatur (°C)",
+          "comfort_range_min_offset": "Unterer Komfortbereich-Versatz (°C)",
+          "comfort_range_max_offset": "Oberer Komfortbereich-Versatz (°C)",
+          "air_velocity": "Luftgeschwindigkeit (m/s)",
+          "temperature_change_threshold": "Temperaturänderungs-Schwellenwert (°C)",
+          "natural_ventilation_threshold": "Natürliche Lüftungs-Schwellenwert (°C)",
+          "setback_temperature_offset": "Energiespar-Temperatur-Versatz (°C)",
+          "comfort_category": "ASHRAE 55 Komfort-Kategorie",
+          "energy_save_mode": "Energiesparmodus Aktivieren",
+          "natural_ventilation_enable": "Natürliche Lüftungserkennung Aktivieren",
+          "adaptive_air_velocity": "Adaptive Luftgeschwindigkeit Aktivieren",
+          "humidity_comfort_enable": "Luftfeuchtigkeits-Komfortanpassungen Aktivieren",
+          "comfort_precision_mode": "Komfort-Präzisionsmodus Aktivieren",
+          "use_operative_temperature": "Operative Temperatur Verwenden"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "comfort_temperature": {
+        "name": "Komforttemperatur"
+      },
+      "comfort_range_min": {
+        "name": "Minimum Komfortbereich"
+      },
+      "comfort_range_max": {
+        "name": "Maximum Komfortbereich"
+      },
+      "running_mean_outdoor_temp": {
+        "name": "Laufende Durchschnitts-Außentemperatur"
+      },
+      "ashrae_comfort_category": {
+        "name": "ASHRAE Komfort-Kategorie"
+      }
+    },
+    "binary_sensor": {
+      "ashrae_compliance": {
+        "name": "ASHRAE-Konformität"
+      }
+    },
+    "number": {
+      "min_comfort_temp": {
+        "name": "Minimale Komforttemperatur"
+      },
+      "max_comfort_temp": {
+        "name": "Maximale Komforttemperatur"
+      },
+      "air_velocity": {
+        "name": "Luftgeschwindigkeit"
+      },
+      "temperature_change_threshold": {
+        "name": "Temperaturänderungs-Schwellenwert"
+      },
+      "natural_ventilation_threshold": {
+        "name": "Natürliche Lüftungs-Schwellenwert"
+      },
+      "setback_temperature_offset": {
+        "name": "Setback-Temperatur-Versatz"
+      },
+      "comfort_range_min_offset": {
+        "name": "Minimaler Komfortbereich-Versatz"
+      },
+      "comfort_range_max_offset": {
+        "name": "Maximaler Komfortbereich-Versatz"
+      }
+    },
+    "switch": {
+      "energy_save_mode": {
+        "name": "Energiesparmodus"
+      },
+      "natural_ventilation_enable": {
+        "name": "Natürliche Lüftung Aktivieren"
+      },
+      "adaptive_air_velocity": {
+        "name": "Adaptive Luftgeschwindigkeit"
+      },
+      "humidity_comfort_enable": {
+        "name": "Luftfeuchtigkeits-Komfort Aktivieren"
+      },
+      "comfort_precision_mode": {
+        "name": "Komfort-Präzisionsmodus"
+      },
+      "use_operative_temperature": {
+        "name": "Operative Temperatur Verwenden"
+      }
+    },
+    "select": {
+      "comfort_category": {
+        "name": "Komfort-Kategorie",
+        "state": {
+          "I": "Kategorie I (90% Zufriedenheit)",
+          "II": "Kategorie II (80% Zufriedenheit)",
+          "III": "Kategorie III (70% Zufriedenheit)"
+        }
+      }
+    }
+  }
+}

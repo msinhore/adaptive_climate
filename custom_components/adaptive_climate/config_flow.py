@@ -18,6 +18,7 @@ from .const import (
     DEFAULT_COMFORT_CATEGORY,
     COMFORT_CATEGORIES,
 )
+from .options_flow import async_get_options_flow
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -88,6 +89,13 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Adaptive Climate."""
 
     VERSION = 1
+    
+    @staticmethod
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> config_entries.OptionsFlow:
+        """Return the options flow."""
+        return async_get_options_flow(config_entry)
     MINOR_VERSION = 0
 
     def __init__(self):

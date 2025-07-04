@@ -14,7 +14,6 @@ from .const import (
     EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP,
 )
 from .coordinator import AdaptiveClimateCoordinator
-from .template import async_register_template_functions
 from .logbook import async_describe_events
 from .services import async_setup_services, async_unload_services
 
@@ -65,7 +64,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Set up services
     await async_setup_services(hass)
     
+    # Register options update listener
+    entry.async_on_unload(entry.add_update_listener(async_update_options))
+    
     return True
+
+
+async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Update options."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    await coordinator.async_update_options(entry.options)
 
 
 async def _async_setup_logbook(hass: HomeAssistant) -> None:
