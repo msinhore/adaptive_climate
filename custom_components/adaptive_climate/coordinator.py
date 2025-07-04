@@ -1120,3 +1120,106 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         # The configuration is managed via services now.
         # Return empty dict - config is managed in the coordinator itself.
         return {}
+
+    async def update_bridge_attribute(self, attribute_name: str, value: Any) -> None:
+        """Update a bridge entity attribute and notify coordinator.
+        
+        This method provides a clean interface for bridge entities to update
+        attributes without directly manipulating hass.states. The coordinator
+        handles the update and triggers appropriate refreshes.
+        
+        Args:
+            attribute_name: Name of the attribute to update
+            value: New value for the attribute
+        """
+        try:
+            _LOGGER.debug(
+                "Bridge attribute update requested: %s = %s (type: %s)",
+                attribute_name, value, type(value).__name__
+            )
+            
+            # Get current binary sensor state
+            binary_sensor_entity_id = self._get_binary_sensor_entity_id()
+            if not binary_sensor_entity_id:
+                _LOGGER.warning("Cannot update bridge attribute: binary sensor entity ID not found")
+                return
+                
+            current_state = self.hass.states.get(binary_sensor_entity_id)
+            if not current_state:
+                _LOGGER.warning(
+                    "Cannot update bridge attribute %s: binary sensor %s not found",
+                    attribute_name, binary_sensor_entity_id
+                )
+                return
+            
+            # Update attributes dict
+            new_attributes = dict(current_state.attributes)
+            old_value = new_attributes.get(attribute_name)
+            new_attributes[attribute_name] = value
+            
+            # Log the change
+            _LOGGER.info(
+                "Updating bridge attribute '%s': %s → %s via coordinator",
+                attribute_name, old_value, value
+            )
+            
+            # Update binary sensor state with new attributes
+            self.hass.states.async_set(
+                binary_sensor_entity_id,
+                current_state.state,
+                new_attributes,
+            )
+            
+            # Update internal coordinator data if it exists
+            if self.data:
+                self.data[attribute_name] = value
+                _LOGGER.debug("Updated coordinator internal data: %s = %s", attribute_name, value)
+            
+            # Trigger coordinator refresh to propagate changes
+            _LOGGER.debug("Triggering coordinator refresh after bridge attribute update")
+            await self.async_request_refresh()
+            
+        except Exception as err:
+            _LOGGER.error(
+                "Error updating bridge attribute %s = %s: %s",
+                attribute_name, value, err
+            )
+            raise
+    
+    def _get_binary_sensor_entity_id(self) -> str | None:
+        """Get the binary sensor entity ID for this coordinator instance."""
+        if not self.config_entry:
+            return None
+            
+        device_name = self.config_entry.data.get('name', 'adaptive_climate').lower().replace(' ', '_')
+        return f"binary_sensor.{device_name}_ashrae_compliance"
+    
+    def get_bridge_attribute_value(self, attribute_name: str) -> Any:
+        """Get current value of a bridge attribute from coordinator data.
+        
+        This provides a clean interface for bridge entities to read attribute
+        values without directly accessing hass.states.
+        
+        Args:
+            attribute_name: Name of the attribute to retrieve
+            
+        Returns:
+            Current value of the attribute, or None if not found
+        """
+        # First try to get from coordinator data
+        if self.data and attribute_name in self.data:
+            value = self.data[attribute_name]
+            _LOGGER.debug("Retrieved bridge attribute '%s' from coordinator data: %s", attribute_name, value)
+            return value
+        
+        # Fallback to binary sensor attributes
+        binary_sensor_entity_id = self._get_binary_sensor_entity_id()
+        if binary_sensor_entity_id:
+            current_state = self.hass.states.get(binary_sensor_entity_id)
+            if current_state and current_state.attributes:
+                value = current_state.attributes.get(attribute_name)
+                _LOGGER.debug("Retrieved bridge attribute '%s' from binary sensor: %s", attribute_name, value)
+                return value
+        
+        _LOGGER.debug("Bridge attribute '%s' not found", attribute_name)
+        return None

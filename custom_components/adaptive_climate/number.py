@@ -28,6 +28,8 @@ from .const import (
 )
 from .coordinator import AdaptiveClimateCoordinator
 from .bridge_entity import create_bridge_entities
+# Import refactored entity for testing
+from .bridge_entity_refactored import create_refactored_outdoor_temp_entity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,6 +65,10 @@ async def async_setup_entry(
     # Add bridge entities for UI helpers
     bridge_entities = create_bridge_entities(hass, config_entry, "number")
     entities.extend(bridge_entities)
+    
+    # Add refactored outdoor temperature entity for testing
+    refactored_entity = create_refactored_outdoor_temp_entity(coordinator, config_entry)
+    entities.append(refactored_entity)
     
     async_add_entities(entities)
 
