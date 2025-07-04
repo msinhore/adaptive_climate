@@ -12,26 +12,14 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
-from homeassistant.helpers import area_registry
 
 from .const import (
     DOMAIN,
     DEFAULT_COMFORT_CATEGORY,
-    DEFAULT_MIN_COMFORT_TEMP,
-    DEFAULT_MAX_COMFORT_TEMP,
-    DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
-    DEFAULT_AIR_VELOCITY,
-    DEFAULT_NATURAL_VENTILATION_THRESHOLD,
-    DEFAULT_SETBACK_TEMPERATURE_OFFSET,
-    DEFAULT_PROLONGED_ABSENCE_MINUTES,
-    DEFAULT_AUTO_SHUTDOWN_MINUTES,
     COMFORT_CATEGORIES,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-# Enhanced logging for debugging entity selection issues
-_LOGGER.setLevel(logging.DEBUG)
 
 # Config Schema for initial setup - only essential entities
 CONFIG_SCHEMA = vol.Schema(
@@ -55,9 +43,9 @@ CONFIG_SCHEMA = vol.Schema(
         vol.Optional("comfort_category", default=DEFAULT_COMFORT_CATEGORY): selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=[
-                    {"value": "I", "label": f"Category I {COMFORT_CATEGORIES['I']['description']}"},
-                    {"value": "II", "label": f"Category II {COMFORT_CATEGORIES['II']['description']}"},
-                    {"value": "III", "label": f"Category III {COMFORT_CATEGORIES['III']['description']}"},
+                    {"value": "I", "label": f"Category I - {COMFORT_CATEGORIES['I']['description']}"},
+                    {"value": "II", "label": f"Category II - {COMFORT_CATEGORIES['II']['description']}"},
+                    {"value": "III", "label": f"Category III - {COMFORT_CATEGORIES['III']['description']}"},
                 ],
                 mode=selector.SelectSelectorMode.DROPDOWN,
             )
@@ -65,7 +53,7 @@ CONFIG_SCHEMA = vol.Schema(
     }
 )
 
-# Optional sensors schema for advanced step
+# Optional sensors schema for second step
 OPTIONAL_SENSORS_SCHEMA = vol.Schema(
     {
         vol.Optional("occupancy_sensor"): selector.EntitySelector(
@@ -88,7 +76,8 @@ OPTIONAL_SENSORS_SCHEMA = vol.Schema(
         ),
         vol.Optional("outdoor_humidity_sensor"): selector.EntitySelector(
             selector.EntitySelectorConfig(
-                domain=["sensor", "input_number", "weather"]
+                domain=["sensor", "input_number", "weather"],
+                device_class=["humidity"]
             )
         ),
     }
@@ -101,9 +90,9 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Optional("comfort_category"): selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=[
-                    {"value": "I", "label": f"Category I {COMFORT_CATEGORIES['I']['description']}"},
-                    {"value": "II", "label": f"Category II {COMFORT_CATEGORIES['II']['description']}"},
-                    {"value": "III", "label": f"Category III {COMFORT_CATEGORIES['III']['description']}"},
+                    {"value": "I", "label": "Category I - High Standard"},
+                    {"value": "II", "label": "Category II - Normal Standard"},
+                    {"value": "III", "label": "Category III - Acceptable Standard"},
                 ],
                 mode=selector.SelectSelectorMode.DROPDOWN,
             )
@@ -199,100 +188,6 @@ OPTIONS_SCHEMA = vol.Schema(
     }
 )
 
-# Legacy schemas (keeping for reference but will be replaced)
-STEP_USER_DATA_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_NAME, default="Adaptive Climate"): str,
-        vol.Optional("area"): selector.AreaSelector(),
-        vol.Required("climate_entity"): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="climate")
-        ),
-        vol.Required("indoor_temp_sensor"): selector.EntitySelector(
-            selector.EntitySelectorConfig(
-                domain=["sensor", "input_number", "weather"]
-            )
-        ),
-        vol.Required("outdoor_temp_sensor"): selector.EntitySelector(
-            selector.EntitySelectorConfig(
-                domain=["sensor", "input_number", "weather"]
-            )
-        ),
-        vol.Optional("comfort_category", default=DEFAULT_COMFORT_CATEGORY): selector.SelectSelector(
-            selector.SelectSelectorConfig(
-                options=[
-                    {"value": "I", "label": f"Category I {COMFORT_CATEGORIES['I']['description']}"},
-                    {"value": "II", "label": f"Category II {COMFORT_CATEGORIES['II']['description']}"},
-                    {"value": "III", "label": f"Category III {COMFORT_CATEGORIES['III']['description']}"},
-                ],
-                mode=selector.SelectSelectorMode.DROPDOWN,
-            )
-        ),
-    }
-)
-
-STEP_ADVANCED_DATA_SCHEMA = vol.Schema(
-    {
-        vol.Optional("occupancy_sensor"): selector.EntitySelector(
-            selector.EntitySelectorConfig(
-                domain="binary_sensor",
-                device_class=["motion", "occupancy", "presence"],
-            )
-        ),
-        vol.Optional("mean_radiant_temp_sensor"): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain=["sensor", "input_number"])
-        ),
-        vol.Optional("indoor_humidity_sensor"): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain=["sensor", "input_number"])
-        ),
-        vol.Optional("outdoor_humidity_sensor"): selector.EntitySelector(
-            selector.EntitySelectorConfig(
-                domain=["sensor", "input_number", "weather"]
-            )
-        ),
-        vol.Optional("use_operative_temperature", default=False): bool,
-        vol.Optional("energy_save_mode", default=True): bool,
-        vol.Optional("comfort_precision_mode", default=False): bool,
-        vol.Optional("use_occupancy_features", default=False): bool,
-        vol.Optional("natural_ventilation_enable", default=True): bool,
-        vol.Optional("adaptive_air_velocity", default=True): bool,
-        vol.Optional("humidity_comfort_enable", default=True): bool,
-        vol.Optional("auto_shutdown_enable", default=False): bool,
-    }
-)
-
-STEP_THRESHOLDS_DATA_SCHEMA = vol.Schema(
-    {
-        vol.Optional("min_comfort_temp", default=DEFAULT_MIN_COMFORT_TEMP): vol.All(
-            vol.Coerce(float), vol.Range(min=15.0, max=22.0)
-        ),
-        vol.Optional("max_comfort_temp", default=DEFAULT_MAX_COMFORT_TEMP): vol.All(
-            vol.Coerce(float), vol.Range(min=25.0, max=32.0)
-        ),
-        vol.Optional("temperature_change_threshold", default=DEFAULT_TEMPERATURE_CHANGE_THRESHOLD): vol.All(
-            vol.Coerce(float), vol.Range(min=0.5, max=2.0)
-        ),
-        vol.Optional("air_velocity", default=DEFAULT_AIR_VELOCITY): vol.All(
-            vol.Coerce(float), vol.Range(min=0.0, max=2.0)
-        ),
-        vol.Optional("natural_ventilation_threshold", default=DEFAULT_NATURAL_VENTILATION_THRESHOLD): vol.All(
-            vol.Coerce(float), vol.Range(min=0.5, max=5.0)
-        ),
-        vol.Optional("setback_temperature_offset", default=DEFAULT_SETBACK_TEMPERATURE_OFFSET): vol.All(
-            vol.Coerce(float), vol.Range(min=1.0, max=5.0)
-        ),
-        vol.Optional("prolonged_absence_minutes", default=DEFAULT_PROLONGED_ABSENCE_MINUTES): vol.All(
-            vol.Coerce(int), vol.Range(min=10, max=240)
-        ),
-        vol.Optional("auto_shutdown_minutes", default=DEFAULT_AUTO_SHUTDOWN_MINUTES): vol.All(
-            vol.Coerce(int), vol.Range(min=15, max=480)
-        ),
-    }
-)
-
-# Jellyfin-style Options Schema - Simple and Minimal for Testing
-OPTIONAL_DATA_SCHEMA = vol.Schema(
-    {vol.Optional("comfort_category"): vol.In(["I", "II", "III"])}
-)
 
 class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Adaptive Climate."""
@@ -303,7 +198,6 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self):
         """Initialize config flow."""
         self.config_data = {}
-        self._reauth_entry = None
 
     @staticmethod
     @callback
@@ -350,14 +244,27 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Update config data with optional sensors
         self.config_data.update(user_input)
 
-        # Check if entry already exists
-        await self.async_set_unique_id(self.config_data[CONF_NAME])
-        self._abort_if_unique_id_configured()
-
-        return self.async_create_entry(
-            title=self.config_data[CONF_NAME], 
-            data=self.config_data
+        # Create unique ID based on climate entity to prevent duplicates
+        unique_id = f"adaptive_climate_{self.config_data['climate_entity'].replace('.', '_')}"
+        await self.async_set_unique_id(unique_id)
+        self._abort_if_unique_id_configured(
+            updates={CONF_NAME: self.config_data[CONF_NAME]}
         )
+
+        # Create dynamic title based on climate entity
+        climate_entity = self.config_data["climate_entity"]
+        climate_state = self.hass.states.get(climate_entity)
+        
+        if climate_state and hasattr(climate_state, 'attributes'):
+            friendly_name = climate_state.attributes.get("friendly_name", "")
+            if friendly_name:
+                title = f"Adaptive Climate - {friendly_name}"
+            else:
+                title = f"Adaptive Climate - {climate_entity.split('.')[-1].replace('_', ' ').title()}"
+        else:
+            title = self.config_data[CONF_NAME]
+
+        return self.async_create_entry(title=title, data=self.config_data)
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
@@ -409,5 +316,3 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             ),
             errors=errors,
         )
-
-
