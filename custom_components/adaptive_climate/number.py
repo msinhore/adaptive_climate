@@ -27,6 +27,7 @@ from .const import (
     DEFAULT_PROLONGED_ABSENCE_MINUTES,
 )
 from .coordinator import AdaptiveClimateCoordinator
+from .bridge_entity import create_bridge_entities
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,6 +59,10 @@ async def async_setup_entry(
         ComfortTempMinOffsetNumber(coordinator, config_entry),
         ComfortTempMaxOffsetNumber(coordinator, config_entry),
     ]
+    
+    # Add bridge entities for UI helpers
+    bridge_entities = create_bridge_entities(hass, config_entry, "number")
+    entities.extend(bridge_entities)
     
     async_add_entities(entities)
 
