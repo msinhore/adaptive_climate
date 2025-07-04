@@ -45,8 +45,6 @@ from .const import (
     EVENT_ADAPTIVE_CLIMATE_MODE_CHANGE,
     EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP,
     DEFAULT_SETBACK_TEMPERATURE_OFFSET,
-    DEFAULT_ABSOLUTE_MIN_TEMP,
-    DEFAULT_ABSOLUTE_MAX_TEMP,
 )
 from .ashrae_calculator import AdaptiveComfortCalculator
 
@@ -548,9 +546,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         if not self._occupied:
             setback_offset = self.config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
             
-            # Get absolute safety limits
-            absolute_min = self.config.get("absolute_min_temp", DEFAULT_ABSOLUTE_MIN_TEMP)
-            absolute_max = self.config.get("absolute_max_temp", DEFAULT_ABSOLUTE_MAX_TEMP)
+            # Get user-configured absolute comfort limits (the real absolute limits)
+            min_comfort_limit = self.config.get("min_comfort_temp", 18.0)
+            max_comfort_limit = self.config.get("max_comfort_temp", 30.0)
             
             # CRITICAL FIX: When temperature is outside comfort zone, prioritize cooling/heating
             if indoor_temp > comfort_max:
@@ -577,8 +575,8 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 target_temp = max(comfort_temp - setback_offset, comfort_min)
                 actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset, within comfort zone"
             
-            # Ensure target stays within absolute safety limits
-            target_temp = max(absolute_min, min(target_temp, absolute_max))
+            # Ensure target stays within user-configured absolute comfort limits
+            target_temp = max(min_comfort_limit, min(target_temp, max_comfort_limit))
             
             _LOGGER.debug(
                 "Setback logic: indoor=%.1f°C, comfort=%.1f°C, comfort_zone=[%.1f-%.1f]°C, target=%.1f°C",
@@ -1143,10 +1141,6 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             "comfort_temp_min_offset": "comfort_range_min_offset",
             "comfort_temp_max_offset": "comfort_range_max_offset",
             
-            # Number entities - Absolute safety limits
-            "absolute_min_temp": "absolute_min_temp",
-            "absolute_max_temp": "absolute_max_temp",
-            
             # Switch entities (using actual unique_ids from switch.py)
             "use_operative_temperature": "use_operative_temperature",
             "energy_save_mode": "energy_save_mode",
@@ -1174,7 +1168,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     # Handle different entity types
                     if suffix in ["min_comfort_temp", "max_comfort_temp", "temperature_change_threshold", 
                                 "air_velocity", "natural_ventilation_threshold", "setback_temperature_offset",
-                                "comfort_temp_min_offset", "comfort_temp_max_offset", "absolute_min_temp", "absolute_max_temp"]:
+                                "comfort_temp_min_offset", "comfort_temp_max_offset"]:
                         # Number entities - convert to float
                         entity_values[config_key] = float(state.state)
                     elif suffix in ["prolonged_absence_minutes", "auto_shutdown_minutes"]:

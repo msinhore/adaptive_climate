@@ -25,8 +25,6 @@ from .const import (
     DEFAULT_MIN_COMFORT_TEMP,
     DEFAULT_MAX_COMFORT_TEMP,
     DEFAULT_PROLONGED_ABSENCE_MINUTES,
-    DEFAULT_ABSOLUTE_MIN_TEMP,
-    DEFAULT_ABSOLUTE_MAX_TEMP,
 )
 from .coordinator import AdaptiveClimateCoordinator
 
@@ -59,10 +57,6 @@ async def async_setup_entry(
         # Advanced comfort zone offsets
         ComfortTempMinOffsetNumber(coordinator, config_entry),
         ComfortTempMaxOffsetNumber(coordinator, config_entry),
-        
-        # Absolute safety limits
-        AbsoluteMinTempNumber(coordinator, config_entry),
-        AbsoluteMaxTempNumber(coordinator, config_entry),
     ]
     
     async_add_entities(entities)
@@ -394,70 +388,6 @@ class ComfortTempMaxOffsetNumber(AdaptiveClimateNumberBase):
         """Set the value."""
         self._attr_native_value = value
         await self.coordinator.update_config({"comfort_range_max_offset": value})
-    
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return self.coordinator.last_update_success
-
-
-class AbsoluteMinTempNumber(AdaptiveClimateNumberBase):
-    """Number entity for absolute minimum temperature safety limit."""
-
-    def __init__(self, coordinator: AdaptiveClimateCoordinator, config_entry: ConfigEntry) -> None:
-        """Initialize the number entity."""
-        super().__init__(coordinator, config_entry)
-        self._attr_unique_id = f"{config_entry.entry_id}_absolute_min_temp"
-        self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} Absolute Min Temperature"
-        self._attr_icon = "mdi:thermometer-alert"
-        self._attr_native_min_value = 10.0
-        self._attr_native_max_value = 20.0
-        self._attr_native_step = 0.1
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        self._attr_device_class = NumberDeviceClass.TEMPERATURE
-        self._attr_native_value = coordinator.config.get("absolute_min_temp", DEFAULT_ABSOLUTE_MIN_TEMP)
-    
-    @property
-    def native_value(self) -> float | None:
-        """Return the current value."""
-        return self._attr_native_value
-    
-    async def async_set_native_value(self, value: float) -> None:
-        """Set the value."""
-        self._attr_native_value = value
-        await self.coordinator.update_config({"absolute_min_temp": value})
-    
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return self.coordinator.last_update_success
-
-
-class AbsoluteMaxTempNumber(AdaptiveClimateNumberBase):
-    """Number entity for absolute maximum temperature safety limit."""
-
-    def __init__(self, coordinator: AdaptiveClimateCoordinator, config_entry: ConfigEntry) -> None:
-        """Initialize the number entity."""
-        super().__init__(coordinator, config_entry)
-        self._attr_unique_id = f"{config_entry.entry_id}_absolute_max_temp"
-        self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} Absolute Max Temperature"
-        self._attr_icon = "mdi:thermometer-alert"
-        self._attr_native_min_value = 25.0
-        self._attr_native_max_value = 40.0
-        self._attr_native_step = 0.1
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        self._attr_device_class = NumberDeviceClass.TEMPERATURE
-        self._attr_native_value = coordinator.config.get("absolute_max_temp", DEFAULT_ABSOLUTE_MAX_TEMP)
-    
-    @property
-    def native_value(self) -> float | None:
-        """Return the current value."""
-        return self._attr_native_value
-    
-    async def async_set_native_value(self, value: float) -> None:
-        """Set the value."""
-        self._attr_native_value = value
-        await self.coordinator.update_config({"absolute_max_temp": value})
     
     @property
     def available(self) -> bool:

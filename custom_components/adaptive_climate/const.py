@@ -29,10 +29,6 @@ DEFAULT_AUTO_SHUTDOWN_MINUTES = 120
 DEFAULT_COMFORT_TEMP_MIN_OFFSET = -2.0  # Negative offset from adaptive comfort temp
 DEFAULT_COMFORT_TEMP_MAX_OFFSET = 2.0   # Positive offset from adaptive comfort temp
 
-# Absolute safety temperature limits for setback (configurable via number helpers)
-DEFAULT_ABSOLUTE_MIN_TEMP = 16.0  # Absolute minimum temperature for safety
-DEFAULT_ABSOLUTE_MAX_TEMP = 30.0  # Absolute maximum temperature for safety
-
 # Comfort categories based on ASHRAE 55
 COMFORT_CATEGORIES = {
     "I": {"tolerance": 2.0, "description": "±2°C (90% satisfaction)"},
