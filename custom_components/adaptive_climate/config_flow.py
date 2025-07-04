@@ -94,8 +94,11 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize config flow."""
         self.config_data = {}
 
-    # Options flow completely removed - all settings managed by entities
-    # No options available to prevent duplication with entity controls
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        """Get options flow for reconfiguration."""
+        return AdaptiveClimateOptionsFlow(config_entry)
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -159,11 +162,110 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(title=title, data=self.config_data)
 
 
-# OptionsFlowHandler completely removed to prevent duplication
-# All configuration settings are now managed exclusively by entities:
-# - NumberEntity for temperature settings, thresholds, timers
-# - SwitchEntity for feature toggles  
-# - SelectEntity for comfort category
-# - ButtonEntity for actions like reset, reconfigure
-#
-# This ensures each setting appears only once in the Controls tab
+class AdaptiveClimateOptionsFlow(config_entries.OptionsFlow):
+    """Handle options flow for Adaptive Climate reconfiguration."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry):
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle reconfiguration of essential entities."""
+        if user_input is None:
+            # Create schema with current values
+            current_data = self.config_entry.data
+            
+            reconfigure_schema = vol.Schema(
+                {
+                    vol.Required(
+                        "climate_entity", 
+                        default=current_data.get("climate_entity", "")
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="climate")
+                    ),
+                    vol.Required(
+                        "indoor_temp_sensor", 
+                        default=current_data.get("indoor_temp_sensor", "")
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor", "input_number", "weather"],
+                            device_class=["temperature"]
+                        )
+                    ),
+                    vol.Required(
+                        "outdoor_temp_sensor", 
+                        default=current_data.get("outdoor_temp_sensor", "")
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor", "input_number", "weather"],
+                            device_class=["temperature", "weather"]
+                        )
+                    ),
+                    vol.Optional(
+                        "occupancy_sensor", 
+                        default=current_data.get("occupancy_sensor", "")
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["binary_sensor", "input_boolean"],
+                            device_class=["occupancy", "motion", "presence"]
+                        )
+                    ),
+                    vol.Optional(
+                        "indoor_humidity_sensor", 
+                        default=current_data.get("indoor_humidity_sensor", "")
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor", "input_number"],
+                            device_class=["humidity"]
+                        )
+                    ),
+                    vol.Optional(
+                        "mean_radiant_temp_sensor", 
+                        default=current_data.get("mean_radiant_temp_sensor", "")
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor", "input_number"],
+                            device_class=["temperature"]
+                        )
+                    ),
+                }
+            )
+
+            return self.async_show_form(
+                step_id="init",
+                data_schema=reconfigure_schema,
+                description_placeholders={
+                    "name": self.config_entry.data.get(CONF_NAME, "Adaptive Climate")
+                }
+            )
+
+        errors = {}
+
+        # Validate that entities exist
+        registry = async_get_entity_registry(self.hass)
+        for field in ["climate_entity", "indoor_temp_sensor", "outdoor_temp_sensor"]:
+            entity_id = user_input.get(field)
+            if entity_id and not registry.async_is_registered(entity_id):
+                if entity_id not in self.hass.states.async_entity_ids():
+                    errors[field] = "entity_not_found"
+
+        if errors:
+            return self.async_show_form(
+                step_id="init", 
+                data_schema=vol.Schema({}),  # Will be rebuilt
+                errors=errors
+            )
+
+        # Clean up empty optional fields
+        cleaned_data = {k: v for k, v in user_input.items() if v}
+        
+        # Update the config entry with new entity selections
+        new_data = {**self.config_entry.data, **cleaned_data}
+        
+        self.hass.config_entries.async_update_entry(
+            self.config_entry, data=new_data
+        )
+
+        return self.async_create_entry(title="", data={})

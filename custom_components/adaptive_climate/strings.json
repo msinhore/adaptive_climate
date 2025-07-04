@@ -27,6 +27,25 @@
       "entity_not_found": "Entity not found or not available"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Reconfigure Adaptive Climate",
+        "description": "Update the sensor entities used by {name}. Detailed settings are available as entities in the Controls tab.",
+        "data": {
+          "climate_entity": "Climate Entity",
+          "indoor_temp_sensor": "Indoor Temperature Sensor",
+          "outdoor_temp_sensor": "Outdoor Temperature Sensor",
+          "occupancy_sensor": "Occupancy Sensor (Optional)",
+          "indoor_humidity_sensor": "Indoor Humidity Sensor (Optional)",
+          "mean_radiant_temp_sensor": "Mean Radiant Temperature Sensor (Optional)"
+        }
+      }
+    },
+    "error": {
+      "entity_not_found": "Entity not found or not available"
+    }
+  },
   "entity": {
     "sensor": {
       "comfort_temperature": {

@@ -38,7 +38,9 @@ class AdaptiveComfortCalculator:
         self._outdoor_humidity = 50.0
         self._mean_radiant_temp = None
         self._occupancy_state = True
-        self._air_velocity = config.get("air_velocity", 0.1)
+        
+        from .const import DEFAULT_AIR_VELOCITY
+        self._air_velocity = config.get("air_velocity", DEFAULT_AIR_VELOCITY)
 
     def update_sensors(
         self,
@@ -135,23 +137,29 @@ class AdaptiveComfortCalculator:
     @property
     def comfort_tolerance(self) -> float:
         """Get comfort tolerance based on category."""
-        category = self.config.get("comfort_category", "II")
+        from .const import DEFAULT_COMFORT_CATEGORY
+        
+        category = self.config.get("comfort_category", DEFAULT_COMFORT_CATEGORY)
         return COMFORT_CATEGORIES[category]["tolerance"]
 
     @property
     def comfort_temp_min(self) -> float:
         """Calculate minimum comfort temperature."""
-        min_offset = self.config.get("comfort_range_min_offset", -2.0)
+        from .const import DEFAULT_COMFORT_TEMP_MIN_OFFSET, DEFAULT_MIN_COMFORT_TEMP
+        
+        min_offset = self.config.get("comfort_range_min_offset", DEFAULT_COMFORT_TEMP_MIN_OFFSET)
         min_adaptive = self.adaptive_comfort_temp + min_offset  # offset is negative
-        min_absolute = self.config.get("min_comfort_temp", 16.0)
+        min_absolute = self.config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)
         return max(min_adaptive, min_absolute)
 
     @property
     def comfort_temp_max(self) -> float:
         """Calculate maximum comfort temperature."""
-        max_offset = self.config.get("comfort_range_max_offset", 2.0)
+        from .const import DEFAULT_COMFORT_TEMP_MAX_OFFSET, DEFAULT_MAX_COMFORT_TEMP
+        
+        max_offset = self.config.get("comfort_range_max_offset", DEFAULT_COMFORT_TEMP_MAX_OFFSET)
         max_adaptive = self.adaptive_comfort_temp + max_offset  # offset is positive
-        max_absolute = self.config.get("max_comfort_temp", 30.0)
+        max_absolute = self.config.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP)
         return min(max_adaptive, max_absolute)
 
     @property
@@ -159,8 +167,10 @@ class AdaptiveComfortCalculator:
         """Calculate target temperature based on current conditions."""
         if not self._occupancy_state and self.config.get("energy_save_mode", True):
             # Unoccupied energy saving mode
-            setback_offset = self.config.get("setback_temperature_offset", 2.0)
-            min_comfort = self.config.get("min_comfort_temp", 18.0)
+            from .const import DEFAULT_SETBACK_TEMPERATURE_OFFSET, DEFAULT_MIN_COMFORT_TEMP
+            
+            setback_offset = self.config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
+            min_comfort = self.config.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)
             
             if self._indoor_temp > self.comfort_temp_max:
                 return self.comfort_temp_max

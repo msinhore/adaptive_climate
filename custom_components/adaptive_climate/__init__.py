@@ -43,7 +43,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_setup_logbook(hass)
     
     # Create coordinator
-    coordinator = AdaptiveClimateCoordinator(hass, entry.data)
+    coordinator = AdaptiveClimateCoordinator(hass, entry.data, entry)
     
     # Store coordinator
     hass.data[DOMAIN][entry.entry_id] = coordinator

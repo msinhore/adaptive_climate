@@ -9,6 +9,7 @@ from typing import Any
 import pytz
 
 from homeassistant.core import HomeAssistant, State, callback
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.util import dt as dt_util
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -63,6 +64,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         self,
         hass: HomeAssistant,
         config_entry_data: dict[str, Any],
+        config_entry: ConfigEntry | None = None,
     ) -> None:
         """Initialize coordinator."""
         super().__init__(
@@ -72,6 +74,8 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(minutes=UPDATE_INTERVAL_MEDIUM),
         )
         
+        self.config_entry = config_entry  # Store config entry for accessing options
+        
         # Always create a mutable dictionary from the config entry data
         if hasattr(config_entry_data, "mapping"):
             # Handle MappingProxy objects
@@ -79,6 +83,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         else:
             # Handle regular dictionaries and other mappings
             self.config = dict(config_entry_data)
+            
+        # Merge options into config if config_entry is available
+        if config_entry and config_entry.options:
+            self.config.update(config_entry.options)
             
         self.calculator = AdaptiveComfortCalculator(self.config)
         
@@ -169,6 +177,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             
             # Check manual override expiry
             self._check_override_expiry()
+            
+            # Sync options to config before calculations
+            self._sync_options_to_config()
             
             # Calculate adaptive parameters
             comfort_data = self.calculator.calculate_comfort_parameters(
@@ -507,16 +518,13 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                             "Auto shutdown action: %s", 
                             {k: v for k, v in actions.items() if v is not None}
                         )
-                        
-                        # Return immediately with shutdown action - skip all other logic
+                        # Return immediately with shutdown action
                         return actions
                     else:
-                        # Already off due to auto shutdown - don't apply any setback or other logic
                         actions["reason"] = f"Already off - absent for {minutes_absent:.1f} min"
                         _LOGGER.debug("HVAC already off due to auto shutdown")
                         
-                        # Return immediately since system is already off
-                        return actions
+                        # Continue with normal logic since already off
                 else:
                     remaining_minutes = prolonged_absence_minutes - minutes_absent
                     _LOGGER.debug(
@@ -536,62 +544,51 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             if not auto_shutdown_enable:
                 _LOGGER.debug("Auto shutdown skipped: feature is disabled")
 
-        # Apply occupancy setback if unoccupied (but only if auto shutdown didn't trigger)
+        # Apply occupancy setback if unoccupied (but prioritize cooling/heating when needed)
         if not self._occupied:
             setback_offset = self.config.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
             
-            # Get absolute safety limits (wider than comfort limits for energy savings)
-            absolute_min = self.config.get("absolute_min_temp", DEFAULT_ABSOLUTE_MIN_TEMP)  # Safety minimum  
-            absolute_max = self.config.get("absolute_max_temp", DEFAULT_ABSOLUTE_MAX_TEMP)  # Safety maximum
+            # Get absolute safety limits
+            absolute_min = self.config.get("absolute_min_temp", DEFAULT_ABSOLUTE_MIN_TEMP)
+            absolute_max = self.config.get("absolute_max_temp", DEFAULT_ABSOLUTE_MAX_TEMP)
             
-            # Determine target temperature based on current situation
-            if indoor_temp > comfort_temp:
-                # If too warm, apply setback by allowing higher temperature (less aggressive cooling)
-                # But still cool down if significantly above comfort
-                if indoor_temp > (comfort_temp + 1.0):  # If more than 1°C above comfort
-                    # Still need cooling, but with setback - target slightly above comfort
-                    target_temp = min(comfort_temp + (setback_offset * 0.5), absolute_max)
-                else:
-                    # Close to comfort, allow higher setback
-                    target_temp = min(comfort_temp + setback_offset, absolute_max)
-            else:
-                # If too cool, apply setback by allowing lower temperature (less heating)
-                target_temp = max(comfort_temp - setback_offset, absolute_min)
-            
-            # Ensure target doesn't go against cooling/heating logic
+            # CRITICAL FIX: When temperature is outside comfort zone, prioritize cooling/heating
             if indoor_temp > comfort_max:
-                # Force cooling: target must be below current indoor temp
-                target_temp = min(target_temp, indoor_temp - 0.5)
+                # Force cooling: indoor is above comfort zone, must cool down
+                # Allow minimal setback but ensure cooling happens
+                target_temp = max(comfort_max - 0.5, min(comfort_temp + (setback_offset * 0.3), indoor_temp - 0.5))
+                actions["reason"] = f"Setback cooling: indoor {indoor_temp:.1f}°C > comfort_max {comfort_max:.1f}°C"
+                
             elif indoor_temp < comfort_min:
-                # Force heating: target must be above current indoor temp  
-                target_temp = max(target_temp, indoor_temp + 0.5)
-            
-            # Log the setback logic for debugging
-            original_setback = comfort_temp + setback_offset if indoor_temp > comfort_temp else comfort_temp - setback_offset
-            was_adjusted = original_setback != target_temp
-            
-            if was_adjusted:
-                if indoor_temp > comfort_max:
-                    actions["reason"] = f"Setback (unoccupied): cooling to {target_temp:.1f}°C (reduced from {original_setback:.1f}°C to ensure cooling)"
-                elif indoor_temp < comfort_min:
-                    actions["reason"] = f"Setback (unoccupied): heating to {target_temp:.1f}°C (adjusted from {original_setback:.1f}°C to ensure heating)"
-                else:
-                    actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset to {target_temp:.1f}°C"
+                # Force heating: indoor is below comfort zone, must heat up  
+                # Allow minimal setback but ensure heating happens
+                target_temp = min(comfort_min + 0.5, max(comfort_temp - (setback_offset * 0.3), indoor_temp + 0.5))
+                actions["reason"] = f"Setback heating: indoor {indoor_temp:.1f}°C < comfort_min {comfort_min:.1f}°C"
+                
+            elif indoor_temp > comfort_temp:
+                # Slightly above comfort temp but within comfort zone
+                # Apply setback but don't exceed comfort_max
+                target_temp = min(comfort_temp + setback_offset, comfort_max)
+                actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset, within comfort zone"
+                
             else:
-                beyond_comfort = ""
-                if indoor_temp > comfort_temp and target_temp > comfort_max:
-                    beyond_comfort = f" (beyond comfort max {comfort_max:.1f}°C for energy saving)"
-                elif indoor_temp < comfort_temp and target_temp < comfort_min:
-                    beyond_comfort = f" (beyond comfort min {comfort_min:.1f}°C for energy saving)"
-                actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset{beyond_comfort}"
+                # Below or at comfort temp, apply heating setback
+                # Apply setback but don't go below comfort_min
+                target_temp = max(comfort_temp - setback_offset, comfort_min)
+                actions["reason"] = f"Setback (unoccupied): {setback_offset}°C offset, within comfort zone"
             
-            _LOGGER.debug("Setback applied: indoor=%.1f°C, comfort=%.1f°C, target=%.1f°C, was_adjusted=%s, comfort_range=[%.1f-%.1f]°C", 
-                         indoor_temp, comfort_temp, target_temp, was_adjusted, comfort_min, comfort_max)
+            # Ensure target stays within absolute safety limits
+            target_temp = max(absolute_min, min(target_temp, absolute_max))
+            
+            _LOGGER.debug(
+                "Setback logic: indoor=%.1f°C, comfort=%.1f°C, comfort_zone=[%.1f-%.1f]°C, target=%.1f°C",
+                indoor_temp, comfort_temp, comfort_min, comfort_max, target_temp
+            )
         else:
             # When occupied, use the comfort temperature directly
             target_temp = comfort_temp
             actions["reason"] = "Occupied - using comfort temperature"
-
+            
         # Check if temperature change is significant enough
         current_target = float(climate_state.attributes.get(ATTR_TEMPERATURE, 0))
         temp_threshold = self.config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
@@ -1102,3 +1099,100 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             
         except Exception as err:
             _LOGGER.error("Error during timezone recovery: %s", err)
+
+    def _sync_options_to_config(self) -> None:
+        """Sync entity values and config_entry options into config for calculator access."""
+        # First merge config_entry options if available
+        if self.config_entry and self.config_entry.options:
+            self.config.update(self.config_entry.options)
+        
+        # Then sync values from actual entities in Home Assistant
+        entity_values = self._get_entity_values()
+        if entity_values:
+            self.config.update(entity_values)
+            _LOGGER.debug("Synced %d entity values into config", len(entity_values))
+        
+        # Update calculator with merged config
+        self.calculator.update_config(self.config)
+    
+    def _get_entity_values(self) -> dict[str, Any]:
+        """Get current values from all adaptive climate entities."""
+        if not self.config_entry:
+            return {}
+        
+        entity_values = {}
+        entry_id = self.config_entry.entry_id
+        
+        # Map of entity suffixes to config keys
+        entity_mappings = {
+            # Number entities - Core temperature settings
+            "min_comfort_temp": "min_comfort_temp",
+            "max_comfort_temp": "max_comfort_temp", 
+            "temperature_change_threshold": "temperature_change_threshold",
+            
+            # Number entities - Air velocity and natural ventilation
+            "air_velocity": "air_velocity",
+            "natural_ventilation_threshold": "natural_ventilation_threshold",
+            
+            # Number entities - Setback and occupancy settings
+            "setback_temperature_offset": "setback_temperature_offset",
+            "prolonged_absence_minutes": "prolonged_absence_minutes",
+            "auto_shutdown_minutes": "auto_shutdown_minutes",
+            
+            # Number entities - Advanced comfort zone offsets
+            "comfort_temp_min_offset": "comfort_range_min_offset",
+            "comfort_temp_max_offset": "comfort_range_max_offset",
+            
+            # Number entities - Absolute safety limits
+            "absolute_min_temp": "absolute_min_temp",
+            "absolute_max_temp": "absolute_max_temp",
+            
+            # Switch entities (using actual unique_ids from switch.py)
+            "use_operative_temperature": "use_operative_temperature",
+            "energy_save_mode": "energy_save_mode",
+            "comfort_precision_mode": "comfort_precision_mode",
+            "use_occupancy_features": "use_occupancy_features",
+            "natural_ventilation_enable": "natural_ventilation_enabled",
+            "adaptive_air_velocity": "air_velocity_correction_enabled",
+            "humidity_comfort_enable": "humidity_correction_enabled",
+            "auto_shutdown_enable": "auto_shutdown_enabled",
+            
+            # Select entities
+            "comfort_category": "comfort_category",
+            
+            # Binary sensor entities (using actual unique_ids from binary_sensor.py)
+            "ashrae_compliance": "ashrae_compliance_status",
+            "natural_ventilation_optimal": "natural_ventilation_optimal",
+        }
+        
+        for suffix, config_key in entity_mappings.items():
+            entity_id = f"{DOMAIN}.{entry_id}_{suffix}"
+            state = self.hass.states.get(entity_id)
+            
+            if state and state.state not in [STATE_UNKNOWN, STATE_UNAVAILABLE]:
+                try:
+                    # Handle different entity types
+                    if suffix in ["min_comfort_temp", "max_comfort_temp", "temperature_change_threshold", 
+                                "air_velocity", "natural_ventilation_threshold", "setback_temperature_offset",
+                                "comfort_temp_min_offset", "comfort_temp_max_offset", "absolute_min_temp", "absolute_max_temp"]:
+                        # Number entities - convert to float
+                        entity_values[config_key] = float(state.state)
+                    elif suffix in ["prolonged_absence_minutes", "auto_shutdown_minutes"]:
+                        # Integer number entities
+                        entity_values[config_key] = int(float(state.state))
+                    elif suffix in ["use_operative_temperature", "energy_save_mode", "comfort_precision_mode",
+                                  "use_occupancy_features", "natural_ventilation_enable", "adaptive_air_velocity",
+                                  "humidity_comfort_enable", "auto_shutdown_enable", "ashrae_compliance", 
+                                  "natural_ventilation_optimal"]:
+                        # Boolean entities (switches and binary sensors)
+                        entity_values[config_key] = state.state.lower() in ["on", "true", "1"]
+                    else:
+                        # String entities (selects)
+                        entity_values[config_key] = state.state
+                        
+                except (ValueError, TypeError) as err:
+                    _LOGGER.warning("Failed to convert entity %s value '%s' for config key %s: %s", 
+                                  entity_id, state.state, config_key, err)
+                    continue
+        
+        return entity_values
