@@ -158,6 +158,7 @@ class AdaptiveClimateNumberEntity(CoordinatorEntity, NumberEntity):
         self._attr_native_step = native_step
         self._attr_native_unit_of_measurement = native_unit_of_measurement
         self._attr_device_class = device_class
+        self._attr_mode = "box" 
         
         # Generate stable unique ID
         self._attr_unique_id = f"{config_entry.entry_id}_{entity_key}"

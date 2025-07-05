@@ -88,6 +88,7 @@ class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
         entity_key: str,
         name: str,
         icon: str,
+        default_value: bool = True,
     ) -> None:
         """Initialize the switch entity."""
         super().__init__(coordinator)
@@ -95,13 +96,26 @@ class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
         self._entity_key = entity_key
         self._attr_name = name
         self._attr_icon = icon
-        
+        self._default_value = default_value
         # Generate stable unique ID
         self._attr_unique_id = f"{config_entry.entry_id}_{entity_key}"
-        
+        # Set initial state based on config or default
+        self._attr_is_on = config_entry.data.get(entity_key, default_value)
         _LOGGER.debug(
-            "Initialized switch entity: %s (key: %s, unique_id: %s)",
-            name, entity_key, self._attr_unique_id
+            "Initialized switch entity: %s (key: %s, unique_id: %s, initial_state: %s)",
+            name, entity_key, self._attr_unique_id, self._attr_is_on
+        )
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        # Ensure state is set on add
+        initial_value = self._config_entry.data.get(self._entity_key, self._default_value)
+        if self._attr_is_on != initial_value:
+            self._attr_is_on = initial_value
+            self.async_write_ha_state()
+        _LOGGER.debug(
+            "Switch entity %s added to hass with state: %s",
+            self._entity_key, self._attr_is_on
         )
 
     @property
