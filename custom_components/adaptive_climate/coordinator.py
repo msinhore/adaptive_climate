@@ -162,19 +162,31 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     return {**self._last_valid_data, "status": status_message}
                 return self._get_default_data(status=status_message)
             
-            # Parse temperatures
+            # Parse temperatures (robust: accept any value convertible to float, log full state for debugging)
             try:
-                indoor_temp = float(indoor_temp_state.state)
-                outdoor_temp = float(outdoor_temp_state.state)
+                def _parse_temp(state_obj, label):
+                    if state_obj is None:
+                        raise ValueError(f"{label} state is None")
+                    # Log the full state object for debugging
+                    _LOGGER.warning(f"DEBUG: {label} sensor state object: %s", state_obj)
+                    val = state_obj.state
+                    # Accept any value convertible to float
+                    try:
+                        return float(val)
+                    except Exception as exc:
+                        _LOGGER.warning(f"DEBUG: Could not convert {label} value to float: %s (type: %s, error: %s)", val, type(val), exc)
+                        raise
+                indoor_temp = _parse_temp(indoor_temp_state, "indoor")
+                outdoor_temp = _parse_temp(outdoor_temp_state, "outdoor")
                 _LOGGER.warning(
                     "DEBUG: indoor_temp(float)=%s, outdoor_temp(float)=%s",
                     indoor_temp, outdoor_temp
                 )
-            except (ValueError, TypeError) as exc:
+            except Exception as exc:
                 _LOGGER.warning(
                     "Invalid temperature values: indoor=%s (%s), outdoor=%s (%s), error=%s",
-                    indoor_temp_state.state, type(indoor_temp_state.state),
-                    outdoor_temp_state.state, type(outdoor_temp_state.state),
+                    getattr(indoor_temp_state, 'state', None), type(getattr(indoor_temp_state, 'state', None)),
+                    getattr(outdoor_temp_state, 'state', None), type(getattr(outdoor_temp_state, 'state', None)),
                     exc
                 )
                 # Return previous data if available, or minimal default data
@@ -237,7 +249,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     "comfort_temp_max": 24.0,
                     "outdoor_running_mean": self._running_mean_outdoor_temp or outdoor_temp,
                 }
-                _LOGGER.warning("Fallback: comfort_data set to default values due to calculation errors.")
+                _LOGGER.warning("Fallback: comfort_data set to default values devido a erros de cálculo.")
             
             # Update natural ventilation status
             self._update_natural_ventilation_status(outdoor_temp, indoor_temp, comfort_data)
@@ -376,6 +388,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
     def _create_logbook_entry(self, message: str, entity_id: str | None = None) -> None:
         """Create a logbook entry for important events."""
+        _LOGGER.info("LOGBOOK: %s (entity: %s)", message, entity_id or self.climate_entity_id)
         try:
             # Se não foi fornecido um entity_id específico, use o ID da entidade de climate
             if entity_id is None:
