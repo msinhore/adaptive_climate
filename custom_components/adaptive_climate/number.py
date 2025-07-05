@@ -183,17 +183,26 @@ class AdaptiveClimateNumberEntity(CoordinatorEntity, NumberEntity):
     @property
     def native_value(self) -> float | None:
         """Return the current value."""
-        if not self.coordinator.data:
-            return None
-            
-        value = self.coordinator.data.get(self._entity_key)
+        value = None
+        
+        if self.coordinator.data:
+            # Get value from coordinator data
+            value = self.coordinator.data.get(self._entity_key)
+        
+        # If not found in coordinator data, check config entry
         if value is None:
-            # Get default value from coordinator config
-            value = self.coordinator.get_config_value(self._entity_key)
-            
+            value = self._config_entry.data.get(self._entity_key)
+
+        # If still not found, use default value from coordinator config
+        if value is None:
+            value = self._attr_native_min_value
+
         _LOGGER.debug(
             "Number entity %s native_value: %s (from %s)",
-            self._entity_key, value, "coordinator_data" if self.coordinator.data.get(self._entity_key) else "config_default"
+            self._entity_key, value,
+            "coordinator_data" if self.coordinator.data and self.coordinator.data.get(self._entity_key) is not None
+            else "config_entry_data" if self._config_entry.data.get(self._entity_key) is not None
+            else "native_min_value"
         )
         
         return value
