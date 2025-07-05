@@ -8,14 +8,14 @@ from typing import Any, Dict
 _LOGGER = logging.getLogger(__name__)
 
 try:
-    from pythermalcomfort.models import adaptive_ashrae
-    import pythermalcomfort
+    from .pythermalcomfort_patched import adaptive_ashrae
+    import pythermalcomfort_patched
     PYTHERMALCOMFORT_AVAILABLE = True
-    _LOGGER.info("pythermalcomfort library loaded successfully (version: %s)", 
-                 getattr(pythermalcomfort, '__version__', 'unknown'))
+    _LOGGER.info("pythermalcomfort_patched loaded successfully (version: %s)", 
+                 getattr(pythermalcomfort_patched, '__version__', '2.10.0-patched-ha'))
 except ImportError:
     PYTHERMALCOMFORT_AVAILABLE = False
-    _LOGGER.warning("pythermalcomfort library not available. Using fallback calculations.")
+    _LOGGER.warning("pythermalcomfort_patched not available. Using fallback calculations.")
 
 from .const import (
     ASHRAE_BASE_TEMP,
