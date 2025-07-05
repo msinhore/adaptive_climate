@@ -93,15 +93,33 @@ English, Portuguese (Brazil), Italian, French, Spanish, German
 ## Technical details
 
 - Based on ASHRAE 55-2020 Adaptive Thermal Comfort model
+- Uses pythermalcomfort library algorithms for scientific accuracy
 - Updates every minute or when sensor values change
 - Stores 7-day outdoor temperature history for running mean calculations
 - Uses CoordinatorEntity pattern for efficient data management
-- Fallback calculations when external libraries are unavailable
+- Compatible with Python 3.13+ through patched implementation
+
+## Scientific Citation
+
+This integration implements adaptive thermal comfort calculations based on the pythermalcomfort library. If you use this integration in research or academic work, please cite:
+
+**Tartarini, F., Schiavon, S., 2020.**  
+*pythermalcomfort: A Python package for thermal comfort research.*  
+SoftwareX 12, 100578.  
+https://doi.org/10.1016/j.softx.2020.100578
+
+The adaptive comfort calculations follow ASHRAE Standard 55-2020 implementations as provided by the Center for the Built Environment, UC Berkeley.
+
+## Acknowledgments
+
+- **pythermalcomfort**: Scientific thermal comfort algorithms ([GitHub](https://github.com/CenterForTheBuiltEnvironment/pythermalcomfort))
+- **ASHRAE Standard 55-2020**: Thermal Environmental Conditions for Human Occupancy
+- **CBE Comfort Tool**: Reference implementation ([comfort.cbe.berkeley.edu](https://comfort.cbe.berkeley.edu/))
 
 ## Support
 
-- [Issues](https://github.com/yourusername/adaptive_climate/issues): Bug reports and feature requests
-- [Discussions](https://github.com/yourusername/adaptive_climate/discussions): Questions and community support
+- [Issues](https://github.com/msinhore/adaptive-climate/issues): Bug reports and feature requests
+- [Discussions](https://github.com/msinhore/adaptive-climate/discussions): Questions and community support
 
 ## License
 
