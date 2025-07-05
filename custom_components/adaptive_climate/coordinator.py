@@ -113,6 +113,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         
         # Load persisted data
         self.hass.async_create_task(self._load_persisted_data())
+        
+        # Initialize update lock
+        self._update_lock = asyncio.Lock()
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Update data."""
@@ -176,6 +179,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             self._check_override_expiry()
             
             # Calculate adaptive parameters using pythermalcomfort
+            comfort_data = None
             try:
                 # Use pythermalcomfort wrapper for scientific accuracy
                 adaptive_result = self.calculator._calculate_pythermalcomfort_adaptive()
@@ -183,49 +187,41 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 if adaptive_result:
                     self._last_pythermalcomfort_result = adaptive_result
                     _LOGGER.debug("pythermalcomfort calculation successful: %s", adaptive_result)
+                    # Build comfort_data from result
+                    comfort_data = {
+                        "adaptive_comfort_temp": adaptive_result.get("adaptive_comfort_temp", 22.0),
+                        "ashrae_compliant": adaptive_result.get("ashrae_compliant_80", False),
+                        "comfort_temp_min": adaptive_result.get("comfort_temp_min", 20.0),
+                        "comfort_temp_max": adaptive_result.get("comfort_temp_max", 24.0),
+                        "outdoor_running_mean": self._running_mean_outdoor_temp or outdoor_temp,
+                    }
                 else:
                     _LOGGER.debug("pythermalcomfort calculation returned None, using fallback")
                     
             except Exception as err:
                 _LOGGER.warning("pythermalcomfort calculation failed: %s", err)
-                adaptive_result = None
-                
-                # Extract values from pythermalcomfort result
-                adaptive_comfort_temp = adaptive_result["adaptive_comfort_temp"]
-                ashrae_compliant = adaptive_result["ashrae_compliant"]
-                
-                _LOGGER.info(
-                    "STAGE2_PYTHERMALCOMFORT: adaptive_comfort_temp=%.1f°C, ashrae_compliant=%s (tdb=%.1f, tr=%.1f, t_rm=%.1f, v=%.2f)",
-                    adaptive_comfort_temp,
-                    ashrae_compliant,
-                    indoor_temp,
-                    self._get_mean_radiant_temp() or indoor_temp,
-                    self._running_mean_outdoor_temp or outdoor_temp,
-                    self.config.get("air_velocity", 0.1)
-                )
-                
-                # Build comfort_data structure compatible with existing code
+            if comfort_data is None:
+                try:
+                    # Fallback to legacy calculator for backward compatibility
+                    comfort_data = self.calculator.calculate_comfort_parameters(
+                        outdoor_temp=outdoor_temp,
+                        indoor_temp=indoor_temp,
+                        indoor_humidity=self._get_humidity(),
+                        air_velocity=self.config.get("air_velocity", 0.1),
+                        mean_radiant_temp=self._get_mean_radiant_temp(),
+                    )
+                except Exception as err:
+                    _LOGGER.warning("Fallback comfort calculation failed: %s", err)
+            # Fallback: se comfort_data não foi definido, use valores padrão
+            if comfort_data is None:
                 comfort_data = {
-                    "adaptive_comfort_temp": adaptive_comfort_temp,
-                    "ashrae_compliant": ashrae_compliant,
-                    "comfort_temp_min": adaptive_comfort_temp - 2.5,  # Default tolerance
-                    "comfort_temp_max": adaptive_comfort_temp + 2.5,
+                    "adaptive_comfort_temp": 22.0,
+                    "ashrae_compliant": False,
+                    "comfort_temp_min": 20.0,
+                    "comfort_temp_max": 24.0,
                     "outdoor_running_mean": self._running_mean_outdoor_temp or outdoor_temp,
                 }
-                
-            except Exception as err:
-                _LOGGER.warning(
-                    "STAGE2_PYTHERMALCOMFORT_FALLBACK: Error using pythermalcomfort, falling back to legacy calculator: %s",
-                    err
-                )
-                # Fallback to legacy calculator for backward compatibility
-                comfort_data = self.calculator.calculate_comfort_parameters(
-                    outdoor_temp=outdoor_temp,
-                    indoor_temp=indoor_temp,
-                    indoor_humidity=self._get_humidity(),
-                    air_velocity=self.config.get("air_velocity", 0.1),
-                    mean_radiant_temp=self._get_mean_radiant_temp(),
-                )
+                _LOGGER.warning("Fallback: comfort_data set to default values due to calculation errors.")
             
             # Update natural ventilation status
             self._update_natural_ventilation_status(outdoor_temp, indoor_temp, comfort_data)
