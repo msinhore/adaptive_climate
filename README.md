@@ -143,6 +143,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Architecture Diagram
 
+<div style="height: 420px;">
+
 ```mermaid
 graph TD
     subgraph Sensors
@@ -169,3 +171,5 @@ graph TD
     HA --> AC
     AC -- "State Feedback" --> HA
 ```
+
+</div>
