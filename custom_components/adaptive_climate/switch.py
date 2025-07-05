@@ -88,6 +88,7 @@ class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
         entity_key: str,
         name: str,
         icon: str,
+        icon_off: str | None = None,
         default_value: bool = True,
     ) -> None:
         """Initialize the switch entity."""
@@ -96,6 +97,7 @@ class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
         self._entity_key = entity_key
         self._attr_name = name
         self._attr_icon = icon
+        self._icon_off = icon_off
         self._default_value = default_value
         # Generate stable unique ID
         self._attr_unique_id = f"{config_entry.entry_id}_{entity_key}"
@@ -131,22 +133,9 @@ class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
         )
 
     @property
-    def is_on(self) -> bool | None:
+    def is_on(self) -> bool:
         """Return true if the switch is on."""
-        if not self.coordinator.data:
-            return None
-            
-        value = self.coordinator.data.get(self._entity_key)
-        if value is None:
-            # Get default value from coordinator config
-            value = self.coordinator.get_config_value(self._entity_key)
-            
-        _LOGGER.debug(
-            "Switch entity %s is_on: %s (from %s)",
-            self._entity_key, value, "coordinator_data" if self.coordinator.data.get(self._entity_key) else "config_default"
-        )
-        
-        return bool(value) if value is not None else None
+        return self._attr_is_on
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
