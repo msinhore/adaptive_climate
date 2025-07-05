@@ -131,11 +131,13 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             indoor_temp_state = self.hass.states.get(self.indoor_temp_entity_id)
             outdoor_temp_state = self.hass.states.get(self.outdoor_temp_entity_id)
             _LOGGER.warning(
-                "DEBUG: climate=%s indoor=%s outdoor=%s",
-                climate_state.state if climate_state else "None",
-                indoor_temp_state.state if indoor_temp_state else "None",
-                outdoor_temp_state.state if outdoor_temp_state else "None"
+                "DEBUG: climate_state=%r, indoor_temp_state=%r, outdoor_temp_state=%r",
+                climate_state, indoor_temp_state, outdoor_temp_state
             )
+            if indoor_temp_state:
+                _LOGGER.warning("DEBUG: indoor_temp_state.state=%r type=%r", indoor_temp_state.state, type(indoor_temp_state.state))
+            if outdoor_temp_state:
+                _LOGGER.warning("DEBUG: outdoor_temp_state.state=%r type=%r", outdoor_temp_state.state, type(outdoor_temp_state.state))
             # Check if any required entity is unavailable or unknown
             missing_entities = []
             if not climate_state or climate_state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
