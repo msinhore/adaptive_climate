@@ -10,6 +10,6 @@
   "integration_type": "device",
   "issue_tracker": "https://github.com/msinhore/adaptive-climate/issues",
   "quality_scale": "silver",
-  "requirements": ["pythermalcomfort>=3.0.0"],
+  "requirements": ["pythermalcomfort==2.10.0"],
   "version": "0.3.0"
 }
