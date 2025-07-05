@@ -1,5 +1,9 @@
 # Adaptive Climate
 
+> **Warning**
+> 
+> Adaptive Climate is under active development. Features and behavior may change, and some functions may not work correctly in all scenarios. Use with caution and report any issues you encounter.
+
 A Home Assistant integration that implements ASHRAE 55 Adaptive Thermal Comfort standards for intelligent climate control.
 
 ## What it does
@@ -124,3 +128,4 @@ The adaptive comfort calculations follow ASHRAE Standard 55-2020 implementations
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
+
