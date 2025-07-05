@@ -8,7 +8,19 @@ A Home Assistant integration that implements ASHRAE 55 Adaptive Thermal Comfort 
 
 ## What it does
 
-Adaptive Climate automatically calculates optimal indoor temperatures based on outdoor conditions, following scientific comfort standards. Instead of fixed temperature setpoints, it adapts to weather patterns to improve comfort while reducing energy consumption.
+Adaptive Climate intelligently manages your climate system using a scientific, adaptive approach. It:
+
+- Continuously monitors indoor temperature, outdoor temperature, radiant temperature (if available), and occupancy sensors.
+- Detects the current season based on your latitude and date, adapting comfort logic for summer and winter.
+- Uses user-configurable minimum and maximum comfort temperature ranges.
+- Applies the ASHRAE 55-2020 Adaptive Thermal Comfort model to determine the optimal comfort zone for your environment.
+- Automatically sets your AC or heater to the most appropriate mode (cool, heat, fan, or off) to maintain comfort and save energy.
+- Dynamically controls fan speed (air velocity) to improve comfort, even without changing the setpoint temperature.
+- Turns off the climate system when not needed (e.g., when the space is unoccupied or already within the comfort zone).
+- Integrates all available sensor data (temperature, humidity, radiant temperature, occupancy, etc.) for precise, science-based comfort decisions.
+- Ensures all actions are based on international comfort standards, not just fixed setpoints.
+
+Instead of fixed temperature setpoints, Adaptive Climate adapts to weather, season, and occupancy to improve comfort and reduce energy consumption, providing a truly intelligent and scientific climate control experience.
 
 ## Problem it solves
 
