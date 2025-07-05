@@ -143,7 +143,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Architecture Diagram
 
-<div style="height: 420px;">
+<div style="height: 1000px;">
 
 ```mermaid
 graph TD
