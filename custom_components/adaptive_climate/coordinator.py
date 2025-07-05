@@ -117,8 +117,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         # Initialize update lock
         self._update_lock = asyncio.Lock()
 
+        _LOGGER.warning("DEBUG: AdaptiveClimateCoordinator __init__ chamado")
+
     async def _async_update_data(self) -> dict[str, Any]:
         """Update data."""
+        _LOGGER.warning("DEBUG: _async_update_data chamado")
         try:
             # Start with fresh calculation
             self._error_count = getattr(self, '_error_count', 0)
@@ -127,7 +130,12 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             climate_state = self.hass.states.get(self.climate_entity_id)
             indoor_temp_state = self.hass.states.get(self.indoor_temp_entity_id)
             outdoor_temp_state = self.hass.states.get(self.outdoor_temp_entity_id)
-            
+            _LOGGER.warning(
+                "DEBUG: climate=%s indoor=%s outdoor=%s",
+                climate_state.state if climate_state else "None",
+                indoor_temp_state.state if indoor_temp_state else "None",
+                outdoor_temp_state.state if outdoor_temp_state else "None"
+            )
             # Check if any required entity is unavailable or unknown
             missing_entities = []
             if not climate_state or climate_state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
@@ -158,9 +166,17 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             try:
                 indoor_temp = float(indoor_temp_state.state)
                 outdoor_temp = float(outdoor_temp_state.state)
+                _LOGGER.warning(
+                    "DEBUG: indoor_temp(float)=%s, outdoor_temp(float)=%s",
+                    indoor_temp, outdoor_temp
+                )
             except (ValueError, TypeError) as exc:
-                _LOGGER.warning("Invalid temperature values: indoor=%s, outdoor=%s, error=%s", 
-                              indoor_temp_state.state, outdoor_temp_state.state, exc)
+                _LOGGER.warning(
+                    "Invalid temperature values: indoor=%s (%s), outdoor=%s (%s), error=%s",
+                    indoor_temp_state.state, type(indoor_temp_state.state),
+                    outdoor_temp_state.state, type(outdoor_temp_state.state),
+                    exc
+                )
                 # Return previous data if available, or minimal default data
                 if self.data:
                     return {**self.data, "status": "invalid_temperature_values"}
@@ -256,9 +272,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             self._last_valid_data = data.copy()
             await self._save_persisted_data(data)
             
+            _LOGGER.warning("DEBUG: Fim do _async_update_data, data será retornado para sensores.")
             return data
             
         except Exception as err:
+            _LOGGER.error("DEBUG: Exceção em _async_update_data: %s", err)
             self._error_count += 1
             error_type = type(err).__name__
             
