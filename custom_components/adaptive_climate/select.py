@@ -60,7 +60,8 @@ class AdaptiveClimateSelectEntity(CoordinatorEntity, SelectEntity):
         super().__init__(coordinator)
         self._config_entry = config_entry
         self._entity_key = entity_key
-        self._attr_name = name
+        area = coordinator.config.get("name", "Adaptive Climate")
+        self._attr_name = f"{name} ({area})"
         self._attr_icon = icon
         self._attr_options = options
         
@@ -69,7 +70,7 @@ class AdaptiveClimateSelectEntity(CoordinatorEntity, SelectEntity):
         
         _LOGGER.debug(
             "Initialized select entity: %s (key: %s, unique_id: %s)",
-            name, entity_key, self._attr_unique_id
+            self._attr_name, entity_key, self._attr_unique_id
         )
 
     @property

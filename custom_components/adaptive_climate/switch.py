@@ -95,7 +95,8 @@ class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
         super().__init__(coordinator)
         self._config_entry = config_entry
         self._entity_key = entity_key
-        self._attr_name = name
+        area = coordinator.config.get("name", "Adaptive Climate")
+        self._attr_name = f"{name} ({area})"
         self._attr_icon = icon
         self._icon_off = icon_off
         self._default_value = default_value
@@ -105,7 +106,7 @@ class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
         self._attr_is_on = config_entry.data.get(entity_key, default_value)
         _LOGGER.debug(
             "Initialized switch entity: %s (key: %s, unique_id: %s, initial_state: %s)",
-            name, entity_key, self._attr_unique_id, self._attr_is_on
+            self._attr_name, entity_key, self._attr_unique_id, self._attr_is_on
         )
 
     async def async_added_to_hass(self) -> None:

@@ -75,11 +75,12 @@ class ASHRAEComplianceSensor(AdaptiveClimateBinarySensorBase):
         super().__init__(coordinator, config_entry)
         # Ensure unique_id is clean and valid
         entry_id = config_entry.entry_id.replace("-", "_")
+        area = config_entry.data.get('name', 'Adaptive Climate')
         self._attr_unique_id = f"{entry_id}_ashrae_compliance"
-        self._attr_name = f"{config_entry.data.get('name', 'Adaptive Climate')} ASHRAE Compliance"
+        self._attr_name = f"{area} ASHRAE Compliance"
         self._attr_icon = "mdi:check-circle-outline"
         # Set explicit entity_id for better predictability
-        device_name = config_entry.data.get('name', 'adaptive_climate').lower().replace(' ', '_')
+        device_name = area.lower().replace(' ', '_')
         self._attr_entity_id = f"binary_sensor.{device_name}_ashrae_compliance"
 
     @property

@@ -104,19 +104,18 @@ class AdaptiveClimateSensorEntity(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self._config_entry = config_entry
         self._entity_key = entity_key
-        self._attr_name = name
+        area = coordinator.config.get("name", "Adaptive Climate")
+        self._attr_name = f"{name} ({area})"
         self._attr_icon = icon
         self._attr_native_unit_of_measurement = native_unit_of_measurement
         self._attr_device_class = device_class
         self._attr_state_class = state_class
         self._attr_entity_category = entity_category
-        
         # Generate stable unique ID
         self._attr_unique_id = f"{config_entry.entry_id}_{entity_key}"
-        
         _LOGGER.debug(
             "Initialized sensor entity: %s (key: %s, unique_id: %s)",
-            name, entity_key, self._attr_unique_id
+            self._attr_name, entity_key, self._attr_unique_id
         )
 
     @property
