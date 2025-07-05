@@ -180,13 +180,18 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             
             # Calculate adaptive parameters using pythermalcomfort
             try:
-                # Use new pythermalcomfort wrapper for scientific accuracy
-                adaptive_result = self.calculator.calculate_adaptive_ashrae(
-                    tdb=indoor_temp,
-                    tr=self._get_mean_radiant_temp() or indoor_temp,  # Fallback to indoor temp
-                    t_running_mean=self._running_mean_outdoor_temp or outdoor_temp,
-                    v=self.config.get("air_velocity", 0.1)
-                )
+                # Use pythermalcomfort wrapper for scientific accuracy
+                adaptive_result = self.calculator._calculate_pythermalcomfort_adaptive()
+                
+                if adaptive_result:
+                    self._last_pythermalcomfort_result = adaptive_result
+                    _LOGGER.debug("pythermalcomfort calculation successful: %s", adaptive_result)
+                else:
+                    _LOGGER.debug("pythermalcomfort calculation returned None, using fallback")
+                    
+            except Exception as err:
+                _LOGGER.warning("pythermalcomfort calculation failed: %s", err)
+                adaptive_result = None
                 
                 # Extract values from pythermalcomfort result
                 adaptive_comfort_temp = adaptive_result["adaptive_comfort_temp"]
