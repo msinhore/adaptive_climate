@@ -151,7 +151,9 @@ class AdaptiveClimateNumberEntity(CoordinatorEntity, NumberEntity):
         super().__init__(coordinator)
         self._config_entry = config_entry
         self._entity_key = entity_key
-        self._attr_name = name
+        # Adiciona a área/configuração ao nome para unicidade e clareza
+        area = coordinator.config.get("name", "Adaptive Climate")
+        self._attr_name = f"{name} ({area})"
         self._attr_icon = icon
         self._attr_native_min_value = native_min_value
         self._attr_native_max_value = native_max_value
@@ -159,13 +161,11 @@ class AdaptiveClimateNumberEntity(CoordinatorEntity, NumberEntity):
         self._attr_native_unit_of_measurement = native_unit_of_measurement
         self._attr_device_class = device_class
         self._attr_mode = "box" 
-        
         # Generate stable unique ID
         self._attr_unique_id = f"{config_entry.entry_id}_{entity_key}"
-        
         _LOGGER.debug(
             "Initialized number entity: %s (key: %s, unique_id: %s)",
-            name, entity_key, self._attr_unique_id
+            self._attr_name, entity_key, self._attr_unique_id
         )
 
     @property
