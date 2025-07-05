@@ -140,3 +140,32 @@ The adaptive comfort calculations follow ASHRAE Standard 55-2020 implementations
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
+
+## Architecture Diagram
+
+```mermaid
+graph TD
+    subgraph Sensors
+        OUT["Outdoor Temp Sensor"]
+        IN["Indoor Temp Sensor"]
+        RAD["Radiant Temp Sensor"]
+        HUM["Humidity Sensor"]
+        OCC["Occupancy Sensor"]
+    end
+    USER["User Settings (Comfort Range, Preferences)"]
+    SEASON["Season Detector (Latitude + Date)"]
+    ASHRAE["ASHRAE 55-2020 Comfort Model"]
+    AC["Climate Device (AC/Heater/Fan)"]
+    HA["Adaptive Climate Integration"]
+
+    OUT --> HA
+    IN --> HA
+    RAD --> HA
+    HUM --> HA
+    OCC --> HA
+    USER --> HA
+    SEASON --> HA
+    ASHRAE --> HA
+    HA --> AC
+    AC -- "State Feedback" --> HA
+```
