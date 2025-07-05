@@ -10,10 +10,6 @@
   "integration_type": "device",
   "issue_tracker": "https://github.com/msinhore/adaptive-climate/issues",
   "quality_scale": "silver",
-  "requirements": [
-    "pythermalcomfort==2.10.0", 
-    "numba>=0.61.2", 
-    "llvmlite>=0.44.0"
-  ],
+  "requirements": [],
   "version": "0.3.0"
 }

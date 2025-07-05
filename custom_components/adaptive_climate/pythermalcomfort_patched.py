@@ -5,28 +5,30 @@ Extracted from pythermalcomfort library with Python 3.13.3 adaptations.
 Original: https://github.com/CenterForTheBuiltEnvironment/pythermalcomfort
 Fork: https://github.com/msinhore/pythermalcomfort
 
+This implementation is based on:
+Tartarini, F., Schiavon, S., 2020.
+pythermalcomfort: A Python package for thermal comfort research.
+SoftwareX 12, 100578.
+https://doi.org/10.1016/j.softx.2020.100578
+
 Compatible with:
-- numba>=0.60.0,<0.62.0
-- llvmlite>=0.43.0,<0.45.0  
-- numpy>=1.24,<2.3
-- Python 3.13.3
+- Pure Python implementation (no external dependencies)
+- Python 3.13.3+
+- All Home Assistant environments
 """
 
 import math
 import logging
 from typing import NamedTuple, Union, Dict, Any
-import numpy as np
 
-try:
-    from numba import jit
-    NUMBA_AVAILABLE = True
-except ImportError:
-    NUMBA_AVAILABLE = False
-    # Fallback decorator
-    def jit(*args, **kwargs):
-        def decorator(func):
-            return func
-        return decorator if args else decorator
+# No external dependencies - pure Python implementation
+NUMBA_AVAILABLE = False
+
+def jit(*args, **kwargs):
+    """Fallback decorator that does nothing - pure Python execution."""
+    def decorator(func):
+        return func
+    return decorator if args else decorator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -204,10 +206,7 @@ def adaptive_ashrae_90(
     }
 
 # Version info for compatibility
-__version__ = "2.10.0-patched-ha"
+__version__ = "2.10.0-patched-ha-pure"
 
 # Log successful import
-if NUMBA_AVAILABLE:
-    _LOGGER.info("pythermalcomfort_patched loaded with numba optimization")
-else:
-    _LOGGER.info("pythermalcomfort_patched loaded without numba (fallback mode)")
+_LOGGER.info("pythermalcomfort_patched loaded (pure Python - no external dependencies)")
