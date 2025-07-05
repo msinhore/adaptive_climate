@@ -46,7 +46,7 @@ from .const import (
     EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP,
     DEFAULT_SETBACK_TEMPERATURE_OFFSET,
 )
-from .ashrae_calculator import AdaptiveComfortCalculator, calculate_adaptive_ashrae
+from .ashrae_calculator import AdaptiveComfortCalculator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -181,12 +181,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             # Calculate adaptive parameters using pythermalcomfort
             try:
                 # Use new pythermalcomfort wrapper for scientific accuracy
-                adaptive_result = calculate_adaptive_ashrae(
+                adaptive_result = self.calculator.calculate_adaptive_ashrae(
                     tdb=indoor_temp,
                     tr=self._get_mean_radiant_temp() or indoor_temp,  # Fallback to indoor temp
                     t_running_mean=self._running_mean_outdoor_temp or outdoor_temp,
-                    v=self.config.get("air_velocity", 0.1),
-                    standard="ashrae"
+                    v=self.config.get("air_velocity", 0.1)
                 )
                 
                 # Extract values from pythermalcomfort result
