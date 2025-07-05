@@ -35,8 +35,6 @@ from .const import (
     COMFORT_CATEGORIES,
 )
 
-_LOGGER = logging.getLogger(__name__)
-
 
 class AdaptiveComfortCalculator:
     """ASHRAE 55 adaptive comfort model calculator."""
@@ -469,8 +467,6 @@ class AdaptiveComfortCalculator:
         tr: float,
         t_running_mean: float,
         v: float,
-        units: str = "SI",
-        limit_inputs: bool = True,
     ) -> Dict[str, Any]:
         """Calculate adaptive comfort temperature using pythermalcomfort library.
         
@@ -482,8 +478,6 @@ class AdaptiveComfortCalculator:
             tr: Mean radiant temperature (°C) 
             t_running_mean: 7-day outdoor running mean temperature (°C)
             v: Air velocity (m/s)
-            units: Units system ('SI' for metric, 'IP' for imperial)
-            limit_inputs: Whether to limit inputs to valid ranges
             
         Returns:
             Dictionary with:
@@ -502,23 +496,21 @@ class AdaptiveComfortCalculator:
         if not PYTHERMALCOMFORT_AVAILABLE:
             raise ImportError(
                 "pythermalcomfort library is not available. "
-                "Install with: pip install pythermalcomfort>=2.7.4"
+                "Install with: pip install pythermalcomfort>=3.0.0"
             )
         
         _LOGGER.debug(
-            "calculate_adaptive_ashrae: tdb=%s, tr=%s, t_running_mean=%s, v=%s, units=%s",
-            tdb, tr, t_running_mean, v, units
+            "calculate_adaptive_ashrae: tdb=%s, tr=%s, t_running_mean=%s, v=%s",
+            tdb, tr, t_running_mean, v
         )
         
         try:
-            # Call pythermalcomfort adaptive_ashrae function with updated API
+            # Call pythermalcomfort adaptive_ashrae function - API 3.0+
             result = adaptive_ashrae(
                 tdb=tdb,
                 tr=tr,
                 t_running_mean=t_running_mean,
-                v=v,
-                units=units,
-                limit_inputs=limit_inputs
+                v=v
             )
             
             # Extract key values from result object
