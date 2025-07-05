@@ -72,6 +72,18 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 "air_velocity",
                 default=options.get("air_velocity", DEFAULT_AIR_VELOCITY)
             ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
+            vol.Optional(
+                "fan_mode_low_velocity",
+                default=options.get("fan_mode_low_velocity", 0.15)
+            ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
+            vol.Optional(
+                "fan_mode_mid_velocity",
+                default=options.get("fan_mode_mid_velocity", 0.25)
+            ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
+            vol.Optional(
+                "fan_mode_high_velocity",
+                default=options.get("fan_mode_high_velocity", 0.4)
+            ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
             
             # Thresholds
             vol.Optional(

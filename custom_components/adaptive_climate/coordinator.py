@@ -47,6 +47,7 @@ from .const import (
     DEFAULT_SETBACK_TEMPERATURE_OFFSET,
 )
 from .ashrae_calculator import AdaptiveComfortCalculator
+from .season_detector import get_season
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -120,13 +121,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         _LOGGER.warning("DEBUG: AdaptiveClimateCoordinator __init__ chamado")
 
     async def _async_update_data(self) -> dict[str, Any]:
-        """Update data."""
         _LOGGER.warning("DEBUG: _async_update_data chamado")
         try:
-            # Start with fresh calculation
             self._error_count = getattr(self, '_error_count', 0)
-            
-            # Get current states
             climate_state = self.hass.states.get(self.climate_entity_id)
             indoor_temp_state = self.hass.states.get(self.indoor_temp_entity_id)
             outdoor_temp_state = self.hass.states.get(self.outdoor_temp_entity_id)
@@ -146,33 +143,24 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 missing_entities.append(f"indoor temperature sensor: {self.indoor_temp_entity_id}")
             if not outdoor_temp_state or outdoor_temp_state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
                 missing_entities.append(f"outdoor temperature sensor: {self.outdoor_temp_entity_id}")
-            
             if missing_entities:
-                # Only log warning if this is the first time or if it's been a while
                 now = dt_util.now()
-                if not hasattr(self, '_last_warning_time') or (now - self._last_warning_time).total_seconds() > 300:  # 5 minutes
+                if not hasattr(self, '_last_warning_time') or (now - self._last_warning_time).total_seconds() > 300:
                     _LOGGER.info("Waiting for required temperature sensors to become available: %s", ", ".join(missing_entities))
                     self._last_warning_time = now
-                
                 status_message = f"entities_unavailable: {', '.join(missing_entities)}"
-                
-                # Return previous data if available, or minimal default data
                 if self.data:
                     return {**self.data, "status": status_message}
                 elif self._last_valid_data:
                     _LOGGER.info("Using last valid persisted data while entities are unavailable")
                     return {**self._last_valid_data, "status": status_message}
                 return self._get_default_data(status=status_message)
-            
-            # Parse temperatures (robust: accept any value convertible to float, log full state for debugging)
             try:
                 def _parse_temp(state_obj, label):
                     if state_obj is None:
                         raise ValueError(f"{label} state is None")
-                    # Log the full state object for debugging
                     _LOGGER.warning(f"DEBUG: {label} sensor state object: %s", state_obj)
                     val = state_obj.state
-                    # Accept any value convertible to float
                     try:
                         return float(val)
                     except Exception as exc:
@@ -191,33 +179,35 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     getattr(outdoor_temp_state, 'state', None), type(getattr(outdoor_temp_state, 'state', None)),
                     exc
                 )
-                # Return previous data if available, or minimal default data
                 if self.data:
                     return {**self.data, "status": "invalid_temperature_values"}
                 elif self._last_valid_data:
                     _LOGGER.info("Using last valid persisted data due to invalid temperature values")
                     return {**self._last_valid_data, "status": "invalid_temperature_values"}
                 return self._get_default_data(status="invalid_temperature_values")
-            
-            # Update outdoor temperature history and running mean
             self._update_outdoor_temp_history(outdoor_temp)
-            
-            # Update occupancy
             self._update_occupancy()
-            
-            # Check manual override expiry
             self._check_override_expiry()
-            
-            # Calculate adaptive parameters using pythermalcomfort
+            # --- Mapeamento de fan_mode para air_velocity ---
+            fan_velocity_defaults = {
+                "low": self.config.get("fan_mode_low_velocity", 0.15),
+                "mid": self.config.get("fan_mode_mid_velocity", 0.25),
+                "high": self.config.get("fan_mode_high_velocity", 0.4),
+            }
+            air_velocity = self.config.get("air_velocity", 0.1)
+            fan_mode = None
+            if climate_state:
+                fan_mode = climate_state.attributes.get("fan_mode")
+                if fan_mode in fan_velocity_defaults:
+                    air_velocity = fan_velocity_defaults[fan_mode]
+            _LOGGER.debug(f"Fan mode: {fan_mode}, air_velocity aplicado: {air_velocity}")
+            # -----------------------------------------------------
             comfort_data = None
             try:
-                # Use pythermalcomfort wrapper for scientific accuracy
                 adaptive_result = self.calculator._calculate_pythermalcomfort_adaptive()
-                
                 if adaptive_result:
                     self._last_pythermalcomfort_result = adaptive_result
                     _LOGGER.debug("pythermalcomfort calculation successful: %s", adaptive_result)
-                    # Build comfort_data from result
                     comfort_data = {
                         "adaptive_comfort_temp": adaptive_result.get("adaptive_comfort_temp", 22.0),
                         "ashrae_compliant": adaptive_result.get("ashrae_compliant_80", False),
@@ -227,22 +217,19 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     }
                 else:
                     _LOGGER.debug("pythermalcomfort calculation returned None, using fallback")
-                    
             except Exception as err:
                 _LOGGER.warning("pythermalcomfort calculation failed: %s", err)
             if comfort_data is None:
                 try:
-                    # Fallback to legacy calculator for backward compatibility
                     comfort_data = self.calculator.calculate_comfort_parameters(
                         outdoor_temp=outdoor_temp,
                         indoor_temp=indoor_temp,
                         indoor_humidity=self._get_humidity(),
-                        air_velocity=self.config.get("air_velocity", 0.1),
+                        air_velocity=air_velocity,
                         mean_radiant_temp=self._get_mean_radiant_temp(),
                     )
                 except Exception as err:
                     _LOGGER.warning("Fallback comfort calculation failed: %s", err)
-            # Fallback: se comfort_data não foi definido, use valores padrão
             if comfort_data is None:
                 comfort_data = {
                     "adaptive_comfort_temp": 22.0,
@@ -252,20 +239,12 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     "outdoor_running_mean": self._running_mean_outdoor_temp or outdoor_temp,
                 }
                 _LOGGER.warning("Fallback: comfort_data set to default values devido a erros de cálculo.")
-            
-            # Update natural ventilation status
             self._update_natural_ventilation_status(outdoor_temp, indoor_temp, comfort_data)
-
-            # Determine control actions
             control_actions = self._determine_control_actions(
                 climate_state, indoor_temp, comfort_data
             )
-            
-            # Execute control actions if not in manual override
             if not self._manual_override:
                 await self._execute_control_actions(control_actions)
-            
-            # Prepare data for sensors
             data = {
                 **comfort_data,
                 "climate_state": climate_state.state,
@@ -278,39 +257,24 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 "control_actions": control_actions,
                 "last_updated": dt_util.now(),
             }
-            
-            # Log control action
             self._log_control_action(data, control_actions)
-            
-            # Save valid data for persistence
             self._last_valid_data = data.copy()
             await self._save_persisted_data(data)
-            
             _LOGGER.warning("DEBUG: Fim do _async_update_data, data será retornado para sensores.")
             return data
-            
         except Exception as err:
             _LOGGER.error("DEBUG: Exceção em _async_update_data: %s", err)
             self._error_count += 1
             error_type = type(err).__name__
-            
-            # Special handling for datetime errors - reset the history if we're having timezone issues
             if "offset-naive and offset-aware datetime" in str(err):
                 _LOGGER.warning("Timezone mismatch detected - resetting temperature history")
-                self._outdoor_temp_history = []  # Reset history
+                self._outdoor_temp_history = []
                 self._running_mean_outdoor_temp = None
-                
-                # If this is happening repeatedly, try to recover
                 if self._error_count > 3:
                     _LOGGER.warning("Persistent datetime errors - forcing timezone aware timestamps")
-                    # Force the coordinator to update with correct timezone info
                     self.hass.async_create_task(self._force_timezone_update())
-            
-            # Only log full error periodically to avoid log spam
-            if self._error_count <= 3 or self._error_count % 10 == 0:  # Log first 3 errors and then every 10th
+            if self._error_count <= 3 or self._error_count % 10 == 0:
                 _LOGGER.error("Error updating adaptive climate data: %s", err)
-            
-            # Return previous data if available, or minimal default data
             if self.data:
                 return self.data
             elif self._last_valid_data:
@@ -654,7 +618,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             # When occupied, use the comfort temperature directly
             target_temp = comfort_temp
             actions["reason"] = "Occupied - using comfort temperature"
-            
+        
         # Check if temperature change is significant enough
         current_target = float(climate_state.attributes.get(ATTR_TEMPERATURE, 0))
         temp_threshold = self.config.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
@@ -664,22 +628,40 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         
         # Determine HVAC mode
         current_hvac_mode = climate_state.state
-        
-        if indoor_temp > comfort_max:
-            # Too hot - cooling needed
-            if current_hvac_mode != HVACMode.COOL:
-                actions["set_hvac_mode"] = HVACMode.COOL
-                actions["reason"] += f" (above comfort zone)" if actions["reason"] else "above comfort zone"
-        elif indoor_temp < comfort_min:
-            # Too cold - heating needed
-            if current_hvac_mode != HVACMode.HEAT:
-                actions["set_hvac_mode"] = HVACMode.HEAT
-                actions["reason"] += f" (below comfort zone)" if actions["reason"] else "below comfort zone"
+        # --- INÍCIO: Year season logic ---
+        lat = self.config.get("latitude")
+        season = None
+        if lat is not None:
+            try:
+                season = get_season(float(lat))
+            except Exception as e:
+                _LOGGER.warning(f"Error detecting season: {e}")
+                season = None
+        # --- END: Year season logic ---
+        # --- INÍCIO: Seasonal restrictions ---
+        if season == "summer" and current_hvac_mode == HVACMode.HEAT:
+            actions["set_hvac_mode"] = HVACMode.OFF
+            actions["reason"] += " (HEAT not allowed in summer)"
+        elif season == "winter" and current_hvac_mode == HVACMode.COOL:
+            actions["set_hvac_mode"] = HVACMode.OFF
+            actions["reason"] += " (COOL not allowed in winter)"
         else:
-            # In comfort zone - could turn off or use auto
-            if current_hvac_mode in [HVACMode.COOL, HVACMode.HEAT]:
-                actions["set_hvac_mode"] = HVACMode.AUTO
-                actions["reason"] += f" (in comfort zone)" if actions["reason"] else "in comfort zone"
+            if indoor_temp > comfort_max:
+                # Too hot - cooling needed
+                if current_hvac_mode != HVACMode.COOL:
+                    actions["set_hvac_mode"] = HVACMode.COOL
+                    actions["reason"] += f" (above comfort zone)" if actions["reason"] else "above comfort zone"
+            elif indoor_temp < comfort_min:
+                # Too cold - heating needed
+                if current_hvac_mode != HVACMode.HEAT:
+                    actions["set_hvac_mode"] = HVACMode.HEAT
+                    actions["reason"] += f" (below comfort zone)" if actions["reason"] else "below comfort zone"
+            else:
+                # In comfort zone - could turn off or use auto
+                if current_hvac_mode in [HVACMode.COOL, HVACMode.HEAT]:
+                    actions["set_hvac_mode"] = HVACMode.AUTO
+                    actions["reason"] += f" (in comfort zone)" if actions["reason"] else "in comfort zone"
+        # --- END: Seasonal restrictions ---
         
         # Determine fan mode if adaptive air velocity is enabled
         if self.config.get("adaptive_air_velocity", False):
@@ -1146,7 +1128,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     # Fallback for other cases
                     _LOGGER.warning("Config object type not recognized: %s", type(self.config))
                     updated_config = {}
-                    
+                
                 # Validate value before updating
                 old_value = updated_config.get(key)
                 if old_value == value:
