@@ -122,10 +122,9 @@ The adaptive comfort calculations follow ASHRAE Standard 55-2020 implementations
 
 ## Support
 
-- [Issues](https://github.com/msinhore/adaptive-climate/issues): Bug reports and feature requests
-- [Discussions](https://github.com/msinhore/adaptive-climate/discussions): Questions and community support
+- [Issues](https://github.com/msinhore/adaptive_climate/issues): Bug reports and feature requests
+- [Discussions](https://github.com/msinhore/adaptive_climate/discussions): Questions and community support
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
-
