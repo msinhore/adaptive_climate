@@ -67,7 +67,7 @@
     "step": {
       "init": {
         "title": "Configuração do Clima Adaptativo",
-        "description": "Configure todas as opções em um painel unificado. Use chaves para recursos, controles deslizantes para parâmetros e menus suspensos para seleções. {warning}",
+        "description": "Configure todas as opções em um painel unificado. Use chaves para recursos, controles deslizantes para parâmetros e menus suspensos para seleções.",
         "data": {
           "energy_save_mode": "Modo de Economia de Energia",
           "natural_ventilation_enable": "Ativar Ventilação Natural",

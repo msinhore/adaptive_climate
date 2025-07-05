@@ -35,9 +35,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Initialize domain data
     hass.data.setdefault(DOMAIN, {})
     
-    # Register custom template functions
-    async_register_template_functions(hass)
-    
     # Set up logbook integration
     await _async_setup_logbook(hass)
     
