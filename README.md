@@ -143,7 +143,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Architecture Diagram
 
-<div style="height: 1000px;">
+<div style="height: 420px;">
 
 ```mermaid
 graph TD
@@ -151,7 +151,8 @@ graph TD
         OUT["Outdoor Temp Sensor"]
         IN["Indoor Temp Sensor"]
         RAD["Radiant Temp Sensor"]
-        HUM["Humidity Sensor"]
+        OUT_HUM["Outdoor Humidity Sensor"]
+        IN_HUM["Indoor Humidity Sensor"]
         OCC["Occupancy Sensor"]
     end
     USER["User Settings (Comfort Range, Preferences)"]
@@ -163,7 +164,8 @@ graph TD
     OUT --> HA
     IN --> HA
     RAD --> HA
-    HUM --> HA
+    OUT_HUM --> HA
+    IN_HUM --> HA
     OCC --> HA
     USER --> HA
     SEASON --> HA
@@ -171,5 +173,4 @@ graph TD
     HA --> AC
     AC -- "State Feedback" --> HA
 ```
-
 </div>
