@@ -175,9 +175,6 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             # Check manual override expiry
             self._check_override_expiry()
             
-            # Sync options to config before calculations
-            self._sync_options_to_config()
-            
             # Calculate adaptive parameters using pythermalcomfort
             try:
                 # Use pythermalcomfort wrapper for scientific accuracy
