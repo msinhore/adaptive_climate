@@ -1,6 +1,7 @@
 {
     "domain": "adaptive_climate",
     "name": "Adaptive Climate",
+    "version": "2025.7.1",
     "codeowners": [
         "@msinhore"
     ],
