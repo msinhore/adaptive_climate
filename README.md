@@ -191,33 +191,54 @@ graph TD
 
 ```mermaid
 flowchart TD
-  Start([Start _async_update_data])
-  Sensors[/Get indoor_temp, outdoor_temp/]
-  CheckUnavailable{Indoor or outdoor temp unavailable?}
-  Skip[Return last_valid_params or default]
-  UpdateOutdoor[Update outdoor temp history]
-  CheckOverrideExpiry[Check manual override expiry]
-  CheckAutoShutdown{Auto shutdown enabled?}
-  CheckOccupancy{Occupied?}
-  AutoShutdown[Shutdown climate (auto shutdown)]
-  CalculateComfort[/calculate_adaptive_comfort/]
-  CheckManualOverride{Manual override active?}
-  ExecuteActions[Execute determined actions]
-  SkipActions[Skip actions due to manual override]
-  BuildParams[Build params and save to store]
-  End([Return params])
+    Start(["Start _async_update_data"])
+    Sensors["Get indoor, outdoor temp and humidity"]
+    CheckUnavailable{"Indoor or outdoor temp unavailable?"}
+    Skip["Return last_valid_params or default"]
+    UpdateOutdoor["Update outdoor temp history"]
+    UpdateOccupancy["Update occupancy state"]
+    CheckOverrideExpiry["Check manual override expiry"]
+    CheckAutoShutdown{"auto_shutdown_enable ON?"}
+    CheckOccupancy{"Occupied?"}
+    AutoShutdown["Shutdown climate (auto shutdown)"]
+    CalculateComfort["calculate_hvac_and_fan"]
+    EnergySaveON{"energy_save_mode ON?"}
+    CheckSummerTempON{"indoor_temp < comfort_temp?"}
+    HVACOffON["hvac_mode = off; fan = off"]
+    CoolModeON["hvac_mode = cool; fan based on temp"]
+    EnergySaveOFF{"energy_save_mode OFF?"}
+    CheckSummerTempOFF{"indoor_temp < comfort_temp?"}
+    HVACCoolLow["hvac_mode = cool; fan = low"]
+    CoolModeOFF["hvac_mode = cool; fan based on temp"]
+    CheckManualOverride{"Manual override active?"}
+    ExecuteActions["Execute determined actions"]
+    SkipActions["Skip actions due to manual override"]
+    BuildParams["Build params and save to store"]
+    End(["Return params"])
 
-  Start --> Sensors --> CheckUnavailable
-  CheckUnavailable -- Yes --> Skip --> End
-  CheckUnavailable -- No --> UpdateOutdoor --> CheckOverrideExpiry --> CheckAutoShutdown
+    Start --> Sensors --> CheckUnavailable
+    CheckUnavailable -- "Yes" --> Skip --> End
+    CheckUnavailable -- "No" --> UpdateOutdoor --> UpdateOccupancy --> CheckOverrideExpiry --> CheckAutoShutdown
 
-  CheckAutoShutdown -- Yes --> CheckOccupancy
-  CheckAutoShutdown -- No --> CalculateComfort
+    CheckAutoShutdown -- "Yes" --> CheckOccupancy
+    CheckAutoShutdown -- "No" --> CalculateComfort
 
-  CheckOccupancy -- No --> AutoShutdown --> CalculateComfort
-  CheckOccupancy -- Yes --> CalculateComfort
+    CheckOccupancy -- "No" --> AutoShutdown --> CalculateComfort
+    CheckOccupancy -- "Yes" --> CalculateComfort
 
-  CalculateComfort --> CheckManualOverride
-  CheckManualOverride -- No --> ExecuteActions --> BuildParams --> End
-  CheckManualOverride -- Yes --> SkipActions --> BuildParams --> End
+    CalculateComfort --> EnergySaveON
+    EnergySaveON -- "Yes" --> CheckSummerTempON
+    EnergySaveON -- "No" --> EnergySaveOFF
+
+    CheckSummerTempON -- "Yes" --> HVACOffON --> NextSummer
+    CheckSummerTempON -- "No" --> CoolModeON --> NextSummer
+
+    EnergySaveOFF --> CheckSummerTempOFF
+    CheckSummerTempOFF -- "Yes" --> HVACCoolLow --> NextSummer
+    CheckSummerTempOFF -- "No" --> CoolModeOFF --> NextSummer
+
+    NextSummer --> CheckManualOverride
+
+    CheckManualOverride -- "No" --> ExecuteActions --> BuildParams --> End
+    CheckManualOverride -- "Yes" --> SkipActions --> BuildParams --> End
 ```
