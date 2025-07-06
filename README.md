@@ -81,15 +81,12 @@ The integration:
 
 ## What you get
 
-### Information entities (6+)
+### Information entities (1+)
+- **ASHRAE Compliance**: Binary sensor with detailed attributes showing if current conditions meet comfort standards.
 
-- **ASHRAE Compliance**: Binary sensor showing if current conditions meet comfort standards
-- **Comfort sensors**: Calculated comfort temperature, HVAC recommendations, fan speeds, etc.
-
-### Control entities (15+)
-
+### Control entities (11+)
 - **Temperature controls**: Min/max comfort temperatures, temperature change threshold, natural ventilation threshold, setback temperature offset
-- **Feature toggles**: Energy save mode, auto shutdown enable
+- **Feature toggles**: Energy save mode, natural ventilation enable, auto shutdown enable
 - **Comfort category**: ASHRAE categories I, II, or III (strictness levels)
 - **Air velocity**: Fan speed basis for comfort calculation
 - **Auto shutdown minutes**: Delay to turn off HVAC if unoccupied
