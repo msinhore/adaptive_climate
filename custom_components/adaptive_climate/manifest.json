@@ -1,13 +1,17 @@
 {
-    "domain": "adaptive_climate",
-    "name": "Adaptive Climate",
-    "codeowners": ["@msinhore"],
+    "codeowners": [
+        "@msinhore"
+    ],
     "config_flow": true,
-    "dependencies": ["logbook"],
+    "dependencies": [
+        "logbook"
+    ],
     "documentation": "https://github.com/msinhore/adaptive-climate",
+    "domain": "adaptive_climate",
     "iot_class": "local_polling",
     "integration_type": "system",
     "issue_tracker": "https://github.com/msinhore/adaptive-climate/issues",
+    "name": "Adaptive Climate",
     "quality_scale": "gold",
     "requirements": [],
     "version": "1.0.0"
