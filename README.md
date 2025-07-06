@@ -159,8 +159,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Architecture Diagram
 
-<div style="height: 420px;">
-
 ```mermaid
 graph TD
     subgraph Sensors
@@ -189,10 +187,7 @@ graph TD
     HA --> AC
     AC -- "State Feedback" --> HA
 ```
-</div>
-
 ## Workflow Decision
-<div style="height: 420px;">
 
 ```mermaid
 flowchart TD
@@ -234,16 +229,13 @@ flowchart TD
   EnergySaveON -- Yes --> CheckSummerTempON
   EnergySaveON -- No --> EnergySaveOFF
 
-  CheckSummerTempON -- Yes --> HVACOffON --> NextSummer
-  CheckSummerTempON -- No --> CoolModeON --> NextSummer
+  CheckSummerTempON -- Yes --> HVACOffON --> CheckManualOverride
+  CheckSummerTempON -- No --> CoolModeON --> CheckManualOverride
 
-  EnergySaveOFF --> CheckSummerTempOFF{indoor_temp < comfort_temp?}
-  CheckSummerTempOFF -- Yes --> HVACCoolLow --> NextSummer
-  CheckSummerTempOFF -- No --> CoolModeOFF --> NextSummer
-
-  NextSummer --> CheckManualOverride
+  EnergySaveOFF --> CheckSummerTempON
+  CheckSummerTempON -- Yes --> HVACCoolLow --> CheckManualOverride
+  CheckSummerTempON -- No --> CoolModeOFF --> CheckManualOverride
 
   CheckManualOverride -- No --> ExecuteActions --> BuildParams --> End
   CheckManualOverride -- Yes --> SkipActions --> BuildParams --> End
-```
-</div>
+  ```
