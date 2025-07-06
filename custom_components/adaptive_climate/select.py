@@ -88,18 +88,19 @@ class AdaptiveClimateSelectEntity(CoordinatorEntity, SelectEntity):
     @property
     def current_option(self) -> str | None:
         """Return the current option."""
-        if not self.coordinator.data:
-            # Get default value from coordinator config
-            value = self.coordinator.get_config_value(self._entity_key, "II")
-        else:
+        value = None
+
+        if self.coordinator.data:
             value = self.coordinator.data.get(self._entity_key)
-            if value is None:
-                # Get default value from coordinator config
-                value = self.coordinator.get_config_value(self._entity_key, "II")
-            
+
+        if value is None:
+            value = self.coordinator.config.get(self._entity_key, "II")
+        
         _LOGGER.debug(
-            "Select entity %s current_option: %s (from %s)",
-            self._entity_key, value, "coordinator_data" if self.coordinator.data and self.coordinator.data.get(self._entity_key) else "config_default"
+            "Select entity %s current_option: %s (source: %s)",
+            self._entity_key,
+            value,
+            "coordinator_data" if self.coordinator.data and self.coordinator.data.get(self._entity_key) else "config_default",
         )
         
         return value

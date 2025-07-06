@@ -1,7 +1,7 @@
 from typing import Literal, Dict, Any, Optional
 from .pythermalcomfort_patched import adaptive_ashrae
 
-HVACMode = Literal["cool", "heatenergy_save_mode", "fan_only", "dry", "humidify", "off"]
+HVACMode = Literal["cool", "heat", "fan_only", "dry", "humidify", "off"]
 FanMode = Literal["low", "mid", "high", "very_high", "off"]
 ComfortCategory = Literal["I", "II", "III"]
 
