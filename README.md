@@ -88,21 +88,21 @@ The integration:
 
 ### Control entities
 #### Number entities (7):
-- **Minimum Comfort Temperature**
-- **Maximum Comfort Temperature**
-- **if Air Velocity**
-- **Temperature Change Threshold**
-- **Natural Ventilation Threshold**
-- **Setback Temperature Offset**
-- **Auto Shutdown Minutes**
+- Minimum Comfort Temperature
+- Maximum Comfort Temperature
+- if Air Velocity
+- Temperature Change Threshold
+- Natural Ventilation Threshold
+- Setback Temperature Offset
+- Auto Shutdown Minutes
 
 #### Select entity (1):
-- **Comfort Category (I, II, III)**
+- Comfort Category (I, II, III)
 
 #### Switch entities (3):
-- **Energy Save Mode**
-- **Natural Ventilation Enable**
-- **Auto Shutdown Enable**
+- Energy Save Mode
+- Natural Ventilation Enable
+- Auto Shutdown Enable
 
 ## Usage
 
