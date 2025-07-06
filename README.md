@@ -207,6 +207,13 @@ flowchart TD
     CheckOccupancy{Occupied?}
     AutoShutdown[Shutdown climate (auto shutdown)]
     CalculateComfort[/calculate_hvac_and_fan/]
+    EnergySaveON{energy_save_mode ON?}
+    CheckSummerTempON{indoor_temp < comfort_temp?}
+    HVACOffON[hvac_mode = off; fan = off]
+    CoolModeON[hvac_mode = cool; fan based on temp]
+    EnergySaveOFF{energy_save_mode OFF?}
+    HVACCoolLow[hvac_mode = cool; fan = low]
+    CoolModeOFF[hvac_mode = cool; fan based on temp]
     CheckManualOverride{Manual override active?}
     ExecuteActions[Execute determined actions]
     SkipActions[Skip actions due to manual override]
@@ -223,23 +230,16 @@ flowchart TD
     CheckOccupancy -- No --> AutoShutdown --> CalculateComfort
     CheckOccupancy -- Yes --> CalculateComfort
 
-    CalculateComfort -->|energy_save_mode ON| EnergySaveON
-    CalculateComfort -->|energy_save_mode OFF| EnergySaveOFF
+    CalculateComfort --> EnergySaveON
+    EnergySaveON -- Yes --> CheckSummerTempON
+    EnergySaveON -- No --> EnergySaveOFF
 
-    subgraph Summer Logic
-      EnergySaveON --> CheckSummerTempON{indoor_temp < comfort_temp?}
-      CheckSummerTempON -- Yes --> HVACOffON[hvac_mode = off; fan = off]
-      CheckSummerTempON -- No --> CoolModeON[hvac_mode = cool; fan based on temp]
+    CheckSummerTempON -- Yes --> HVACOffON --> NextSummer
+    CheckSummerTempON -- No --> CoolModeON --> NextSummer
 
-      EnergySaveOFF --> CheckSummerTempOFF{indoor_temp < comfort_temp?}
-      CheckSummerTempOFF -- Yes --> HVACCoolLow[hvac_mode = cool; fan = low]
-      CheckSummerTempOFF -- No --> CoolModeOFF[hvac_mode = cool; fan based on temp]
-    end
-
-    HVACOffON --> NextSummer
-    CoolModeON --> NextSummer
-    HVACCoolLow --> NextSummer
-    CoolModeOFF --> NextSummer
+    EnergySaveOFF --> CheckSummerTempOFF{indoor_temp < comfort_temp?}
+    CheckSummerTempOFF -- Yes --> HVACCoolLow --> NextSummer
+    CheckSummerTempOFF -- No --> CoolModeOFF --> NextSummer
 
     NextSummer --> CheckManualOverride
 
