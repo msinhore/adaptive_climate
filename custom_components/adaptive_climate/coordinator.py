@@ -71,7 +71,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         outdoor_humidity = self._get_value(self.outdoor_humidity_sensor_id)
 
         if indoor_temp is None or outdoor_temp is None:
-            _LOGGER.warning("Indoor or outdoor temperature unavailable. Skipping update.")
+            _LOGGER.warning(f"[{self.config.get('name')}] Indoor or outdoor temperature unavailable. Skipping update.")
             return self._last_valid_params or self._default_params("entities_unavailable")
 
         self._update_outdoor_temp_history(outdoor_temp)
@@ -84,10 +84,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             if not self._occupied and self._last_no_occupancy:
                 elapsed = (dt_util.now() - self._last_no_occupancy).total_seconds() / 60
                 if elapsed >= shutdown_minutes:
-                    _LOGGER.info(f"Auto shutdown triggered after {elapsed:.1f} minutes of no occupancy.")
+                    _LOGGER.info(f"[{self.config.get('name')}] Auto shutdown triggered after {elapsed:.1f} minutes of no occupancy.")
                     await self._shutdown_climate()
                 else:
-                    _LOGGER.debug(f"No occupancy for {elapsed:.1f} minutes; shutdown threshold: {shutdown_minutes} min.")
+                    _LOGGER.debug(f"[{self.config.get('name')}] No occupancy for {elapsed:.1f} minutes; shutdown threshold: {shutdown_minutes} min.")
         
         comfort_params = calculate_hvac_and_fan(
             indoor_temp=indoor_temp,
@@ -104,15 +104,15 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             energy_save_mode=self.config.get("energy_save_mode", True),
         )
 
-        _LOGGER.debug(f"Calculated comfort parameters: {comfort_params}")
+        _LOGGER.debug(f"[{self.config.get('name')}] Calculated comfort parameters: {comfort_params}")
 
         control_actions = self._determine_actions(indoor_temp, comfort_params)
-        _LOGGER.debug(f"Determined control actions: {control_actions}")
+        _LOGGER.debug(f"[{self.config.get('name')}] Determined control actions: {control_actions}")
 
         if not self._manual_override:
             await self._execute_actions(control_actions)
         else:
-            _LOGGER.info("Manual override active. Skipping automatic control actions.")
+            _LOGGER.info(f"[{self.config.get('name')}] Manual override active. Skipping automatic control actions.")
 
         params = self._build_params(indoor_temp, outdoor_temp, indoor_humidity, outdoor_humidity, comfort_params, control_actions)
         self._last_valid_params = params.copy()
@@ -123,7 +123,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
     async def update_config(self, new_config: dict[str, Any]) -> None:
         """Update the coordinator configuration with new values."""
         self.config.update(new_config)
-        _LOGGER.debug("Coordinator configuration updated: %s", new_config)
+        _LOGGER.debug(f"[{self.config.get('name')}] Coordinator configuration updated: {new_config}")
         await self.async_request_refresh()
 
     # Helpers
@@ -136,7 +136,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             try:
                 return float(state.state)
             except (ValueError, TypeError):
-                _LOGGER.warning(f"Failed to convert state '{state.state}' of {entity_id} to float.")
+                _LOGGER.warning(f"[{self.config.get('name')}] Failed to convert state '{state.state}' of {entity_id} to float.")
                 return None
         return None
 
@@ -188,7 +188,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
     def _check_override_expiry(self) -> None:
         if self._manual_override and self._override_expiry and dt_util.now() >= self._override_expiry:
-            _LOGGER.info("Manual override expired.")
+            _LOGGER.info(f"[{self.config.get('name')}] Manual override expired.")
             self._manual_override = False
             self._override_expiry = None
 
@@ -198,15 +198,13 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         target_temp = comfort.get("comfort_temp", indoor_temp)
         hvac_mode = comfort.get("hvac_mode", "off")
 
-        # Get supported HVAC modes of the device
         state = self.hass.states.get(self.climate_entity_id)
         supported_modes = []
         if state:
             supported_modes = state.attributes.get("hvac_modes", [])
 
-        # Fallback if calculated hvac_mode is not supported
         if hvac_mode not in supported_modes:
-            _LOGGER.warning(f"hvac_mode '{hvac_mode}' not supported by {self.climate_entity_id}. Falling back.")
+            _LOGGER.warning(f"[{self.config.get('name')}] hvac_mode '{hvac_mode}' not supported by {self.climate_entity_id}. Falling back.")
             if HVACMode.FAN_ONLY in supported_modes:
                 hvac_mode = HVACMode.FAN_ONLY
             else:
@@ -223,7 +221,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
         state = self.hass.states.get(self.climate_entity_id)
         if not state or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-            _LOGGER.warning(f"{self.climate_entity_id} unavailable, skipping action execution.")
+            _LOGGER.warning(f"[{self.config.get('name')}] {self.climate_entity_id} unavailable, skipping action execution.")
             return
 
         current_hvac_mode = state.state
@@ -231,52 +229,47 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         target_temp = actions["set_temperature"]
         target_hvac_mode = actions["set_hvac_mode"]
 
-        # Determine rounding strategy based on hvac_mode
         rounded_current_temp = current_temp
         if current_temp is not None:
             if target_hvac_mode == HVACMode.COOL:
-                rounded_current_temp = int(current_temp)  # floor
+                rounded_current_temp = int(current_temp)
             elif target_hvac_mode == HVACMode.HEAT:
                 rounded_current_temp = math.ceil(current_temp)
             else:
                 rounded_current_temp = int(current_temp)
 
-        _LOGGER.debug(f"Current temp: {current_temp}, rounded: {rounded_current_temp}, target: {target_temp}, hvac_mode: {target_hvac_mode}")
+        _LOGGER.debug(f"[{self.config.get('name')}] Current temp: {current_temp}, rounded: {rounded_current_temp}, target: {target_temp}, hvac_mode: {target_hvac_mode}")
 
-        # Only call set_temperature if different
         if target_temp is not None and (rounded_current_temp is None or abs(rounded_current_temp - target_temp) >= 0.5):
-            _LOGGER.info(f"Setting temperature to {target_temp} (current rounded: {rounded_current_temp}) on {self.climate_entity_id}")
+            _LOGGER.info(f"[{self.config.get('name')}] Setting temperature to {target_temp} (current rounded: {rounded_current_temp}) on {self.climate_entity_id}")
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN, "set_temperature",
                 {"entity_id": self.climate_entity_id, ATTR_TEMPERATURE: target_temp},
             )
         else:
-            _LOGGER.debug(f"Temperature {target_temp} already set (current rounded: {rounded_current_temp}) on {self.climate_entity_id}, skipping set_temperature.")
+            _LOGGER.debug(f"[{self.config.get('name')}] Temperature {target_temp} already set (current rounded: {rounded_current_temp}) on {self.climate_entity_id}, skipping set_temperature.")
 
-        # Only call set_hvac_mode if different
         if target_hvac_mode is not None and target_hvac_mode != current_hvac_mode:
-            _LOGGER.info(f"Setting hvac_mode to {target_hvac_mode} (current: {current_hvac_mode}) on {self.climate_entity_id}")
+            _LOGGER.info(f"[{self.config.get('name')}] Setting hvac_mode to {target_hvac_mode} (current: {current_hvac_mode}) on {self.climate_entity_id}")
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN, "set_hvac_mode",
                 {"entity_id": self.climate_entity_id, "hvac_mode": target_hvac_mode},
             )
         else:
-            _LOGGER.debug(f"hvac_mode {target_hvac_mode} already set on {self.climate_entity_id}, skipping set_hvac_mode.")
+            _LOGGER.debug(f"[{self.config.get('name')}] hvac_mode {target_hvac_mode} already set on {self.climate_entity_id}, skipping set_hvac_mode.")
 
     async def _shutdown_climate(self) -> None:
         """Turn off climate entity as part of auto shutdown."""
         state = self.hass.states.get(self.climate_entity_id)
         if not state or state.state == HVACMode.OFF:
-            _LOGGER.debug(f"{self.climate_entity_id} already off or unavailable.")
+            _LOGGER.debug(f"[{self.config.get('name')}] {self.climate_entity_id} already off or unavailable.")
             return
 
-        _LOGGER.info(f"Shutting down {self.climate_entity_id} due to auto shutdown policy.")
+        _LOGGER.info(f"[{self.config.get('name')}] Shutting down {self.climate_entity_id} due to auto shutdown policy.")
         await self.hass.services.async_call(
             CLIMATE_DOMAIN, "turn_off",
             {"entity_id": self.climate_entity_id},
         )
-
-    # Persistence
 
     async def _load_persisted_data(self) -> None:
         data = await self._store.async_load()
@@ -285,8 +278,6 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
     async def _save_persisted_data(self, data: dict[str, Any]) -> None:
         await self._store.async_save({"last_sensor_data": data})
-
-    # Event listeners
 
     def _setup_listeners(self) -> None:
         entities = [self.climate_entity_id, self.indoor_temp_sensor_id, self.outdoor_temp_sensor_id]
