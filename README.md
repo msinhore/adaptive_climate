@@ -195,7 +195,7 @@ graph TD
 <div style="height: 420px;">
 
 ```mermaid
-graph TD
+flowchart TD
     Start([Start _async_update_data])
     Sensors[/Get indoor_temp, outdoor_temp, humidity/]
     CheckUnavailable{Indoor or outdoor temp unavailable?}
