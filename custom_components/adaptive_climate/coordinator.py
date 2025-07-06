@@ -120,6 +120,12 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
         return params
 
+    async def update_config(self, new_config: dict[str, Any]) -> None:
+        """Update the coordinator configuration with new values."""
+        self.config.update(new_config)
+        _LOGGER.debug("Coordinator configuration updated: %s", new_config)
+        await self.async_request_refresh()
+
     # Helpers
 
     def _get_value(self, entity_id: Optional[str]) -> Optional[float]:
