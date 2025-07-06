@@ -1,7 +1,7 @@
-"""Real Switch Entities for Adaptive Climate - Stage 3 Refactoring.
+"""Real Switch Entities for Adaptive Climate - Simplified Version.
 
-This module contains real SwitchEntity implementations that replace
-the bridge architecture, following Home Assistant and HACS best practices.
+This module contains SwitchEntity implementations for essential
+configuration parameters only, following Home Assistant and HACS best practices.
 """
 from __future__ import annotations
 
@@ -47,30 +47,9 @@ async def async_setup_entry(
         AdaptiveClimateSwitchEntity(
             coordinator=coordinator,
             config_entry=config_entry,
-            entity_key="adaptive_air_velocity",
-            name="Adaptive Air Velocity",
-            icon="mdi:weather-windy",
-        ),
-        AdaptiveClimateSwitchEntity(
-            coordinator=coordinator,
-            config_entry=config_entry,
-            entity_key="humidity_comfort_enable",
-            name="Humidity Comfort Correction",
-            icon="mdi:water-percent",
-        ),
-        AdaptiveClimateSwitchEntity(
-            coordinator=coordinator,
-            config_entry=config_entry,
-            entity_key="comfort_precision_mode",
-            name="Comfort Precision Mode",
-            icon="mdi:target",
-        ),
-        AdaptiveClimateSwitchEntity(
-            coordinator=coordinator,
-            config_entry=config_entry,
-            entity_key="use_operative_temperature",
-            name="Use Operative Temperature",
-            icon="mdi:thermometer-plus",
+            entity_key="auto_shutdown_enable",
+            name="Auto Shutdown Enable",
+            icon="mdi:power-off",
         ),
     ]
     
@@ -100,25 +79,10 @@ class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
         self._attr_icon = icon
         self._icon_off = icon_off
         self._default_value = default_value
-        # Generate stable unique ID
         self._attr_unique_id = f"{config_entry.entry_id}_{entity_key}"
-        # Set initial state based on config or default
-        self._attr_is_on = config_entry.data.get(entity_key, default_value)
         _LOGGER.debug(
-            "Initialized switch entity: %s (key: %s, unique_id: %s, initial_state: %s)",
-            self._attr_name, entity_key, self._attr_unique_id, self._attr_is_on
-        )
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        # Ensure state is set on add
-        initial_value = self._config_entry.data.get(self._entity_key, self._default_value)
-        if self._attr_is_on != initial_value:
-            self._attr_is_on = initial_value
-            self.async_write_ha_state()
-        _LOGGER.debug(
-            "Switch entity %s added to hass with state: %s",
-            self._entity_key, self._attr_is_on
+            "Initialized switch entity: %s (key: %s, unique_id: %s)",
+            self._attr_name, entity_key, self._attr_unique_id
         )
 
     @property
@@ -136,31 +100,27 @@ class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
     @property
     def is_on(self) -> bool:
         """Return true if the switch is on."""
-        return self._attr_is_on
+        return self.coordinator.config.get(self._entity_key, self._default_value)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
         _LOGGER.info("Turning on %s", self._entity_key)
-        
-        # Update coordinator configuration
-        await self.coordinator.async_update_config_value(self._entity_key, True)
-        
-        # Update the state immediately
-        self.async_write_ha_state()
-        
-        _LOGGER.debug("Successfully turned on %s", self._entity_key)
+        try:
+            await self.coordinator.async_update_config_value(self._entity_key, True)
+            self.async_write_ha_state()
+            _LOGGER.debug("Successfully turned on %s", self._entity_key)
+        except Exception as e:
+            _LOGGER.error("Failed to turn on %s: %s", self._entity_key, e)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
         _LOGGER.info("Turning off %s", self._entity_key)
-        
-        # Update coordinator configuration
-        await self.coordinator.async_update_config_value(self._entity_key, False)
-        
-        # Update the state immediately
-        self.async_write_ha_state()
-        
-        _LOGGER.debug("Successfully turned off %s", self._entity_key)
+        try:
+            await self.coordinator.async_update_config_value(self._entity_key, False)
+            self.async_write_ha_state()
+            _LOGGER.debug("Successfully turned off %s", self._entity_key)
+        except Exception as e:
+            _LOGGER.error("Failed to turn off %s: %s", self._entity_key, e)
 
     @property
     def available(self) -> bool:

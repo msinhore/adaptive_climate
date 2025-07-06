@@ -1,8 +1,9 @@
-"""Real Number Entities for Adaptive Climate - Stage 3 Refactoring.
+"""Real Number Entities for Adaptive Climate - Simplified Version.
 
-This module contains real NumberEntity implementations that replace
-the bridge architecture, following Home Assistant and HACS best practices.
+This module contains NumberEntity implementations for active numeric
+configuration parameters, following Home Assistant and HACS best practices.
 """
+
 from __future__ import annotations
 
 import logging
@@ -104,26 +105,13 @@ async def async_setup_entry(
         AdaptiveClimateNumberEntity(
             coordinator=coordinator,
             config_entry=config_entry,
-            entity_key="comfort_range_min_offset",
-            name="Comfort Range Minimum Offset",
-            icon="mdi:thermometer-low",
-            native_min_value=-10.0,
-            native_max_value=0.0,
-            native_step=0.5,
-            native_unit_of_measurement="°C",
-            device_class="temperature",
-        ),
-        AdaptiveClimateNumberEntity(
-            coordinator=coordinator,
-            config_entry=config_entry,
-            entity_key="comfort_range_max_offset",
-            name="Comfort Range Maximum Offset",
-            icon="mdi:thermometer-high",
-            native_min_value=0.0,
-            native_max_value=10.0,
-            native_step=0.5,
-            native_unit_of_measurement="°C",
-            device_class="temperature",
+            entity_key="auto_shutdown_minutes",
+            name="Auto Shutdown Minutes",
+            icon="mdi:timer-off",
+            native_min_value=1,
+            native_max_value=240,
+            native_step=1,
+            native_unit_of_measurement="min",
         ),
     ]
     
@@ -151,7 +139,6 @@ class AdaptiveClimateNumberEntity(CoordinatorEntity, NumberEntity):
         super().__init__(coordinator)
         self._config_entry = config_entry
         self._entity_key = entity_key
-        # Adiciona a área/configuração ao nome para unicidade e clareza
         area = coordinator.config.get("name", "Adaptive Climate")
         self._attr_name = f"{name} ({area})"
         self._attr_icon = icon
@@ -161,7 +148,6 @@ class AdaptiveClimateNumberEntity(CoordinatorEntity, NumberEntity):
         self._attr_native_unit_of_measurement = native_unit_of_measurement
         self._attr_device_class = device_class
         self._attr_mode = "box" 
-        # Generate stable unique ID
         self._attr_unique_id = f"{config_entry.entry_id}_{entity_key}"
         _LOGGER.debug(
             "Initialized number entity: %s (key: %s, unique_id: %s)",
@@ -186,23 +172,17 @@ class AdaptiveClimateNumberEntity(CoordinatorEntity, NumberEntity):
         value = None
         
         if self.coordinator.data:
-            # Get value from coordinator data
             value = self.coordinator.data.get(self._entity_key)
         
-        # If not found in coordinator data, check config entry
         if value is None:
             value = self._config_entry.data.get(self._entity_key)
 
-        # If still not found, use default value from coordinator config
         if value is None:
             value = self._attr_native_min_value
 
         _LOGGER.debug(
-            "Number entity %s native_value: %s (from %s)",
-            self._entity_key, value,
-            "coordinator_data" if self.coordinator.data and self.coordinator.data.get(self._entity_key) is not None
-            else "config_entry_data" if self._config_entry.data.get(self._entity_key) is not None
-            else "native_min_value"
+            "Number entity %s native_value: %s",
+            self._entity_key, value
         )
         
         return value
@@ -214,10 +194,7 @@ class AdaptiveClimateNumberEntity(CoordinatorEntity, NumberEntity):
             self._entity_key, self.native_value, value
         )
         
-        # Update coordinator configuration
         await self.coordinator.async_update_config_value(self._entity_key, value)
-        
-        # Update the state immediately
         self.async_write_ha_state()
         
         _LOGGER.debug("Successfully updated %s to %s", self._entity_key, value)

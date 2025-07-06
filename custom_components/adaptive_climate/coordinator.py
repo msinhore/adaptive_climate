@@ -43,6 +43,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         self._override_expiry: Optional[datetime] = None
         self._last_target_temp: Optional[float] = None
         self._occupied = True
+        self._last_no_occupancy: Optional[datetime] = None
 
         self._outdoor_temp_history: list[tuple[datetime, float]] = []
         self._running_mean_outdoor_temp: Optional[float] = None
@@ -77,6 +78,17 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         self._update_occupancy()
         self._check_override_expiry()
 
+        # Auto shutdown logic
+        if self.config.get("auto_shutdown_enable", False):
+            shutdown_minutes = self.config.get("auto_shutdown_minutes", 60)
+            if not self._occupied and self._last_no_occupancy:
+                elapsed = (dt_util.now() - self._last_no_occupancy).total_seconds() / 60
+                if elapsed >= shutdown_minutes:
+                    _LOGGER.info(f"Auto shutdown triggered after {elapsed:.1f} minutes of no occupancy.")
+                    await self._shutdown_climate()
+                else:
+                    _LOGGER.debug(f"No occupancy for {elapsed:.1f} minutes; shutdown threshold: {shutdown_minutes} min.")
+        
         comfort_params = calculate_hvac_and_fan(
             indoor_temp=indoor_temp,
             outdoor_temp=outdoor_temp,
@@ -157,6 +169,12 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         if state and state.state in (STATE_ON, STATE_OFF):
             self._occupied = state.state == STATE_ON
 
+        if self._occupied:
+            self._last_no_occupancy = None
+        else:
+            if self._last_no_occupancy is None:
+                self._last_no_occupancy = dt_util.now()
+
     def _check_override_expiry(self) -> None:
         if self._manual_override and self._override_expiry and dt_util.now() >= self._override_expiry:
             _LOGGER.info("Manual override expired.")
@@ -233,6 +251,19 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             )
         else:
             _LOGGER.debug(f"hvac_mode {target_hvac_mode} already set on {self.climate_entity_id}, skipping set_hvac_mode.")
+
+    async def _shutdown_climate(self) -> None:
+        """Turn off climate entity as part of auto shutdown."""
+        state = self.hass.states.get(self.climate_entity_id)
+        if not state or state.state == HVACMode.OFF:
+            _LOGGER.debug(f"{self.climate_entity_id} already off or unavailable.")
+            return
+
+        _LOGGER.info(f"Shutting down {self.climate_entity_id} due to auto shutdown policy.")
+        await self.hass.services.async_call(
+            CLIMATE_DOMAIN, "turn_off",
+            {"entity_id": self.climate_entity_id},
+        )
 
     # Persistence
 
