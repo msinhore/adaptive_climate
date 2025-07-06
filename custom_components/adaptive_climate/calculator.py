@@ -1,3 +1,4 @@
+import math
 from typing import Literal, Dict, Any, Optional
 from .pythermalcomfort_patched import adaptive_ashrae
 
