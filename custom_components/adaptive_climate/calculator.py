@@ -32,6 +32,7 @@ def calculate_hvac_and_fan(
     mean_radiant_temp: Optional[float] = None,
     indoor_humidity: Optional[float] = None,
     outdoor_humidity: Optional[float] = None,
+    running_mean_outdoor_temp: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Calculate HVAC mode and fan speed based on season, ASHRAE comfort, and humidity.
@@ -55,7 +56,7 @@ def calculate_hvac_and_fan(
     ashrae_result = adaptive_ashrae(
         tdb=indoor_temp,
         tr=mean_radiant_temp or indoor_temp,
-        t_running_mean=outdoor_temp,
+        t_running_mean=running_mean_outdoor_temp or outdoor_temp,
         v=AIR_VELOCITY_MAP.get(air_velocity, 0.1)
     )
 

@@ -100,6 +100,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             mean_radiant_temp=self._get_value(self.config.get("mean_radiant_temp_sensor")),
             indoor_humidity=indoor_humidity,
             outdoor_humidity=outdoor_humidity,
+            running_mean_outdoor_temp=self._running_mean_outdoor_temp,
         )
 
         _LOGGER.debug(f"Calculated comfort parameters: {comfort_params}")
