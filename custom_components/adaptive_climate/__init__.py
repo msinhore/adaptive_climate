@@ -14,7 +14,6 @@ from .const import (
     EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP,
 )
 from .coordinator import AdaptiveClimateCoordinator
-from .template import async_register_template_functions
 from .logbook import async_describe_events
 
 _LOGGER = logging.getLogger(__name__)
