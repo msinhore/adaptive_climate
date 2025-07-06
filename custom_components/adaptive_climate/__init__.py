@@ -16,6 +16,10 @@ from .const import (
 from .coordinator import AdaptiveClimateCoordinator
 from .logbook import async_describe_events
 from .const import VERSION
+import voluptuous as vol
+from homeassistant.helpers import config_validation as cv
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 _LOGGER = logging.getLogger(__name__)
 
