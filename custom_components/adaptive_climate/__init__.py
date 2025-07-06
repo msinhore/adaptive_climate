@@ -24,10 +24,7 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.N
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Adaptive Climate component."""
     hass.data.setdefault(DOMAIN, {})
-    
-    # Register custom template functions
-    async_register_template_functions(hass)
-    
+
     # This approach avoids any reference to hass.components
     async def _setup_logbook():
         """Set up logbook integration."""
