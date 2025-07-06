@@ -1,5 +1,4 @@
 """The Adaptive Climate component."""
-from .const import VERSION
 from __future__ import annotations
 
 import logging
@@ -16,6 +15,7 @@ from .const import (
 )
 from .coordinator import AdaptiveClimateCoordinator
 from .logbook import async_describe_events
+from .const import VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
