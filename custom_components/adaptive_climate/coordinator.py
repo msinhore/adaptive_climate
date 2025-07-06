@@ -132,22 +132,22 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 return None
         return None
 
-def _build_params(self, indoor, outdoor, indoor_hum, outdoor_hum, comfort, actions) -> dict[str, Any]:
-    return {
-        "adaptive_comfort_temp": comfort.get("comfort_temp"),
-        "comfort_temp_min": comfort.get("comfort_min_ashrae"),
-        "comfort_temp_max": comfort.get("comfort_max_ashrae"),
-        "indoor_temperature": indoor,
-        "outdoor_temperature": outdoor,
-        "indoor_humidity": indoor_hum,
-        "outdoor_humidity": outdoor_hum,
-        "running_mean_outdoor_temp": self._running_mean_outdoor_temp,
-        "occupancy": "occupied" if self._occupied else "unoccupied",
-        "manual_override": self._manual_override,
-        "control_actions": actions,
-        "ashrae_compliant": comfort.get("ashrae_compliant"),
-        "last_updated": dt_util.now(),
-    }
+    def _build_params(self, indoor, outdoor, indoor_hum, outdoor_hum, comfort, actions) -> dict[str, Any]:
+        return {
+            "adaptive_comfort_temp": comfort.get("comfort_temp"),
+            "comfort_temp_min": comfort.get("comfort_min_ashrae"),
+            "comfort_temp_max": comfort.get("comfort_max_ashrae"),
+            "indoor_temperature": indoor,
+            "outdoor_temperature": outdoor,
+            "indoor_humidity": indoor_hum,
+            "outdoor_humidity": outdoor_hum,
+            "running_mean_outdoor_temp": self._running_mean_outdoor_temp,
+            "occupancy": "occupied" if self._occupied else "unoccupied",
+            "manual_override": self._manual_override,
+            "control_actions": actions,
+            "ashrae_compliant": comfort.get("ashrae_compliant"),
+            "last_updated": dt_util.now(),
+        }
 
     def _default_params(self, status: str) -> dict[str, Any]:
         return {
