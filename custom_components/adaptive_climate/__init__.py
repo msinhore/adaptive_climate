@@ -20,7 +20,6 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.NUMBER, Platform.SWITCH, Platform.SELECT]
 
-
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Adaptive Climate component."""
     hass.data.setdefault(DOMAIN, {})
