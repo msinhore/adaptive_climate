@@ -1,4 +1,5 @@
 """The Adaptive Climate component."""
+from .const import VERSION
 from __future__ import annotations
 
 import logging
