@@ -122,6 +122,14 @@ def calculate_hvac_and_fan(
         else:
             hvac_mode = "off"
             fan = "off"
+   # Clamp comfort_temp to user min/max config
+    comfort_temp = max(min_temp, min(comfort_temp, max_temp))
+
+    # Adjust rounding based on season logic
+    if season == "summer":
+        comfort_temp = math.floor(comfort_temp)  # cooling: round down
+    elif season == "winter":
+        comfort_temp = math.ceil(comfort_temp)   # heating: round up
 
     return {
         "comfort_temp": comfort_temp,
