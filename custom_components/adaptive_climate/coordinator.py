@@ -18,11 +18,9 @@ from homeassistant.components.climate.const import DOMAIN as CLIMATE_DOMAIN
 from homeassistant.components.climate import HVACMode
 
 from .const import (
-    DOMAIN, UPDATE_INTERVAL_MEDIUM, DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
-    EVENT_ADAPTIVE_CLIMATE_MODE_CHANGE, EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP,
-    DEFAULT_SETBACK_TEMPERATURE_OFFSET,
+    DOMAIN, UPDATE_INTERVAL_MEDIUM,
 )
-from .calculator import AdaptiveComfortCalculator
+from .calculator import calculate_hvac_and_fan
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,7 +37,6 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                          update_interval=timedelta(minutes=UPDATE_INTERVAL_MEDIUM))
 
         self.config = dict(config_entry_data)
-        self.calculator = AdaptiveComfortCalculator(self.config)
 
         self._manual_override = False
         self._override_expiry: Optional[datetime] = None
@@ -78,13 +75,17 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         self._update_occupancy()
         self._check_override_expiry()
 
-        comfort_params = self.calculator.calculate_comfort_parameters(
-            outdoor_temp=outdoor_temp,
+        comfort_params = calculate_hvac_and_fan(
             indoor_temp=indoor_temp,
+            outdoor_temp=outdoor_temp,
+            min_temp=self.config.get("min_comfort_temp", 21),
+            max_temp=self.config.get("max_comfort_temp", 27),
+            season=self.config.get("season", "summer"),
+            category=self.config.get("comfort_category", "II"),
+            air_velocity=self.config.get("air_velocity", "low"),
+            mean_radiant_temp=self._get_value(self.config.get("mean_radiant_temp_sensor")),
             indoor_humidity=indoor_humidity,
             outdoor_humidity=outdoor_humidity,
-            air_velocity=self.config.get("air_velocity", 0.1),
-            mean_radiant_temp=self._get_value(self.config.get("mean_radiant_temp_sensor")),
         )
 
         control_actions = self._determine_actions(indoor_temp, comfort_params)
