@@ -1,8 +1,8 @@
 # Adaptive Climate
-
-> **Warning**
-> 
-> Adaptive Climate is under active development. Features and behavior may change, and some functions may not work correctly in all scenarios. Use with caution and report any issues you encounter.
+[![release](https://img.shields.io/github/v/release/msinhore/adaptive_climate?include_prereleases&style=flat-square)](https://github.com/msinhore/adaptive_climate/releases)
+[![downloads](https://img.shields.io/github/downloads/msinhore/adaptive_climate/total?style=flat-square)](https://github.com/msinhore/adaptive_climate/releases)
+[![GitHub stars](https://img.shields.io/github/stars/msinhore/adaptive_climate?style=flat-square)](https://github.com/msinhore/adaptive_climate/stargazers)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-blue.svg?style=flat-square)](https://github.com/hacs/integration)
 
 A Home Assistant integration that implements ASHRAE 55 Adaptive Thermal Comfort standards for intelligent climate control.
 
