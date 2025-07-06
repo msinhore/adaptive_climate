@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
@@ -69,6 +70,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         outdoor_humidity = self._get_value(self.outdoor_humidity_sensor_id)
 
         if indoor_temp is None or outdoor_temp is None:
+            _LOGGER.warning("Indoor or outdoor temperature unavailable. Skipping update.")
             return self._last_valid_params or self._default_params("entities_unavailable")
 
         self._update_outdoor_temp_history(outdoor_temp)
@@ -88,9 +90,15 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             outdoor_humidity=outdoor_humidity,
         )
 
+        _LOGGER.debug(f"Calculated comfort parameters: {comfort_params}")
+
         control_actions = self._determine_actions(indoor_temp, comfort_params)
+        _LOGGER.debug(f"Determined control actions: {control_actions}")
+
         if not self._manual_override:
             await self._execute_actions(control_actions)
+        else:
+            _LOGGER.info("Manual override active. Skipping automatic control actions.")
 
         params = self._build_params(indoor_temp, outdoor_temp, indoor_humidity, outdoor_humidity, comfort_params, control_actions)
         self._last_valid_params = params.copy()
@@ -108,6 +116,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             try:
                 return float(state.state)
             except (ValueError, TypeError):
+                _LOGGER.warning(f"Failed to convert state '{state.state}' of {entity_id} to float.")
                 return None
         return None
 
@@ -150,6 +159,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
     def _check_override_expiry(self) -> None:
         if self._manual_override and self._override_expiry and dt_util.now() >= self._override_expiry:
+            _LOGGER.info("Manual override expired.")
             self._manual_override = False
             self._override_expiry = None
 
@@ -173,28 +183,56 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             else:
                 hvac_mode = HVACMode.OFF
 
-        actions = {
+        return {
             "set_temperature": target_temp,
             "set_hvac_mode": hvac_mode,
             "reason": f"Calculated {hvac_mode} based on comfort, adjusted for supported modes.",
         }
 
-        return actions
-
     async def _execute_actions(self, actions: dict[str, Any]) -> None:
-        """Execute the determined HVAC and temperature actions."""
-        if actions["set_temperature"] is not None:
-            _LOGGER.debug(f"Setting temperature to {actions['set_temperature']} on {self.climate_entity_id}")
+        """Execute the determined HVAC and temperature actions only if needed."""
+
+        state = self.hass.states.get(self.climate_entity_id)
+        if not state or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            _LOGGER.warning(f"{self.climate_entity_id} unavailable, skipping action execution.")
+            return
+
+        current_hvac_mode = state.state
+        current_temp = state.attributes.get("temperature")
+        target_temp = actions["set_temperature"]
+        target_hvac_mode = actions["set_hvac_mode"]
+
+        # Determine rounding strategy based on hvac_mode
+        rounded_current_temp = current_temp
+        if current_temp is not None:
+            if target_hvac_mode == HVACMode.COOL:
+                rounded_current_temp = int(current_temp)  # floor
+            elif target_hvac_mode == HVACMode.HEAT:
+                rounded_current_temp = math.ceil(current_temp)
+            else:
+                rounded_current_temp = int(current_temp)
+
+        _LOGGER.debug(f"Current temp: {current_temp}, rounded: {rounded_current_temp}, target: {target_temp}, hvac_mode: {target_hvac_mode}")
+
+        # Only call set_temperature if different
+        if target_temp is not None and (rounded_current_temp is None or abs(rounded_current_temp - target_temp) >= 0.5):
+            _LOGGER.info(f"Setting temperature to {target_temp} (current rounded: {rounded_current_temp}) on {self.climate_entity_id}")
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN, "set_temperature",
-                {"entity_id": self.climate_entity_id, ATTR_TEMPERATURE: actions["set_temperature"]},
+                {"entity_id": self.climate_entity_id, ATTR_TEMPERATURE: target_temp},
             )
-        if actions["set_hvac_mode"] is not None:
-            _LOGGER.debug(f"Setting hvac_mode to {actions['set_hvac_mode']} on {self.climate_entity_id}")
+        else:
+            _LOGGER.debug(f"Temperature {target_temp} already set (current rounded: {rounded_current_temp}) on {self.climate_entity_id}, skipping set_temperature.")
+
+        # Only call set_hvac_mode if different
+        if target_hvac_mode is not None and target_hvac_mode != current_hvac_mode:
+            _LOGGER.info(f"Setting hvac_mode to {target_hvac_mode} (current: {current_hvac_mode}) on {self.climate_entity_id}")
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN, "set_hvac_mode",
-                {"entity_id": self.climate_entity_id, "hvac_mode": actions["set_hvac_mode"]},
+                {"entity_id": self.climate_entity_id, "hvac_mode": target_hvac_mode},
             )
+        else:
+            _LOGGER.debug(f"hvac_mode {target_hvac_mode} already set on {self.climate_entity_id}, skipping set_hvac_mode.")
 
     # Persistence
 
