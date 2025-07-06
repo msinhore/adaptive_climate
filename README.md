@@ -174,3 +174,59 @@ graph TD
     AC -- "State Feedback" --> HA
 ```
 </div>
+
+## Workflow Decision
+<div style="height: 420px;">
+```mermaid
+flowchart TD
+    Start([Start _async_update_data])
+    Sensors[/Get indoor_temp, outdoor_temp, humidity/]
+    CheckUnavailable{Indoor or outdoor temp unavailable?}
+    Skip[Return last_valid_params or default]
+    UpdateOutdoor[Update outdoor temp history]
+    UpdateOccupancy[Update occupancy state]
+    CheckOverrideExpiry[Check manual override expiry]
+    CheckAutoShutdown{auto_shutdown_enable ON?}
+    CheckOccupancy{Occupied?}
+    AutoShutdown[Shutdown climate (auto shutdown)]
+    CalculateComfort[/calculate_hvac_and_fan/]
+    CheckManualOverride{Manual override active?}
+    ExecuteActions[Execute determined actions]
+    SkipActions[Skip actions due to manual override]
+    BuildParams[Build params and save to store]
+    End([Return params])
+
+    Start --> Sensors --> CheckUnavailable
+    CheckUnavailable -- Yes --> Skip --> End
+    CheckUnavailable -- No --> UpdateOutdoor --> UpdateOccupancy --> CheckOverrideExpiry --> CheckAutoShutdown
+
+    CheckAutoShutdown -- Yes --> CheckOccupancy
+    CheckAutoShutdown -- No --> CalculateComfort
+
+    CheckOccupancy -- No --> AutoShutdown --> CalculateComfort
+    CheckOccupancy -- Yes --> CalculateComfort
+
+    CalculateComfort -->|energy_save_mode ON| EnergySaveON
+    CalculateComfort -->|energy_save_mode OFF| EnergySaveOFF
+
+    subgraph Summer Logic
+      EnergySaveON --> CheckSummerTempON{indoor_temp < comfort_temp?}
+      CheckSummerTempON -- Yes --> HVACOffON[hvac_mode = off; fan = off]
+      CheckSummerTempON -- No --> CoolModeON[hvac_mode = cool; fan based on temp]
+
+      EnergySaveOFF --> CheckSummerTempOFF{indoor_temp < comfort_temp?}
+      CheckSummerTempOFF -- Yes --> HVACCoolLow[hvac_mode = cool; fan = low]
+      CheckSummerTempOFF -- No --> CoolModeOFF[hvac_mode = cool; fan based on temp]
+    end
+
+    HVACOffON --> NextSummer
+    CoolModeON --> NextSummer
+    HVACCoolLow --> NextSummer
+    CoolModeOFF --> NextSummer
+
+    NextSummer --> CheckManualOverride
+
+    CheckManualOverride -- No --> ExecuteActions --> BuildParams --> End
+    CheckManualOverride -- Yes --> SkipActions --> BuildParams --> End
+```
+</div>
