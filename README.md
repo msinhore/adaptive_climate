@@ -192,23 +192,15 @@ graph TD
 ```mermaid
 flowchart TD
   Start([Start _async_update_data])
-  Sensors[/Get indoor_temp, outdoor_temp, humidity/]
+  Sensors[/Get indoor_temp, outdoor_temp/]
   CheckUnavailable{Indoor or outdoor temp unavailable?}
   Skip[Return last_valid_params or default]
   UpdateOutdoor[Update outdoor temp history]
-  UpdateOccupancy[Update occupancy state]
   CheckOverrideExpiry[Check manual override expiry]
-  CheckAutoShutdown{auto_shutdown_enable ON?}
+  CheckAutoShutdown{Auto shutdown enabled?}
   CheckOccupancy{Occupied?}
   AutoShutdown[Shutdown climate (auto shutdown)]
-  CalculateComfort[/calculate_hvac_and_fan/]
-  EnergySaveON{energy_save_mode ON?}
-  CheckSummerTempON{indoor_temp < comfort_temp?}
-  HVACOffON[hvac_mode = off; fan = off]
-  CoolModeON[hvac_mode = cool; fan based on temp]
-  EnergySaveOFF{energy_save_mode OFF?}
-  HVACCoolLow[hvac_mode = cool; fan = low]
-  CoolModeOFF[hvac_mode = cool; fan based on temp]
+  CalculateComfort[/calculate_adaptive_comfort/]
   CheckManualOverride{Manual override active?}
   ExecuteActions[Execute determined actions]
   SkipActions[Skip actions due to manual override]
@@ -217,7 +209,7 @@ flowchart TD
 
   Start --> Sensors --> CheckUnavailable
   CheckUnavailable -- Yes --> Skip --> End
-  CheckUnavailable -- No --> UpdateOutdoor --> UpdateOccupancy --> CheckOverrideExpiry --> CheckAutoShutdown
+  CheckUnavailable -- No --> UpdateOutdoor --> CheckOverrideExpiry --> CheckAutoShutdown
 
   CheckAutoShutdown -- Yes --> CheckOccupancy
   CheckAutoShutdown -- No --> CalculateComfort
@@ -225,17 +217,7 @@ flowchart TD
   CheckOccupancy -- No --> AutoShutdown --> CalculateComfort
   CheckOccupancy -- Yes --> CalculateComfort
 
-  CalculateComfort --> EnergySaveON
-  EnergySaveON -- Yes --> CheckSummerTempON
-  EnergySaveON -- No --> EnergySaveOFF
-
-  CheckSummerTempON -- Yes --> HVACOffON --> CheckManualOverride
-  CheckSummerTempON -- No --> CoolModeON --> CheckManualOverride
-
-  EnergySaveOFF --> CheckSummerTempON
-  CheckSummerTempON -- Yes --> HVACCoolLow --> CheckManualOverride
-  CheckSummerTempON -- No --> CoolModeOFF --> CheckManualOverride
-
+  CalculateComfort --> CheckManualOverride
   CheckManualOverride -- No --> ExecuteActions --> BuildParams --> End
   CheckManualOverride -- Yes --> SkipActions --> BuildParams --> End
 ```
