@@ -40,9 +40,11 @@ The integration:
 
 1. Monitors indoor and outdoor temperatures, humidity, occupancy, and optional radiant temperature.
 2. Calculates adaptive comfort zones using ASHRAE 55 standards and pythermalcomfort.
-3. Provides **21+ entities** to control and monitor your climate system:
-   - 6+ information entities (calculated comfort temp, ASHRAE compliance, HVAC recommendations, fan speeds)
-   - 15+ control entities (min/max comfort temps, thresholds, air velocity, auto shutdown minutes, energy save toggle, comfort category)
+3. Provides real Home Assistant entities to control and monitor your climate system:
+   - Binary sensor: ASHRAE compliance
+	- **Select entity:** Comfort category (I, II, III)
+	- **Number entities (7):** min/max comfort temps, air velocity, temperature change threshold, natural ventilation threshold, setback offset, auto shutdown minutes
+	- **Switch entities (3):** energy save mode, natural ventilation enable, auto shutdown enable
 4. Suggests optimal HVAC modes (heating, cooling, fan only, dry, humidify, off) based on real comfort science.
 5. Tracks compliance with international comfort standards.
 
@@ -81,15 +83,26 @@ The integration:
 
 ## What you get
 
-### Information entities (1+)
-- **ASHRAE Compliance**: Binary sensor with detailed attributes showing if current conditions meet comfort standards.
+### Information entity
+- **ASHRAE Compliance**  (binary sensor): Shows if current conditions meet comfort standards.
 
-### Control entities (11+)
-- **Temperature controls**: Min/max comfort temperatures, temperature change threshold, natural ventilation threshold, setback temperature offset
-- **Feature toggles**: Energy save mode, natural ventilation enable, auto shutdown enable
-- **Comfort category**: ASHRAE categories I, II, or III (strictness levels)
-- **Air velocity**: Fan speed basis for comfort calculation
-- **Auto shutdown minutes**: Delay to turn off HVAC if unoccupied
+### Control entities
+#### Number entities (7):
+- **Minimum Comfort Temperature**
+- **Maximum Comfort Temperature**
+- **if Air Velocity**
+- **Temperature Change Threshold**
+- **Natural Ventilation Threshold**
+- **Setback Temperature Offset**
+- **Auto Shutdown Minutes**
+
+#### Select entity (1):
+- **Comfort Category (I, II, III)**
+
+#### Switch entities (3):
+- **Energy Save Mode**
+- **Natural Ventilation Enable**
+- **Auto Shutdown Enable**
 
 ## Usage
 
