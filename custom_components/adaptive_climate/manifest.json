@@ -5,9 +5,7 @@
     "config_flow": true,
     "dependencies": ["logbook"],
     "documentation": "https://github.com/msinhore/adaptive-climate",
-    "homeassistant": {
-	"min": "2025.6.0"
-    },
+    "homeassistant": "2025.6.0",
     "iot_class": "local_polling",
     "integration_type": "system",
     "issue_tracker": "https://github.com/msinhore/adaptive-climate/issues",
