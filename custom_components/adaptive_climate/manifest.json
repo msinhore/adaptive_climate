@@ -10,8 +10,8 @@
         "logbook"
     ],
     "documentation": "https://github.com/msinhore/adaptive-climate",
-    "iot_class": "local_polling",
     "integration_type": "system",
+    "iot_class": "local_polling",
     "issue_tracker": "https://github.com/msinhore/adaptive-climate/issues",
     "quality_scale": "gold",
     "requirements": []
