@@ -1,6 +1,6 @@
 # Adaptive Climate
-[![release](https://img.shields.io/github/v/release/msinhore/adaptive_climate?include_prereleases&style=flat-square)](https://github.com/msinhore/adaptive_climate/releases)
-[![downloads](https://img.shields.io/github/downloads/msinhore/adaptive_climate/total?style=flat-square)](https://github.com/msinhore/adaptive_climate/releases)
+[![Release](https://img.shields.io/github/v/release/msinhore/adaptive_climate?label=release&sort=semver&logo=github)](https://github.com/msinhore/adaptive_climate/releases)
+[![Downloads](https://img.shields.io/github/downloads/msinhore/adaptive_climate/total)](https://github.com/msinhore/adaptive_climate/releases)
 [![GitHub stars](https://img.shields.io/github/stars/msinhore/adaptive_climate?style=flat-square)](https://github.com/msinhore/adaptive_climate/stargazers)
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-blue.svg?style=flat-square)](https://github.com/hacs/integration)
 
