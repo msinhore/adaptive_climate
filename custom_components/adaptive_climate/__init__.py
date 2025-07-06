@@ -18,7 +18,7 @@ from .logbook import async_describe_events
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.NUMBER, Platform.SWITCH]
+PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.NUMBER, Platform.SWITCH, Platform.SELECT]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
