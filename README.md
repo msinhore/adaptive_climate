@@ -10,14 +10,17 @@ A Home Assistant integration that implements ASHRAE 55 Adaptive Thermal Comfort 
 
 Adaptive Climate intelligently manages your climate system using a scientific, adaptive approach. It:
 
-- Continuously monitors indoor temperature, outdoor temperature, radiant temperature (if available), and occupancy sensors.
-- Detects the current season based on your latitude and date, adapting comfort logic for summer and winter.
+- Continuously monitors indoor temperature, outdoor temperature, radiant temperature (if available), humidity, and occupancy sensors.
+- Detects the current season based on your latitude and date, adapting comfort logic for summer, winter, spring, and autumn.
 - Uses user-configurable minimum and maximum comfort temperature ranges.
 - Applies the ASHRAE 55-2020 Adaptive Thermal Comfort model to determine the optimal comfort zone for your environment.
-- Automatically sets your AC or heater to the most appropriate mode (cool, heat, fan, or off) to maintain comfort and save energy.
+- Automatically sets your AC or heater to the most appropriate mode (cool, heat, fan, dry, humidify, or off) to maintain comfort and save energy.
 - Dynamically controls fan speed (air velocity) to improve comfort, even without changing the setpoint temperature.
-- Turns off the climate system when not needed (e.g., when the space is unoccupied or already within the comfort zone).
+- Supports **energy save mode**: disables HVAC when indoor temperature is below comfort temperature in summer for energy savings.
+- Supports **auto shutdown**: turns off the climate system if no occupancy is detected for a configurable time.
+- Supports **manual override** with expiry: maintains a user-set temperature for a period before returning to automatic mode.
 - Integrates all available sensor data (temperature, humidity, radiant temperature, occupancy, etc.) for precise, science-based comfort decisions.
+- Stores running mean outdoor temperature history for accurate adaptive calculations.
 - Ensures all actions are based on international comfort standards, not just fixed setpoints.
 
 Instead of fixed temperature setpoints, Adaptive Climate adapts to weather, season, and occupancy to improve comfort and reduce energy consumption, providing a truly intelligent and scientific climate control experience.
@@ -25,6 +28,7 @@ Instead of fixed temperature setpoints, Adaptive Climate adapts to weather, seas
 ## Problem it solves
 
 Traditional thermostats use static temperature settings that don't account for:
+
 - Seasonal adaptation (people feel comfortable at different temperatures in summer vs winter)
 - Outdoor temperature influence on comfort perception
 - Energy waste from over-heating or over-cooling
@@ -33,15 +37,19 @@ Traditional thermostats use static temperature settings that don't account for:
 ## How it works
 
 The integration:
-1. Monitors indoor and outdoor temperatures
-2. Calculates adaptive comfort zones using ASHRAE 55 standards
-3. Provides 21 entities to control and monitor your climate system
-4. Suggests optimal HVAC modes (heating, cooling, off) based on real comfort science
-5. Tracks compliance with international comfort standards
+
+1. Monitors indoor and outdoor temperatures, humidity, occupancy, and optional radiant temperature.
+2. Calculates adaptive comfort zones using ASHRAE 55 standards and pythermalcomfort.
+3. Provides **21+ entities** to control and monitor your climate system:
+   - 6+ information entities (calculated comfort temp, ASHRAE compliance, HVAC recommendations, fan speeds)
+   - 15+ control entities (min/max comfort temps, thresholds, air velocity, auto shutdown minutes, energy save toggle, comfort category)
+4. Suggests optimal HVAC modes (heating, cooling, fan only, dry, humidify, off) based on real comfort science.
+5. Tracks compliance with international comfort standards.
 
 ## Installation
 
 ### Via HACS (Recommended)
+
 1. Install [HACS](https://hacs.xyz/) if not already installed
 2. Go to HACS → Integrations → ⋮ → Custom repositories
 3. Add this repository URL and select "Integration"
@@ -50,6 +58,7 @@ The integration:
 6. Go to Settings → Devices & Services → Add Integration → "Adaptive Climate"
 
 ### Manual Installation
+
 1. Download the latest release
 2. Extract to `custom_components/adaptive_climate/` in your HA config directory
 3. Restart Home Assistant
@@ -58,11 +67,13 @@ The integration:
 ## Configuration
 
 ### Required
+
 - **Climate entity**: Your AC/heating system (e.g., `climate.living_room`)
 - **Indoor temperature sensor**: Room temperature (e.g., `sensor.living_room_temperature`)
 - **Outdoor temperature sensor**: Outside temperature (e.g., `sensor.outdoor_temperature`)
 
 ### Optional
+
 - Indoor/outdoor humidity sensors
 - Occupancy sensor
 - Mean radiant temperature sensor
@@ -70,21 +81,26 @@ The integration:
 
 ## What you get
 
-### Information entities (6)
+### Information entities (6+)
+
 - **ASHRAE Compliance**: Binary sensor showing if current conditions meet comfort standards
 - **Comfort sensors**: Calculated comfort temperature, HVAC recommendations, fan speeds, etc.
 
-### Control entities (15)
-- **Temperature controls**: Min/max comfort temperatures, thresholds
-- **Feature toggles**: Energy saving, natural ventilation, precision mode
+### Control entities (15+)
+
+- **Temperature controls**: Min/max comfort temperatures, temperature change threshold, natural ventilation threshold, setback temperature offset
+- **Feature toggles**: Energy save mode, auto shutdown enable
 - **Comfort category**: ASHRAE categories I, II, or III (strictness levels)
+- **Air velocity**: Fan speed basis for comfort calculation
+- **Auto shutdown minutes**: Delay to turn off HVAC if unoccupied
 
 ## Usage
 
 1. **Basic monitoring**: Check the compliance sensor to see if your space is comfortable
 2. **Automatic control**: Use the HVAC recommendation sensor in automations
-3. **Fine-tuning**: Adjust the 15 control entities via the device page or configuration options
-4. **Energy saving**: Enable energy save mode for automatic setback temperatures
+3. **Fine-tuning**: Adjust the control entities via the device page or configuration options
+4. **Energy saving**: Enable energy save mode for automatic HVAC off when comfort is met
+5. **Manual override**: Set a manual temperature with expiry to temporarily override automatic control
 
 ## Automation example
 
@@ -177,8 +193,9 @@ graph TD
 
 ## Workflow Decision
 <div style="height: 420px;">
+
 ```mermaid
-flowchart TD
+graph TD
     Start([Start _async_update_data])
     Sensors[/Get indoor_temp, outdoor_temp, humidity/]
     CheckUnavailable{Indoor or outdoor temp unavailable?}
