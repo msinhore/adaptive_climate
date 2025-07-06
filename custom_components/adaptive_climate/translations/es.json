@@ -131,9 +131,9 @@
       "comfort_category": {
         "name": "Categoría de Confort",
         "state": {
-          "I": "Categoría I (90% satisfacción)",
-          "II": "Categoría II (80% satisfacción)",
-          "III": "Categoría III (70% satisfacción)"
+          "cat_i": "Categoría I (90% satisfacción)",
+          "cat_ii": "Categoría II (80% satisfacción)",
+          "cat_iii": "Categoría III (70% satisfacción)"
         }
       }
     }

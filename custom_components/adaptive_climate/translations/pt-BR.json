@@ -131,9 +131,9 @@
       "comfort_category": {
         "name": "Categoria de Conforto",
         "state": {
-          "I": "Categoria I (90% satisfação)",
-          "II": "Categoria II (80% satisfação)",
-          "III": "Categoria III (70% satisfação)"
+          "cat_i": "Categoria I (90% satisfação)",
+          "cat_ii": "Categoria II (80% satisfação)",
+          "cat_iii": "Categoria III (70% satisfação)"
         }
       }
     }
