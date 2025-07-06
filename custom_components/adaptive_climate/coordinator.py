@@ -101,6 +101,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             indoor_humidity=indoor_humidity,
             outdoor_humidity=outdoor_humidity,
             running_mean_outdoor_temp=self._running_mean_outdoor_temp,
+            energy_save_mode=self.config.get("energy_save_mode", True),
         )
 
         _LOGGER.debug(f"Calculated comfort parameters: {comfort_params}")

@@ -1,7 +1,7 @@
 from typing import Literal, Dict, Any, Optional
 from .pythermalcomfort_patched import adaptive_ashrae
 
-HVACMode = Literal["cool", "heat", "fan_only", "dry", "humidify", "off"]
+HVACMode = Literal["cool", "heatenergy_save_mode", "fan_only", "dry", "humidify", "off"]
 FanMode = Literal["low", "mid", "high", "very_high", "off"]
 ComfortCategory = Literal["I", "II", "III"]
 
@@ -33,6 +33,7 @@ def calculate_hvac_and_fan(
     indoor_humidity: Optional[float] = None,
     outdoor_humidity: Optional[float] = None,
     running_mean_outdoor_temp: Optional[float] = None,
+    energy_save_mode: bool = True,
 ) -> Dict[str, Any]:
     """
     Calculate HVAC mode and fan speed based on season, ASHRAE comfort, and humidity.
@@ -70,8 +71,12 @@ def calculate_hvac_and_fan(
             hvac_mode = "dry"
             fan = "low"
         elif indoor_temp < comfort_temp:
-            hvac_mode = "off"
-            fan = "off"
+            if energy_save_mode:
+                hvac_mode = "off"
+                fan = "off"
+            else:
+                hvac_mode = "cool"
+                fan = "low"
         else:
             hvac_mode = "cool"
             if indoor_temp < (max_temp - (tolerance / 2)):
