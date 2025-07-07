@@ -259,6 +259,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
         target_temp = comfort.get("comfort_temp", indoor_temp)
         hvac_mode = comfort.get("hvac_mode", "off")
+        fan_mode = comfort.get("fan_mode", "off")
 
         # Do not switch off for comfort if energy_save_mode is False
         if not self.config.get("energy_save_mode", True) and hvac_mode == HVACMode.OFF:
@@ -281,10 +282,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         return {
             "set_temperature": target_temp,
             "set_hvac_mode": hvac_mode,
-            "set_fan_mode": comfort.get("fan"),
+            "set_fan_mode": fan_mode,
             "reason": {
                 f"Calculated {hvac_mode}, temperature{target_temp}, "
-                f"fan mode: {comfort.get('fan')} based on comfort, adjusted for supported modes.",
+                f"fan mode: {fan_mode} based on comfort, adjusted for supported modes.",
             }
         }
 
@@ -302,7 +303,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
         target_temp = actions["set_temperature"]
         target_hvac_mode = actions["set_hvac_mode"]
-        target_fan_mode = actions.get("fan")
+        target_fan_mode = actions.get("fan_mode")
 
         rounded_current_temp = current_temp
         if current_temp is not None:

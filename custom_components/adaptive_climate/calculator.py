@@ -2,8 +2,8 @@ import math
 from typing import Literal, Dict, Any, Optional
 from .pythermalcomfort_patched import adaptive_ashrae
 
-HVACMode = Literal["cool", "heat", "fan_only", "dry", "humidify", "off"]
-FanMode = Literal["low", "mid", "high", "very_high", "off"]
+HVACMode = Literal["cool", "heat", "fan_only", "dry", "off"]
+FanMode = Literal["low", "mid", "high",  "off"]
 ComfortCategory = Literal["I", "II", "III"]
 
 CATEGORY_TOLERANCE = {
@@ -16,7 +16,6 @@ AIR_VELOCITY_MAP = {
     "low": 0.15,
     "mid": 0.30,
     "high": 0.45,
-    "very_high": 0.6,
 }
 
 ASHRAE_55_TEMP_MIN = 10.0
@@ -84,10 +83,8 @@ def calculate_hvac_and_fan(
                 fan = "low"
             elif indoor_temp > (max_temp - (tolerance / 2)):
                 fan = "mid"
-            if indoor_temp > max_temp:
+            elif indoor_temp > max_temp:
                 fan = "high"
-            if indoor_temp > outdoor_temp:
-                fan = "very_high"
 
     # Winter logic with humidify mode
     elif season == "winter":
@@ -135,7 +132,7 @@ def calculate_hvac_and_fan(
     return {
         "comfort_temp": comfort_temp,
         "hvac_mode": hvac_mode,
-        "fan": fan,
+        "fan_mode": fan,
         "ashrae_compliant": ashrae_result.acceptability_80,
         "comfort_min_ashrae": ashrae_result.tmp_cmf_80_low,
         "comfort_max_ashrae": ashrae_result.tmp_cmf_80_up,
