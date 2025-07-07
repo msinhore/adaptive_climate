@@ -144,7 +144,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
     # Helpers
 
-    def _get_value(self, entity_id: Optional[str]) -> Optional[float]:
+    def _get_value(self, entity_id: Optional[str], sensor_type: Optional[str] = None) -> Optional[float]:
         if not entity_id:
             return None
         state = self.hass.states.get(entity_id)
