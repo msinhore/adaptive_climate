@@ -233,6 +233,12 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         target_temp = comfort.get("comfort_temp", indoor_temp)
         hvac_mode = comfort.get("hvac_mode", "off")
 
+        # Do not switch off for comfort if energy_save_mode is False
+        if not self.config.get("energy_save_mode", True) and hvac_mode == HVACMode.OFF:
+            state = self.hass.states.get(self.climate_entity_id)
+            if state and state.state != HVACMode.OFF:
+                hvac_mode = state.state
+
         state = self.hass.states.get(self.climate_entity_id)
         supported_modes = []
         if state:
