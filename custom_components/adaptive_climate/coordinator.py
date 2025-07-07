@@ -93,7 +93,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     self._system_turned_off = False
                     # Continue normal flow to re-start the AC 
                 else:
-                    §return self._last_valid_params or self._default_params("ac_off")
+                    return self._last_valid_params or self._default_params("ac_off")
             else:
                 _LOGGER.debug(f"[{self.config.get('name')}] {self.climate_entity_id} is off (by user?). Skipping automatic actions.")
                 return self._last_valid_params or self._default_params("ac_off")
