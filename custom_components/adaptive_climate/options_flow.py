@@ -115,7 +115,7 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
             vol.Optional(
                 "auto_start_minutes",
                 default=options.get("auto_start_minutes", DEFAULT_AUTO_START_MINUTES)
-            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=30))
+            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
 
             # === Fan Mode Velocities ===
             vol.Optional(
