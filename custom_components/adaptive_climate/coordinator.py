@@ -78,17 +78,27 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         self._update_occupancy()
         self._check_override_expiry()
 
+        climate_state = self.hass.states.get(self.climate_entity_id)
+        if not climate_state or climate_state.state == HVACMode.OFF:
+            _LOGGER.debug(f"[{self.config.get('name')}] {self.climate_entity_id} is off. Skipping automatic actions.")
+            return self._last_valid_params or self._default_params("ac_off")
+        
         # Auto shutdown logic
         if self.config.get("auto_shutdown_enable", False):
             shutdown_minutes = self.config.get("auto_shutdown_minutes", 60)
-            if not self._occupied and self._last_no_occupancy:
-                elapsed = (dt_util.now() - self._last_no_occupancy).total_seconds() / 60
-                if elapsed >= shutdown_minutes:
-                    _LOGGER.info(f"[{self.config.get('name')}] Auto shutdown triggered after {elapsed:.1f} minutes of no occupancy.")
-                    await self._shutdown_climate()
-                else:
-                    _LOGGER.debug(f"[{self.config.get('name')}] No occupancy for {elapsed:.1f} minutes; shutdown threshold: {shutdown_minutes} min.")
-        
+        if climate_state.state != HVACMode.OFF and not self._occupied:
+            if self._last_no_occupancy is None:
+                self._last_no_occupancy = dt_util.now()
+            elapsed = (dt_util.now() - self._last_no_occupancy).total_seconds() / 60
+            if elapsed >= shutdown_minutes:
+                _LOGGER.info(f"[{self.config.get('name')}] Auto shutdown triggered after {elapsed:.1f} minutes of no occupancy.")
+                await self._shutdown_climate()
+                return self._last_valid_params or self._default_params("auto_shutdown")
+            else:
+                _LOGGER.debug(f"[{self.config.get('name')}] No occupancy for {elapsed:.1f} minutes; shutdown threshold: {shutdown_minutes} min.")
+        else:
+            self._last_no_occupancy = None
+            
         comfort_params = calculate_hvac_and_fan(
             indoor_temp=indoor_temp,
             outdoor_temp=outdoor_temp,
