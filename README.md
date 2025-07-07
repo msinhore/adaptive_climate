@@ -47,8 +47,8 @@ The integration:
 3. Provides real Home Assistant entities to control and monitor your climate system:
    - Binary sensor: ASHRAE compliance
 	- **Select entity:** Comfort category (I, II, III)
-	- **Number entities (7):** min/max comfort temps, air velocity, temperature change threshold, natural ventilation threshold, setback offset, auto shutdown minutes
-	- **Switch entities (3):** energy save mode, natural ventilation enable, auto shutdown enable
+	- **Number entities (8):** min/max comfort temps, air velocity, temperature change threshold, natural ventilation threshold, setback offset, auto shutdown minutes
+	- **Switch entities (4):** energy save mode, natural ventilation enable, auto shutdown enable
 4. Suggests optimal HVAC modes (heating, cooling, fan only, dry, humidify, off) based on real comfort science.
 5. Tracks compliance with international comfort standards.
 
@@ -87,11 +87,11 @@ The integration:
 
 ## What you get
 
-### Information entity
-- **ASHRAE Compliance**  (binary sensor): Shows if current conditions meet comfort standards.
+### Information entity (1)
+- ** and ASHRAE Compliance**  (binary sensor): Shows if current conditions meet comfort standards.
 
 ### Control entities
-#### Number entities (7):
+#### Number entities (8):
 - Minimum Comfort Temperature
 - Maximum Comfort Temperature
 - if Air Velocity
@@ -99,14 +99,16 @@ The integration:
 - Natural Ventilation Threshold
 - Setback Temperature Offset
 - Auto Shutdown Minutes
+- Auto Start Minutes
 
 #### Select entity (1):
 - Comfort Category (I, II, III)
 
-#### Switch entities (3):
+#### Switch entities (4):
 - Energy Save Mode
 - Natural Ventilation Enable
 - Auto Shutdown Enable
+- Auto Start Enable
 
 ## Usage
 
