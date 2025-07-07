@@ -60,15 +60,21 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         self.outdoor_humidity_sensor_id = self.config.get("outdoor_humidity_sensor")
         self.occupancy_sensor_id = self.config.get("occupancy_sensor")
 
+        # Sensor  fallbacks
+        self._last_valid_indoor_temp = None
+        self._last_valid_outdoor_temp = None
+        self._last_valid_indoor_humidity = None
+        self._last_valid_outdoor_humidity = None
+
         self._setup_listeners()
         self.hass.async_create_task(self._load_persisted_data())
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch latest data and determine actions."""
-        indoor_temp = self._get_value(self.indoor_temp_sensor_id)
-        outdoor_temp = self._get_value(self.outdoor_temp_sensor_id)
-        indoor_humidity = self._get_value(self.indoor_humidity_sensor_id)
-        outdoor_humidity = self._get_value(self.outdoor_humidity_sensor_id)
+        indoor_temp = self._get_value(self.indoor_temp_sensor_id, "indoor_temp")
+        outdoor_temp = self._get_value(self.outdoor_temp_sensor_id, "outdoor_temp")
+        indoor_humidity = self._get_value(self.indoor_humidity_sensor_id, "indoor_humidity")
+        outdoor_humidity = self._get_value(self.outdoor_humidity_sensor_id, "outdoor_humidity")
 
         if indoor_temp is None or outdoor_temp is None:
             _LOGGER.warning(f"[{self.config.get('name')}] Indoor or outdoor temperature unavailable. Skipping update.")
@@ -144,10 +150,29 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         state = self.hass.states.get(entity_id)
         if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             try:
-                return float(state.state)
+                value = float(state.state)
+                # Saves the last valid reading for each sensor type
+                if sensor_type == "indoor_temp":
+                    self._last_valid_indoor_temp = value
+                elif sensor_type == "outdoor_temp":
+                    self._last_valid_outdoor_temp = value
+                elif sensor_type == "indoor_humidity":
+                    self._last_valid_indoor_humidity = value
+                elif sensor_type == "outdoor_humidity":
+                    self._last_valid_outdoor_humidity = value
+                return value
             except (ValueError, TypeError):
                 _LOGGER.warning(f"[{self.config.get('name')}] Failed to convert state '{state.state}' of {entity_id} to float.")
                 return None
+        # If unavailable, returns the last valid read
+        if sensor_type == "indoor_temp":
+            return self._last_valid_indoor_temp
+        elif sensor_type == "outdoor_temp":
+            return self._last_valid_outdoor_temp
+        elif sensor_type == "indoor_humidity":
+            return self._last_valid_indoor_humidity
+        elif sensor_type == "outdoor_humidity":
+            return self._last_valid_outdoor_humidity
         return None
 
     def _build_params(self, indoor, outdoor, indoor_hum, outdoor_hum, comfort, actions) -> dict[str, Any]:
