@@ -303,7 +303,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
         target_temp = actions["set_temperature"]
         target_hvac_mode = actions["set_hvac_mode"]
-        target_fan_mode = actions.get("fan_mode")
+        target_fan_mode = actions.get("set_fan_mode")
 
         rounded_current_temp = current_temp
         if current_temp is not None:
