@@ -21,6 +21,7 @@ from .const import (
     DEFAULT_SETBACK_TEMPERATURE_OFFSET,
     DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
     DEFAULT_AUTO_SHUTDOWN_MINUTES,
+    DEFAULT_AUTO_START_MINUTES,
     # Categories
     COMFORT_CATEGORIES,
 )
@@ -104,6 +105,17 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 "auto_shutdown_minutes",
                 default=options.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES)
             ): vol.All(vol.Coerce(int), vol.Range(min=1, max=240)),
+
+            # === Auto Start on Presence ===
+            vol.Optional(
+                "auto_start_enable",
+                default=options.get("auto_start_enable", False)
+            ): bool,
+
+            vol.Optional(
+                "auto_start_minutes",
+                default=options.get("auto_start_minutes", DEFAULT_AUTO_START_MINUTES)
+            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=30))
 
             # === Fan Mode Velocities ===
             vol.Optional(

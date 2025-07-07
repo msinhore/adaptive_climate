@@ -113,6 +113,17 @@ async def async_setup_entry(
             native_step=1,
             native_unit_of_measurement="min",
         ),
+        AdaptiveClimateNumberEntity(
+            coordinator=coordinator,
+            config_entry=config_entry,
+            entity_key="auto_start_minutes",
+            name="Auto Start Minutes",
+            icon="mdi:timer-on",
+            native_min_value=1,
+            native_max_value=30,
+            native_step=1,
+            native_unit_of_measurement="min",
+        ),
     ]
     
     async_add_entities(entities)

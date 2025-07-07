@@ -51,6 +51,13 @@ async def async_setup_entry(
             name="Auto Shutdown Enable",
             icon="mdi:power-off",
         ),
+        AdaptiveClimateSwitchEntity(
+            coordinator=coordinator,
+            config_entry=config_entry,
+            entity_key="auto_start_enable",
+            name="Auto Resume on Presence Enable",
+            icon="mdi:power-on",
+        ),
     ]
     
     async_add_entities(entities)

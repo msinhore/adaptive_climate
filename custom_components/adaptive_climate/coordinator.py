@@ -47,6 +47,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
         self._outdoor_temp_history: list[tuple[datetime, float]] = []
         self._running_mean_outdoor_temp: Optional[float] = None
+        self._presence_returned_at = None
 
         self._store = Store(hass, STORAGE_VERSION,
                             f"{STORAGE_KEY}_{self.config.get('name', 'default')}")
@@ -85,8 +86,21 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         self._check_override_expiry()
 
         climate_state = self.hass.states.get(self.climate_entity_id)
+        auto_start_enable = self.config.get("auto_start_enable", False)
+        auto_start_minutes = self.config.get("auto_start_minutes", 5)
+
         if not climate_state or climate_state.state == HVACMode.OFF:
-            if getattr(self, "_system_turned_off", False):
+            # If was auto_shutdown and presence returned, verifies auto_start
+            if getattr(self, "_system_turned_off", False) and self._occupied and self._presence_returned_at:
+                elapsed = (dt_util.now() - self._presence_returned_at).total_seconds() / 60
+                if auto_start_enable and elapsed >= auto_start_minutes:
+                    _LOGGER.info(f"[{self.config.get('name')}] Presence returned after {elapsed:.1f} minutes. Starting AC.")
+                    self._system_turned_off = False
+                    # Continue normal flow to re-start the AC
+                else:
+                    _LOGGER.debug(f"[{self.config.get('name')}] Presence returned but not enough time elapsed ({elapsed:.1f} min). Skipping auto start.")
+                    return self._last_valid_params or self._default_params("waiting_presence")
+            elif getattr(self, "_system_turned_off", False):
                 _LOGGER.debug(f"[{self.config.get('name')}] {self.climate_entity_id} is off (by system). Checking if need start AC.")
                 comfort_params = calculate_hvac_and_fan(...)
                 if comfort_params.get("hvac_mode") != HVACMode.OFF:
@@ -97,7 +111,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             else:
                 _LOGGER.debug(f"[{self.config.get('name')}] {self.climate_entity_id} is off (by user?). Skipping automatic actions.")
                 return self._last_valid_params or self._default_params("ac_off")
-                    
+    
         # Auto shutdown logic
         if self.config.get("auto_shutdown_enable", False):
             shutdown_minutes = self.config.get("auto_shutdown_minutes", 60)
@@ -222,13 +236,17 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             return
         state = self.hass.states.get(self.occupancy_sensor_id)
         if state and state.state in (STATE_ON, STATE_OFF):
+            was_occupied = self._occupied
             self._occupied = state.state == STATE_ON
 
         if self._occupied:
+            if not was_occupied:
+                self._presence_returned_at = dt_util.now()
             self._last_no_occupancy = None
         else:
             if self._last_no_occupancy is None:
                 self._last_no_occupancy = dt_util.now()
+            self._presence_returned_at = None
 
     def _check_override_expiry(self) -> None:
         if self._manual_override and self._override_expiry and dt_util.now() >= self._override_expiry:
