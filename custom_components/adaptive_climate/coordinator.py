@@ -86,9 +86,18 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
         climate_state = self.hass.states.get(self.climate_entity_id)
         if not climate_state or climate_state.state == HVACMode.OFF:
-            _LOGGER.debug(f"[{self.config.get('name')}] {self.climate_entity_id} is off. Skipping automatic actions.")
-            return self._last_valid_params or self._default_params("ac_off")
-        
+            if getattr(self, "_system_turned_off", False):
+                _LOGGER.debug(f"[{self.config.get('name')}] {self.climate_entity_id} is off (by system). Checking if need start AC.")
+                comfort_params = calculate_hvac_and_fan(...)
+                if comfort_params.get("hvac_mode") != HVACMode.OFF:
+                    self._system_turned_off = False
+                    # Continue normal flow to re-start the AC 
+                else:
+                    §return self._last_valid_params or self._default_params("ac_off")
+            else:
+                _LOGGER.debug(f"[{self.config.get('name')}] {self.climate_entity_id} is off (by user?). Skipping automatic actions.")
+                return self._last_valid_params or self._default_params("ac_off")
+                    
         # Auto shutdown logic
         if self.config.get("auto_shutdown_enable", False):
             shutdown_minutes = self.config.get("auto_shutdown_minutes", 60)
@@ -238,7 +247,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             state = self.hass.states.get(self.climate_entity_id)
             if state and state.state != HVACMode.OFF:
                 hvac_mode = state.state
-
+    
         state = self.hass.states.get(self.climate_entity_id)
         supported_modes = []
         if state:
@@ -307,6 +316,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             return
 
         _LOGGER.info(f"[{self.config.get('name')}] Shutting down {self.climate_entity_id} due to auto shutdown policy.")
+        self._system_turned_off = True
         await self.hass.services.async_call(
             CLIMATE_DOMAIN, "turn_off",
             {"entity_id": self.climate_entity_id},
@@ -334,3 +344,6 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
     def _handle_state_change(self, event) -> None:
         self.async_set_updated_data(self.data or {})
         self.hass.async_create_task(self.async_request_refresh())
+        state = self.hass.states.get(self.climate_entity_id)
+        if state and state.state != HVACMode.OFF:
+            self._system_turned_off = False
