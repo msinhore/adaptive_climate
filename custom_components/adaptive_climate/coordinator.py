@@ -281,7 +281,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         return {
             "set_temperature": target_temp,
             "set_hvac_mode": hvac_mode,
-            "reason": f"Calculated {hvac_mode} based on comfort, adjusted for supported modes.",
+            "set_fan_mode": comfort.get("fan"),
+            "reason": {
+                f"Calculated {hvac_mode}, temperature{target_temp}, "
+                f"fan mode: {comfort.get('fan')} based on comfort, adjusted for supported modes.",
+            }
         }
 
     async def _execute_actions(self, actions: dict[str, Any]) -> None:
@@ -294,8 +298,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
         current_hvac_mode = state.state
         current_temp = state.attributes.get("temperature")
+        current_fan_mode = state.attributes.get("fan_mode")
+
         target_temp = actions["set_temperature"]
         target_hvac_mode = actions["set_hvac_mode"]
+        target_fan_mode = actions.get("fan")
 
         rounded_current_temp = current_temp
         if current_temp is not None:
@@ -325,6 +332,15 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             )
         else:
             _LOGGER.debug(f"[{self.config.get('name')}] hvac_mode {target_hvac_mode} already set on {self.climate_entity_id}, skipping set_hvac_mode.")
+
+        if target_fan_mode and target_fan_mode != current_fan_mode:
+            _LOGGER.info(f"[{self.config.get('name')}] Setting fan mode to {target_fan_mode} (current: {current_fan_mode}) on {self.climate_entity_id}")
+            await self.hass.services.async_call(
+                CLIMATE_DOMAIN, "set_fan_mode",
+                {"entity_id": self.climate_entity_id, "fan_mode": target_fan_mode},
+            )
+        else:
+            _LOGGER.debug(f"[{self.config.get('name')}] Fan mode {target_fan_mode} already set on {self.climate_entity_id}, skipping set_fan_mode.")
 
     async def _shutdown_climate(self) -> None:
         """Turn off climate entity as part of auto shutdown."""
