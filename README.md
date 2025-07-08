@@ -27,7 +27,7 @@ Adaptive Climate intelligently manages your climate system using a scientific, a
 - Supports **manual override** with expiry: maintains a user-set temperature for a period before returning to automatic mode.
 - Integrates all available sensor data (temperature, humidity, radiant temperature, occupancy, etc.) for precise, science-based comfort decisions.
 - Stores running mean outdoor temperature history for accurate adaptive calculations.
-- When *User manual override** mode is enabled, any manual change to the climate entity (hvac mode, temperature, or fan mode) will pause automatic control.
+- When **user manual override** mode is enabled, any manual change to the climate entity (hvac mode, temperature, or fan mode) will pause automatic control.
 - Ensures all actions are based on international comfort standards, not just fixed setpoints.
 
 Instead of fixed temperature setpoints, Adaptive Climate adapts to weather, season, and occupancy to improve comfort and reduce energy consumption, providing a truly intelligent and scientific climate control experience.
