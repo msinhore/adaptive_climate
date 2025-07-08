@@ -262,24 +262,30 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         hvac_mode = comfort.get("hvac_mode", "off")
         fan_mode = comfort.get("fan_mode", "off")
 
+    _LOGGER.debug(f"[{self.config.get('name')}] Initial determine_actions: target_temp={target_temp}, hvac_mode={hvac_mode}, fan_mode={fan_mode}")
+
         # Do not switch off for comfort if energy_save_mode is False
         if not self.config.get("energy_save_mode", True) and hvac_mode == HVACMode.OFF:
             state = self.hass.states.get(self.climate_entity_id)
+            _LOGGER.debug(f"[{self.config.get('name')}] energy_save_mode is False and calculated hvac_mode is OFF. Current state: {state.state if state else 'unknown'}")
             if state and state.state != HVACMode.OFF:
+                _LOGGER.debug(f"[{self.config.get('name')}] Overriding hvac_mode OFF to {state.state} and fan_mode to {state.attributes.get('fan_mode', fan_mode)}")
                 hvac_mode = state.state
+                fan_mode = state.attributes.get("fan_mode", fan_mode)
     
         state = self.hass.states.get(self.climate_entity_id)
         supported_modes = []
         if state:
             supported_modes = state.attributes.get("hvac_modes", [])
+        _LOGGER.debug(f"[{self.config.get('name')}] Supported hvac_modes: {supported_modes}")
 
         if hvac_mode not in supported_modes:
             _LOGGER.warning(f"[{self.config.get('name')}] hvac_mode '{hvac_mode}' not supported by {self.climate_entity_id}. Falling back.")
             if HVACMode.FAN_ONLY in supported_modes:
                 hvac_mode = HVACMode.FAN_ONLY
             else:
-                hvac_mode = HVACMode.OFF
-
+                hvac_mode = state.state if state else HVACMode.OFF
+        _LOGGER.debug(f"[{self.config.get('name')}] Final determine_actions: set_temperature={target_temp}, set_hvac_mode={hvac_mode}, set_fan_mode={fan_mode}")
         return {
             "set_temperature": target_temp,
             "set_hvac_mode": hvac_mode,
