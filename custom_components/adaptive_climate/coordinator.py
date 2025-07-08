@@ -429,12 +429,12 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 attrs_old = event.data["old_state"].attributes
                 attrs_new = event.data["new_state"].attributes
                 # Only activate override if the new state is not OFF
-                if event.data["new_state"].state != HVACMode.OFF and (
-                    attrs_old.get("temperature") != attrs_new.get("temperature")
-                    or attrs_old.get("fan_mode") != attrs_new.get("fan_mode")
-                    or event.data["old_state"].state != event.data["new_state"].state
-                ):
-                    minutes = self.config.get("user_override_minutes", 30)
-                    self._manual_override = True
-                    self._override_expiry = dt_util.now() + timedelta(minutes=minutes)
-                    _LOGGER.info(f"[{self.config.get('name')}] Manual override activated for {minutes} minutes.")
+                if event.data["new_state"].state != HVACMode.OFF:
+                    temp_changed = attrs_old.get("temperature") != attrs_new.get("temperature")
+                    fan_changed = attrs_old.get("fan_mode") != attrs_new.get("fan_mode")
+                    mode_changed = event.data["old_state"].state != event.data["new_state"].state
+                    if temp_changed or fan_changed or mode_changed:
+                        minutes = self.config.get("user_override_minutes", 30)
+                        self._manual_override = True
+                        self._override_expiry = dt_util.now() + timedelta(minutes=minutes)
+                        _LOGGER.info(f"[{self.config.get('name')}] Manual override activated for {minutes} minutes.")
