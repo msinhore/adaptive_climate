@@ -120,9 +120,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     self._last_no_occupancy = dt_util.now()
                 elapsed = (dt_util.now() - self._last_no_occupancy).total_seconds() / 60
                 if elapsed < shutdown_minutes:
-                    _LOGGER.debug(f"[{self.config.get('name')}] No occupancy detected for {elapsed:.1f} minutes; waiting for shutdown threshold.")
+                    _LOGGER.debug(f"[{self.config.get('name')}] No occupancy detected for {elapsed:.1f} minutes of {shutdown_minutes}; waiting for shutdown threshold.")
                 elif elapsed >= shutdown_minutes:
-                    _LOGGER.info(f"[{self.config.get('name')}] No occupancy for {elapsed:.1f} minutes; shutting down AC.")
+                    _LOGGER.info(f"[{self.config.get('name')}] No occupancy for {elapsed:.1f} minutes of {shutdown_minutes}; shutting down AC.")
                     self._system_turned_off = True 
                     await self._shutdown_climate()
                     return self._last_valid_params or self._default_params("auto_shutdown")

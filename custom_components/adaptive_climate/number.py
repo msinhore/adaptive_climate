@@ -81,18 +81,6 @@ async def async_setup_entry(
         AdaptiveClimateNumberEntity(
             coordinator=coordinator,
             config_entry=config_entry,
-            entity_key="natural_ventilation_threshold",
-            name="Natural Ventilation Threshold",
-            icon="mdi:window-open",
-            native_min_value=0.5,
-            native_max_value=10.0,
-            native_step=0.5,
-            native_unit_of_measurement="°C",
-            device_class="temperature",
-        ),
-        AdaptiveClimateNumberEntity(
-            coordinator=coordinator,
-            config_entry=config_entry,
             entity_key="setback_temperature_offset",
             name="Setback Temperature Offset",
             icon="mdi:thermometer-minus",

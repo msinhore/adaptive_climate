@@ -40,13 +40,6 @@ async def async_setup_entry(
         AdaptiveClimateSwitchEntity(
             coordinator=coordinator,
             config_entry=config_entry,
-            entity_key="natural_ventilation_enable",
-            name="Natural Ventilation",
-            icon="mdi:window-open",
-        ),
-        AdaptiveClimateSwitchEntity(
-            coordinator=coordinator,
-            config_entry=config_entry,
             entity_key="auto_shutdown_enable",
             name="Auto Shutdown Enable",
             icon="mdi:power-off",
