@@ -111,7 +111,6 @@ async def async_setup_entry(
             native_min_value=1,
             native_max_value=240,
             native_step=1,
-            device_class="duration",
         ),
         AdaptiveClimateNumberEntity(
             coordinator=coordinator,
@@ -122,7 +121,6 @@ async def async_setup_entry(
             native_min_value=1,
             native_max_value=30,
             native_step=1,
-            device_class="duration",
         ),
     ]
     
