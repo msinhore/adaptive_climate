@@ -45,15 +45,20 @@
           "comfort_range_max_offset": "Comfort Range Upper Offset (°C)",
           "air_velocity": "Air Velocity (m/s)",
           "temperature_change_threshold": "Temperature Change Threshold (°C)",
-          "natural_ventilation_threshold": "Natural Ventilation Threshold (°C)",
           "setback_temperature_offset": "Energy Saving Temperature Offset (°C)",
           "comfort_category": "ASHRAE 55 Comfort Category",
           "energy_save_mode": "Enable Energy Saving Mode",
-          "natural_ventilation_enable": "Enable Natural Ventilation Detection",
           "adaptive_air_velocity": "Enable Adaptive Air Velocity",
           "humidity_comfort_enable": "Enable Humidity Comfort Adjustments",
           "comfort_precision_mode": "Enable Comfort Precision Mode",
-          "use_operative_temperature": "Use Operative Temperature"
+          "use_operative_temperature": "Use Operative Temperature",
+          "auto_shutdown_enable": "Enable Auto Shutdown",
+          "auto_shutdown_minutes": "Auto Shutdown Time (minutes)",
+          "auto_start_enable": "Enable Auto Start",
+          "auto_start_minutes": "Auto Start Time (minutes)",
+          "fan_mode_low_velocity": "Fan Mode: Low Velocity (m/s)",
+          "fan_mode_mid_velocity": "Fan Mode: Medium Velocity (m/s)",
+          "fan_mode_high_velocity": "Fan Mode: High Velocity (m/s)"
         }
       }
     }
@@ -94,9 +99,6 @@
       "temperature_change_threshold": {
         "name": "Temperature Change Threshold"
       },
-      "natural_ventilation_threshold": {
-        "name": "Natural Ventilation Threshold"
-      },
       "setback_temperature_offset": {
         "name": "Setback Temperature Offset"
       },
@@ -105,14 +107,26 @@
       },
       "comfort_range_max_offset": {
         "name": "Comfort Range Max Offset"
+      },
+      "auto_shutdown_minutes": {
+        "name": "Auto Shutdown Time (minutes)"
+      },
+      "auto_start_minutes": {
+        "name": "Auto Start Time (minutes)"
+      },
+      "fan_mode_low_velocity": {
+        "name": "Fan Mode: Low Velocity"
+      },
+      "fan_mode_mid_velocity": {
+        "name": "Fan Mode: Medium Velocity"
+      },
+      "fan_mode_high_velocity": {
+        "name": "Fan Mode: High Velocity"
       }
     },
     "switch": {
       "energy_save_mode": {
         "name": "Energy Save Mode"
-      },
-      "natural_ventilation_enable": {
-        "name": "Natural Ventilation Enable"
       },
       "adaptive_air_velocity": {
         "name": "Adaptive Air Velocity"
@@ -125,6 +139,12 @@
       },
       "use_operative_temperature": {
         "name": "Use Operative Temperature"
+      },
+      "auto_shutdown_enable": {
+        "name": "Enable Auto Shutdown"
+      },
+      "auto_start_enable": {
+        "name": "Enable Auto Start"
       }
     },
     "select": {

@@ -45,15 +45,20 @@
           "comfort_range_max_offset": "Décalage Supérieur de la Zone de Confort (°C)",
           "air_velocity": "Vitesse de l'Air (m/s)",
           "temperature_change_threshold": "Seuil de Changement de Température (°C)",
-          "natural_ventilation_threshold": "Seuil de Ventilation Naturelle (°C)",
           "setback_temperature_offset": "Décalage de Température d'Économie d'Énergie (°C)",
           "comfort_category": "Catégorie de Confort ASHRAE 55",
           "energy_save_mode": "Activer le Mode d'Économie d'Énergie",
-          "natural_ventilation_enable": "Activer la Détection de Ventilation Naturelle",
           "adaptive_air_velocity": "Activer la Vitesse d'Air Adaptative",
           "humidity_comfort_enable": "Activer les Ajustements de Confort d'Humidité",
           "comfort_precision_mode": "Activer le Mode de Précision de Confort",
-          "use_operative_temperature": "Utiliser la Température Opérative"
+          "use_operative_temperature": "Utiliser la Température Opérative",
+          "auto_shutdown_enable": "Activer l'arrêt automatique",
+          "auto_shutdown_minutes": "Temps d'arrêt automatique (minutes)",
+          "auto_start_enable": "Activer le démarrage automatique",
+          "auto_start_minutes": "Temps de démarrage automatique (minutes)",
+          "fan_mode_low_velocity": "Mode ventilateur : basse vitesse (m/s)",
+          "fan_mode_mid_velocity": "Mode ventilateur : vitesse moyenne (m/s)",
+          "fan_mode_high_velocity": "Mode ventilateur : haute vitesse (m/s)"
         }
       }
     }
@@ -94,9 +99,6 @@
       "temperature_change_threshold": {
         "name": "Seuil de Changement de Température"
       },
-      "natural_ventilation_threshold": {
-        "name": "Seuil de Ventilation Naturelle"
-      },
       "setback_temperature_offset": {
         "name": "Décalage de Température Setback"
       },
@@ -105,14 +107,26 @@
       },
       "comfort_range_max_offset": {
         "name": "Décalage Maximum de la Zone de Confort"
+      },
+      "auto_shutdown_minutes": {
+        "name": "Temps d'arrêt automatique (minutes)"
+      },
+      "auto_start_minutes": {
+        "name": "Temps de démarrage automatique (minutes)"
+      },
+      "fan_mode_low_velocity": {
+        "name": "Mode ventilateur : basse vitesse"
+      },
+      "fan_mode_mid_velocity": {
+        "name": "Mode ventilateur : vitesse moyenne"
+      },
+      "fan_mode_high_velocity": {
+        "name": "Mode ventilateur : haute vitesse"
       }
     },
     "switch": {
       "energy_save_mode": {
         "name": "Mode d'Économie d'Énergie"
-      },
-      "natural_ventilation_enable": {
-        "name": "Activer la Ventilation Naturelle"
       },
       "adaptive_air_velocity": {
         "name": "Vitesse d'Air Adaptative"
@@ -125,6 +139,12 @@
       },
       "use_operative_temperature": {
         "name": "Utiliser la Température Opérative"
+      },
+      "auto_shutdown_enable": {
+        "name": "Activer l'arrêt automatique"
+      },
+      "auto_start_enable": {
+        "name": "Activer le démarrage automatique"
       }
     },
     "select": {
