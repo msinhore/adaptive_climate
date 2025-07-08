@@ -267,6 +267,7 @@ flowchart TD
     NextSummer --> CheckManualOverride
 
     CheckManualOverride -- "No" --> ExecuteActions --> BuildParams --> End
-    CheckManualOverride -- "Yes" --> SkipActions --> BuildParams --> End```
+    CheckManualOverride -- "Yes" --> SkipActions --> BuildParams --> End
+```
 
 ☕ Found this helpful? You can fuel future updates by [buying me a coffee](https://buymeacoffee.com/msinhore). Thanks!
