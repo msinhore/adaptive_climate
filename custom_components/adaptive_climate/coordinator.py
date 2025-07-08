@@ -262,7 +262,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         hvac_mode = comfort.get("hvac_mode", "off")
         fan_mode = comfort.get("fan_mode", "off")
 
-    _LOGGER.debug(f"[{self.config.get('name')}] Initial determine_actions: target_temp={target_temp}, hvac_mode={hvac_mode}, fan_mode={fan_mode}")
+        _LOGGER.debug(f"[{self.config.get('name')}] Initial determine_actions: target_temp={target_temp}, hvac_mode={hvac_mode}, fan_mode={fan_mode}")
 
         # Do not switch off for comfort if energy_save_mode is False
         if not self.config.get("energy_save_mode", True) and hvac_mode == HVACMode.OFF:
