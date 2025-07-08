@@ -250,10 +250,14 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             self._presence_returned_at = None
 
     def _check_override_expiry(self) -> None:
-        if self._manual_override and self._override_expiry and dt_util.now() >= self._override_expiry:
-            _LOGGER.info(f"[{self.config.get('name')}] Manual override expired.")
-            self._manual_override = False
-            self._override_expiry = None
+        if self._manual_override and self._override_expiry:
+            remaining = (self._override_expiry - dt_util.now()).total_seconds()
+            if remaining > 0:
+                _LOGGER.debug(f"[{self.config.get('name')}] Manual override active. Time remaining: {remaining/60:.1f} minutes.")
+            if dt_util.now() >= self._override_expiry:
+                _LOGGER.info(f"[{self.config.get('name')}] Manual override expired.")
+                self._manual_override = False
+                self._override_expiry = None
 
     def _determine_actions(self, indoor_temp: float, comfort: dict[str, Any]) -> dict[str, Any]:
         """Determine control actions based on comfort calculation and supported HVAC modes."""
