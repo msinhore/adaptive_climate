@@ -298,7 +298,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         }
 
     async def _execute_actions(self, actions: dict[str, Any]) -> None:
-        """Update temperature and fan_mode before setting hvac_mode, with delays between calls."""
+        """Send all parameters in a single set_hvac_mode call for SmartIR."""
 
         state = self.hass.states.get(self.climate_entity_id)
         if not state or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
@@ -313,50 +313,24 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         target_hvac_mode = actions["set_hvac_mode"]
         target_fan_mode = actions.get("set_fan_mode")
 
-        # Only execute if any parameter has changed
         if (
             target_hvac_mode != current_hvac_mode
             or (target_temp is not None and current_temp is not None and abs(target_temp - current_temp) >= 0.5)
             or (target_fan_mode and target_fan_mode != current_fan_mode)
         ):
             _LOGGER.info(
-                f"[{self.config.get('name')}] Setting temperature={target_temp}, fan_mode={target_fan_mode}, hvac_mode={target_hvac_mode} on {self.climate_entity_id}"
+                f"[{self.config.get('name')}] Setting hvac_mode={target_hvac_mode}, fan_mode={target_fan_mode}, temperature={target_temp} on {self.climate_entity_id}"
             )
-
-            # Set temperature first if needed
-            if target_temp is not None and (current_temp is None or abs(target_temp - current_temp) >= 0.5):
-                await self.hass.services.async_call(
-                    CLIMATE_DOMAIN,
-                    "set_temperature",
-                    {
-                        "entity_id": self.climate_entity_id,
-                        "temperature": target_temp,
-                    },
-                )
-                await asyncio.sleep(0.5)
-
-            # Set fan mode if needed
-            if target_fan_mode is not None and target_fan_mode != current_fan_mode:
-                await self.hass.services.async_call(
-                    CLIMATE_DOMAIN,
-                    "set_fan_mode",
-                    {
-                        "entity_id": self.climate_entity_id,
-                        "fan_mode": target_fan_mode,
-                    },
-                )
-                await asyncio.sleep(0.5)
-
-            # Finally, set hvac mode
-            if target_hvac_mode != current_hvac_mode:
-                await self.hass.services.async_call(
-                    CLIMATE_DOMAIN,
-                    "set_hvac_mode",
-                    {
-                        "entity_id": self.climate_entity_id,
-                        "hvac_mode": target_hvac_mode,
-                    },
-                )
+            await self.hass.services.async_call(
+                CLIMATE_DOMAIN,
+                "set_hvac_mode",
+                {
+                    "entity_id": self.climate_entity_id,
+                    "hvac_mode": target_hvac_mode,
+                    "fan_mode": target_fan_mode,
+                    "temperature": target_temp,
+                },
+            )
         else:
             _LOGGER.debug(
                 f"[{self.config.get('name')}] No change needed for {self.climate_entity_id} (hvac_mode={current_hvac_mode}, fan_mode={current_fan_mode}, temperature={current_temp})"
