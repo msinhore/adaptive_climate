@@ -8,6 +8,8 @@
 [![Last commit](https://img.shields.io/github/last-commit/msinhore/adaptive_climate.svg)](https://github.com/msinhore/adaptive_climate)
 ![Project Status](https://img.shields.io/badge/status-active-brightgreen.svg)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=msinhore&repository=adaptive_climate)
+
 A Home Assistant integration that implements ASHRAE 55 Adaptive Thermal Comfort standards for intelligent climate control.
 
 ![image](https://github.com/user-attachments/assets/e09bceeb-1794-44cc-9d94-98ff4471c57f)
