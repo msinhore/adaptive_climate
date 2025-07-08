@@ -92,22 +92,22 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         if not climate_state or climate_state.state == HVACMode.OFF:
             # If was auto_shutdown and presence returned, verifies auto_start
             if getattr(self, "_system_turned_off", False) and self._occupied and self._presence_returned_at:
-                elapsed = (dt_util.now() - self._presence_returned_at).total_seconds() / 60
-                if auto_start_enable and elapsed >= auto_start_minutes:
-                    _LOGGER.info(f"[{self.config.get('name')}] Presence returned after {elapsed:.1f} minutes. Starting AC.")
-                    self._system_turned_off = False
-                    # Continue normal flow to re-start the AC
+                if self.config.get("auto_start_enable", False):
+                    auto_start_minutes = self.config.get("auto_start_minutes", 5)
+                    elapsed = (dt_util.now() - self._presence_returned_at).total_seconds() / 60
+                    if elapsed >= auto_start_minutes:
+                        _LOGGER.info(f"[{self.config.get('name')}] Presence returned after {elapsed:.1f} minutes. Starting AC.")
+                        self._system_turned_off = False
+                        # Continue normal flow to re-start the AC
+                    else:
+                        _LOGGER.debug(f"[{self.config.get('name')}] Presence returned but not enough time elapsed ({elapsed:.1f} min). Skipping auto start.")
+                        return self._last_valid_params or self._default_params("waiting_presence")
                 else:
-                    _LOGGER.debug(f"[{self.config.get('name')}] Presence returned but not enough time elapsed ({elapsed:.1f} min). Skipping auto start.")
+                    _LOGGER.info(f"[{self.config.get('name')}] Presence returned but auto start is disabled. Skipping.")
                     return self._last_valid_params or self._default_params("waiting_presence")
             elif getattr(self, "_system_turned_off", False):
-                _LOGGER.debug(f"[{self.config.get('name')}] {self.climate_entity_id} is off (by system). Checking if need start AC.")
-                comfort_params = calculate_hvac_and_fan(...)
-                if comfort_params.get("hvac_mode") != HVACMode.OFF:
-                    self._system_turned_off = False
-                    # Continue normal flow to re-start the AC 
-                else:
-                    return self._last_valid_params or self._default_params("ac_off")
+                # If system turned off by itself and no presence, do nothing
+                return self._last_valid_params or self._default_params("ac_off") 
             else:
                 _LOGGER.debug(f"[{self.config.get('name')}] {self.climate_entity_id} is off (by user?). Skipping automatic actions.")
                 return self._last_valid_params or self._default_params("ac_off")
@@ -119,14 +119,15 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 if self._last_no_occupancy is None:
                     self._last_no_occupancy = dt_util.now()
                 elapsed = (dt_util.now() - self._last_no_occupancy).total_seconds() / 60
-                if elapsed >= shutdown_minutes:
-                    _LOGGER.info(f"[{self.config.get('name')}] Auto shutdown triggered after {elapsed:.1f} minutes of no occupancy.")
+                if elapsed < shutdown_minutes:
+                    _LOGGER.debug(f"[{self.config.get('name')}] No occupancy detected for {elapsed:.1f} minutes; waiting for shutdown threshold.")
+                elif elapsed >= shutdown_minutes:
+                    _LOGGER.info(f"[{self.config.get('name')}] No occupancy for {elapsed:.1f} minutes; shutting down AC.")
+                    self._system_turned_off = True 
                     await self._shutdown_climate()
                     return self._last_valid_params or self._default_params("auto_shutdown")
-                else:
-                    _LOGGER.debug(f"[{self.config.get('name')}] No occupancy for {elapsed:.1f} minutes; shutdown threshold: {shutdown_minutes} min.")
             else:
-                self._last_no_occupancy = None
+                 self._last_no_occupancy = None
 
         comfort_params = calculate_hvac_and_fan(
             indoor_temp=indoor_temp,
