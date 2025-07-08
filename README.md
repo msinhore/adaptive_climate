@@ -10,6 +10,8 @@
 
 A Home Assistant integration that implements ASHRAE 55 Adaptive Thermal Comfort standards for intelligent climate control.
 
+![image](https://github.com/user-attachments/assets/e09bceeb-1794-44cc-9d94-98ff4471c57f)
+
 ## What it does
 
 Adaptive Climate intelligently manages your climate system using a scientific, adaptive approach. It:
