@@ -362,9 +362,15 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         data = await self._store.async_load()
         if data:
             self._last_valid_params = data.get("last_sensor_data")
+            self._system_turned_off = data.get("system_turned_off", False)
 
     async def _save_persisted_data(self, data: dict[str, Any]) -> None:
-        await self._store.async_save({"last_sensor_data": data})
+        data_to_save = {
+            "last_sensor_data": data,
+            "last_updated": dt_util.now().isoformat(),
+        }
+        await self._store.async_save(data_to_save)
+
 
     def _setup_listeners(self) -> None:
         entities = [self.climate_entity_id, self.indoor_temp_sensor_id, self.outdoor_temp_sensor_id]
