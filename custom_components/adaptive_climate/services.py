@@ -17,7 +17,6 @@ from .const import (
     DEFAULT_MAX_COMFORT_TEMP,
     DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
     DEFAULT_AIR_VELOCITY,
-    DEFAULT_NATURAL_VENTILATION_THRESHOLD,
     DEFAULT_SETBACK_TEMPERATURE_OFFSET,
     DEFAULT_PROLONGED_ABSENCE_MINUTES,
     DEFAULT_AUTO_SHUTDOWN_MINUTES,
@@ -72,14 +71,6 @@ EDITABLE_PARAMETERS = {
         "default": DEFAULT_AIR_VELOCITY,
         "unit": "m/s",
         "description": "Indoor air velocity for comfort calculations"
-    },
-    "natural_ventilation_threshold": {
-        "type": float,
-        "min": 0.5,
-        "max": 10.0,
-        "default": DEFAULT_NATURAL_VENTILATION_THRESHOLD,
-        "unit": "°C",
-        "description": "Temperature difference threshold for natural ventilation"
     },
     
     # Setback parameters
@@ -149,11 +140,6 @@ EDITABLE_PARAMETERS = {
         "type": bool,
         "default": False,
         "description": "Enable adaptive air velocity corrections"
-    },
-    "natural_ventilation_enable": {
-        "type": bool,
-        "default": True,
-        "description": "Enable natural ventilation recommendations"
     },
     "auto_shutdown_enable": {
         "type": bool,

@@ -49,9 +49,6 @@
       "temperature_change_threshold": {
         "name": "Temperature Change Threshold"
       },
-      "natural_ventilation_threshold": {
-        "name": "Natural Ventilation Threshold"
-      },
       "setback_temperature_offset": {
         "name": "Setback Temperature Offset"
       },
@@ -72,9 +69,6 @@
     "switch": {
       "energy_save_mode": {
         "name": "Energy Save Mode"
-      },
-      "natural_ventilation_enable": {
-        "name": "Natural Ventilation Enable"
       },
       "auto_shutdown_enable": {
         "name": "Auto Shutdown Enable"

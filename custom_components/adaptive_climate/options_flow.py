@@ -84,17 +84,6 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 default=options.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
             ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
 
-            # === Ventilação Natural ===
-            vol.Optional(
-                "natural_ventilation_enable",
-                default=options.get("natural_ventilation_enable", True)
-            ): bool,
-
-            vol.Optional(
-                "natural_ventilation_threshold",
-                default=options.get("natural_ventilation_threshold", DEFAULT_NATURAL_VENTILATION_THRESHOLD)
-            ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
-
             # === Auto Shutdown ===
             vol.Optional(
                 "auto_shutdown_enable",
