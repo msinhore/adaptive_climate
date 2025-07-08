@@ -424,7 +424,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             self._system_turned_off = False
 
         # User override detection
-        if self.config.get(üser_override_enable", True):
+        if self.config.get("user_override_enable", True):
             if event.data.get("entity_id") == self.climate_entity_id and event.data.get("old_state") and event.data.get("new_state"):
                 attrs_old = event.data["old_state"].attributes
                 attrs_new = event.data["new_state"].attributes
@@ -438,4 +438,3 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     self._manual_override = True
                     self._override_expiry = dt_util.now() + timedelta(minutes=minutes)
                     _LOGGER.info(f"[{self.config.get('name')}] Manual override activated for {minutes} minutes.")
-                    
