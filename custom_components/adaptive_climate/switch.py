@@ -51,6 +51,13 @@ async def async_setup_entry(
             name="Auto Resume on Presence Enable",
             icon="mdi:power-on",
         ),
+        AdaptiveClimateSwitchEntity(
+            coordinator=coordinator,
+            config_entry=config_entry,
+            entity_key="user_override_enable",
+            name="User Override Settings Enable",
+            icon="mdi:autorenew",
+        ),
     ]
     
     async_add_entities(entities)

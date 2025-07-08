@@ -112,6 +112,17 @@ async def async_setup_entry(
             native_step=1,
             native_unit_of_measurement="min", 
         ),
+        AdaptiveClimateNumberEntity(
+            coordinator=coordinator,
+            config_entry=config_entry,
+            entity_key="user_override_minutes",
+            name="User Override Minutes",
+            icon="mdi:timer-cog",
+            native_min_value=10,
+            native_max_value=240,
+            native_step=10,
+            native_unit_of_measurement="min", 
+        ),
     ]
     
     async_add_entities(entities)

@@ -20,10 +20,11 @@ from .const import (
     DEFAULT_SETBACK_TEMPERATURE_OFFSET,
     DEFAULT_PROLONGED_ABSENCE_MINUTES,
     DEFAULT_AUTO_SHUTDOWN_MINUTES,
+    DEFAULT_AUTO_START_MINUTES,
+    DEFAULT_USER_OVERRIDE_MINUTES,
     DEFAULT_COMFORT_TEMP_MIN_OFFSET,
     DEFAULT_COMFORT_TEMP_MAX_OFFSET,
     DEFAULT_COMFORT_CATEGORY,
-    COMFORT_CATEGORIES,
 )
 from .coordinator import AdaptiveClimateCoordinator
 
@@ -98,6 +99,22 @@ EDITABLE_PARAMETERS = {
         "unit": "minutes",
         "description": "Minutes of absence before auto shutdown"
     },
+        "auto_start_minutes": {
+        "type": int,
+        "min": 1,
+        "max": 30,
+        "default": DEFAULT_AUTO_START_MINUTES,
+        "unit": "minutes",
+        "description": "Minutes of presence before auto start"
+    },
+        "user_overide_minutes": {
+        "type": int,
+        "min": 10,
+        "max": 240,
+        "default": DEFAULT_USER_OVERRIDE_MINUTES,
+        "unit": "minutes",
+        "description": "Minutes of user override before assume auto control"
+    },
     
     # Comfort zone offsets
     "comfort_temp_min_offset": {
@@ -145,6 +162,16 @@ EDITABLE_PARAMETERS = {
         "type": bool,
         "default": False,
         "description": "Enable automatic shutdown during prolonged absence"
+    },
+    "auto_start_enable": {
+        "type": bool,
+        "default": False,
+        "description": "Enable automatic start after prolonged absence"
+    },
+    "user_override_enable": {
+        "type": bool,
+        "default": False,
+        "description": "Enable user override settings",
     },
     "energy_save_mode": {
         "type": bool,

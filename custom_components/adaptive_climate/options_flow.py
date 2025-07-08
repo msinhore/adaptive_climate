@@ -17,11 +17,11 @@ from .const import (
     DEFAULT_COMFORT_CATEGORY,
     DEFAULT_MIN_COMFORT_TEMP,
     DEFAULT_MAX_COMFORT_TEMP,
-    DEFAULT_NATURAL_VENTILATION_THRESHOLD,
     DEFAULT_SETBACK_TEMPERATURE_OFFSET,
     DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
     DEFAULT_AUTO_SHUTDOWN_MINUTES,
     DEFAULT_AUTO_START_MINUTES,
+    DEFAULT_USER_OVERRIDE_MINUTES,
     # Categories
     COMFORT_CATEGORIES,
 )
@@ -105,6 +105,17 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 "auto_start_minutes",
                 default=options.get("auto_start_minutes", DEFAULT_AUTO_START_MINUTES)
             ): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
+
+            # === User Override Settings ===
+            vol.Optional(
+                "user_override_enable", 
+                default=options.get("user_override_enable", True)
+            ): bool,
+
+            vol.Optional(
+                "user_override_minutes",
+                default=options.get("user_override_minutes", DEFAULT_USER_OVERRIDE_MINUTES)
+            ): vol.All(vol.Coerce(int), vol.Range(min=10, max=240)),
 
             # === Fan Mode Velocities ===
             vol.Optional(

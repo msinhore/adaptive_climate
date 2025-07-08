@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import math
 import asyncio
 from datetime import datetime, timedelta
 from typing import Any, Optional
@@ -387,10 +386,21 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             self._last_valid_params = data.get("last_sensor_data")
             self._system_turned_off = data.get("system_turned_off", False)
 
+            # Restore manual override state
+            self._manual_override = data.get("manual_override", False)
+            expiry_str = data.get("override_expiry")
+            if expiry_str:
+                self._override_expiry = dt_util.parse_datetime(expiry_str)
+            else:
+                self._override_expiry = None
+            
     async def _save_persisted_data(self, data: dict[str, Any]) -> None:
         data_to_save = {
             "last_sensor_data": data,
             "last_updated": dt_util.now().isoformat(),
+            "system_turned_off": getattr(self, "_system_turned_off", False),
+            "manual_override": getattr(self, "_manual_override", False),
+            "override_expiry": self._override_expiry.isoformat() if self._override_expiry else None,
         }
         await self._store.async_save(data_to_save)
 
@@ -412,3 +422,20 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         state = self.hass.states.get(self.climate_entity_id)
         if state and state.state != HVACMode.OFF:
             self._system_turned_off = False
+
+        # User override detection
+        if self.config.get(üser_override_enable", True):
+            if event.data.get("entity_id") == self.climate_entity_id and event.data.get("old_state") and event.data.get("new_state"):
+                attrs_old = event.data["old_state"].attributes
+                attrs_new = event.data["new_state"].attributes
+                # Only activate override if the new state is not OFF
+                if event.data["new_state"].state != HVACMode.OFF and (
+                    attrs_old.get("temperature") != attrs_new.get("temperature")
+                    or attrs_old.get("fan_mode") != attrs_new.get("fan_mode")
+                    or event.data["old_state"].state != event.data["new_state"].state
+                ):
+                    minutes = self.config.get("user_override_minutes", 30)
+                    self._manual_override = True
+                    self._override_expiry = dt_util.now() + timedelta(minutes=minutes)
+                    _LOGGER.info(f"[{self.config.get('name')}] Manual override activated for {minutes} minutes.")
+                    
