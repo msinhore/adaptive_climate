@@ -269,4 +269,4 @@ flowchart TD
     CheckManualOverride -- "Yes" --> SkipActions --> BuildParams --> End
 ```
 
-☕ Found this helpful? You can fuel future updates by [buying me a coffee]( https://buymeacoffee.com/). Thanks!
+☕ Found this helpful? You can fuel future updates by [buying me a coffee](https://buymeacoffee.com/msinhore). Thanks!
