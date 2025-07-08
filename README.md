@@ -14,23 +14,28 @@ A Home Assistant integration that implements ASHRAE 55 Adaptive Thermal Comfort 
 
 ![image](https://github.com/user-attachments/assets/e09bceeb-1794-44cc-9d94-98ff4471c57f)
 
-## What it does
+## 🚀 What it does
 
-Adaptive Climate intelligently manages your climate system using a scientific, adaptive approach. It:
+**Adaptive Climate** intelligently manages your climate system with a scientific adaptive approach. It offers:
 
-- Continuously monitors indoor temperature, outdoor temperature, radiant temperature (if available), humidity, and occupancy sensors.
-- Detects the current season based on your latitude and date, adapting comfort logic for summer, winter, spring, and autumn.
-- Uses user-configurable minimum and maximum comfort temperature ranges.
-- Applies the ASHRAE 55-2020 Adaptive Thermal Comfort model to determine the optimal comfort zone for your environment.
-- Automatically sets your AC or heater to the most appropriate mode (cool, heat, fan, dry, or off) to maintain comfort and save energy.
-- Dynamically controls fan speed (air velocity) to improve comfort, even without changing the setpoint temperature.
-- Supports **energy save mode**: disables HVAC when indoor temperature is below comfort temperature in summer for energy savings.
-- Supports **auto shutdown**: turns off the climate system if no occupancy is detected for a configurable time.
-- Supports **manual override** with expiry: maintains a user-set temperature for a period before returning to automatic mode.
-- Integrates all available sensor data (temperature, humidity, radiant temperature, occupancy, etc.) for precise, science-based comfort decisions.
-- Stores running mean outdoor temperature history for accurate adaptive calculations.
-- When **user manual override** mode is enabled, any manual change to the climate entity (hvac mode, temperature, or fan mode) will pause automatic control.
-- Ensures all actions are based on international comfort standards, not just fixed setpoints.
+🌡️ **Continuous Monitoring:** Tracks indoor temperature, outdoor temperature, radiant temperature (if available), humidity, and occupancy sensors.  
+🌎 **Automatic Season Detection:** Detects the current season based on your latitude and date, adapting comfort logic for summer, winter, spring, and autumn.  
+🎯 **Configurable Comfort Ranges:** Sets minimum and maximum comfort temperature limits.  
+📐 **ASHRAE 55-2020 Model:** Uses the Adaptive Thermal Comfort model to determine optimal comfort zones.  
+🤖 **Automatic HVAC Control:** Adjusts AC or heating to cool, heat, fan, dry, or off to optimize comfort and energy savings.  
+💨 **Dynamic Fan Speed:** Controls fan speed (air velocity) to improve comfort without changing temperature setpoints.  
+🌱 **Energy Save Mode:** Disables HVAC in summer when indoor temperature is below the comfort minimum.  
+⏳ **Auto Shutdown:** Turns off the climate system after a configurable absence time.  
+🔄 **Auto Start:** Restarts the climate system automatically after presence returns, with configurable delay.  
+🕹️ **User Override:** Any manual change (mode, temperature, fan) pauses automatic control for a user-defined time, with state persistence across restarts.  
+🧠 **Full Sensor Integration:** Uses temperature, humidity, radiant temperature, and occupancy data for science-based decisions.  
+📊 **Running Mean Outdoor Temperature:** Stores outdoor temperature history for accurate adaptive calculations.  
+🌐 **International Comfort Standards:** Actions are based on global standards, not just fixed setpoints.  
+📝 **Advanced Logging:** Logs all comfort calculations, actions, and override events in detail.  
+🛠️ **UI Configuration:** All options (comfort range, shutdown, override, etc.) are configurable via Home Assistant UI.  
+🌍 **Multi-language Support:** Supports multiple languages for UI and entity names.  
+💾 **State Persistence:** Maintains state (including overrides and system-off state) across Home Assistant restarts.  
+🙋 **User Respect:** Never turns on the AC if the user turned it off manually.  
 
 Instead of fixed temperature setpoints, Adaptive Climate adapts to weather, season, and occupancy to improve comfort and reduce energy consumption, providing a truly intelligent and scientific climate control experience.
 
@@ -263,3 +268,5 @@ flowchart TD
     CheckManualOverride -- "No" --> ExecuteActions --> BuildParams --> End
     CheckManualOverride -- "Yes" --> SkipActions --> BuildParams --> End
 ```
+
+☕ Found this helpful? You can fuel future updates by [buying me a coffee]( https://buymeacoffee.com/). Thanks!
