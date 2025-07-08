@@ -323,30 +323,36 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
         _LOGGER.debug(f"[{self.config.get('name')}] Current temp: {current_temp}, rounded: {rounded_current_temp}, target: {target_temp}, hvac_mode: {target_hvac_mode}")
 
+        # change Temperature only if needed
         if target_temp is not None and (rounded_current_temp is None or abs(rounded_current_temp - target_temp) >= 0.5):
             _LOGGER.info(f"[{self.config.get('name')}] Setting temperature to {target_temp} (current rounded: {rounded_current_temp}) on {self.climate_entity_id}")
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN, "set_temperature",
                 {"entity_id": self.climate_entity_id, ATTR_TEMPERATURE: target_temp},
             )
+            await asyncio.sleep(0.5)
         else:
             _LOGGER.debug(f"[{self.config.get('name')}] Temperature {target_temp} already set (current rounded: {rounded_current_temp}) on {self.climate_entity_id}, skipping set_temperature.")
 
+        # change hvac_mode only if needed
         if target_hvac_mode is not None and target_hvac_mode != current_hvac_mode:
             _LOGGER.info(f"[{self.config.get('name')}] Setting hvac_mode to {target_hvac_mode} (current: {current_hvac_mode}) on {self.climate_entity_id}")
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN, "set_hvac_mode",
                 {"entity_id": self.climate_entity_id, "hvac_mode": target_hvac_mode},
             )
+            await asyncio.sleep(0.5)
         else:
             _LOGGER.debug(f"[{self.config.get('name')}] hvac_mode {target_hvac_mode} already set on {self.climate_entity_id}, skipping set_hvac_mode.")
 
+        # change fan_mode only if needed
         if target_fan_mode and target_fan_mode != current_fan_mode:
             _LOGGER.info(f"[{self.config.get('name')}] Setting fan mode to {target_fan_mode} (current: {current_fan_mode}) on {self.climate_entity_id}")
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN, "set_fan_mode",
                 {"entity_id": self.climate_entity_id, "fan_mode": target_fan_mode},
             )
+            await asyncio.sleep(0.5)
         else:
             _LOGGER.debug(f"[{self.config.get('name')}] Fan mode {target_fan_mode} already set on {self.climate_entity_id}, skipping set_fan_mode.")
 
