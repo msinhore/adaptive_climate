@@ -122,6 +122,12 @@
       },
       "fan_mode_high_velocity": {
         "name": "Modo Ventilador: Velocidade Alta"
+      },
+      "user_override_enable": {
+        "name": "Ativar Override do Usuário"
+      },
+      "user_override_minutes": {
+        "name": "Minutos de Override do Usuário"
       }
     },
     "switch": {

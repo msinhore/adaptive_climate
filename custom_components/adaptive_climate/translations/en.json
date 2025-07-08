@@ -122,6 +122,12 @@
       },
       "fan_mode_high_velocity": {
         "name": "Fan Mode: High Velocity"
+      },
+      "user_override_enable": {
+        "name": "Enable User Override"
+      },
+      "user_override_minutes": {
+        "name": "User Override Minutes"
       }
     },
     "switch": {

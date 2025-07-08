@@ -122,6 +122,12 @@
       },
       "fan_mode_high_velocity": {
         "name": "Modalità Ventola: Alta Velocità"
+      },
+      "user_override_enable": {
+        "name": "Abilita Override Utente"
+      },
+      "user_override_minutes": {
+        "name": "Minuti di Override Utente"
       }
     },
     "switch": {
