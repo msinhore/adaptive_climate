@@ -257,7 +257,6 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
     def _determine_actions(self, indoor_temp: float, comfort: dict[str, Any]) -> dict[str, Any]:
         """Determine control actions based on comfort calculation and supported HVAC modes."""
-
         target_temp = comfort.get("comfort_temp", indoor_temp)
         hvac_mode = comfort.get("hvac_mode", "off")
         fan_mode = comfort.get("fan_mode", "off")
@@ -276,12 +275,13 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         state = self.hass.states.get(self.climate_entity_id)
         supported_modes = []
         if state:
-            supported_modes = state.attributes.get("hvac_modes", [])
+            supported_modes = [str(mode) for mode in state.attributes.get("hvac_modes", [])]
         _LOGGER.debug(f"[{self.config.get('name')}] Supported hvac_modes: {supported_modes}")
 
-        if hvac_mode not in supported_modes:
-            _LOGGER.warning(f"[{self.config.get('name')}] hvac_mode '{hvac_mode}' not supported by {self.climate_entity_id}. Falling back.")
-            if HVACMode.FAN_ONLY in supported_modes:
+        hvac_mode_str = str(hvac_mode)
+        if hvac_mode_str not in supported_modes:
+            _LOGGER.warning(f"[{self.config.get('name')}] hvac_mode '{hvac_mode_str}' not supported by {self.climate_entity_id}. Falling back to OFF.")
+            if str(HVACMode.FAN_ONLY) in supported_modes:
                 hvac_mode = HVACMode.FAN_ONLY
             else:
                 hvac_mode = state.state if state else HVACMode.OFF
