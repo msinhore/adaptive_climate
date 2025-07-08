@@ -1,9 +1,12 @@
 # Adaptive Climate
-[![Release](https://img.shields.io/github/v/release/msinhore/adaptive_climate?label=release&sort=semver&logo=github)](https://github.com/msinhore/adaptive_climate/releases)
-[![Downloads](https://img.shields.io/github/downloads/msinhore/adaptive_climate/total)](https://github.com/msinhore/adaptive_climate/releases)
-[![GitHub stars](https://img.shields.io/github/stars/msinhore/adaptive_climate?style=flat-square)](https://github.com/msinhore/adaptive_climate/stargazers)
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-blue.svg?style=flat-square)](https://github.com/hacs/integration)
 [![CI](https://github.com/msinhore/adaptive_climate/actions/workflows/ci.yml/badge.svg)](https://github.com/msinhore/adaptive_climate/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/msinhore/adaptive_climate?label=release&sort=semver&logo=github)](https://github.com/msinhore/adaptive_climate/releases)
+[![Downloads](https://img.shields.io/github/downloads/msinhore/adaptive_climate/total)](https://github.com/msinhore/adaptive_climate/releases)
+[![Stars](https://img.shields.io/github/stars/msinhore/adaptive_climate?style=flat-square)](https://github.com/msinhore/adaptive_climate/stargazers)
+[![Licence](https://img.shields.io/github/license/msinhore/adaptive_climate.svg)](https://github.com/msinhore/adaptive_climate/blob/main/LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/msinhore/adaptive_climate.svg)](https://github.com/msinhore/adaptive_climate)
+![Project Status](https://img.shields.io/badge/status-active-brightgreen.svg)
 
 A Home Assistant integration that implements ASHRAE 55 Adaptive Thermal Comfort standards for intelligent climate control.
 
@@ -44,8 +47,8 @@ The integration:
 3. Provides real Home Assistant entities to control and monitor your climate system:
    - Binary sensor: ASHRAE compliance
 	- **Select entity:** Comfort category (I, II, III)
-	- **Number entities (7):** min/max comfort temps, air velocity, temperature change threshold, natural ventilation threshold, setback offset, auto shutdown minutes
-	- **Switch entities (3):** energy save mode, natural ventilation enable, auto shutdown enable
+	- **Number entities (8):** min/max comfort temps, air velocity, temperature change threshold, natural ventilation threshold, setback offset, auto shutdown minutes
+	- **Switch entities (4):** energy save mode, natural ventilation enable, auto shutdown enable
 4. Suggests optimal HVAC modes (heating, cooling, fan only, dry, humidify, off) based on real comfort science.
 5. Tracks compliance with international comfort standards.
 
@@ -84,11 +87,11 @@ The integration:
 
 ## What you get
 
-### Information entity
-- **ASHRAE Compliance**  (binary sensor): Shows if current conditions meet comfort standards.
+### Information entity (1)
+- ** and ASHRAE Compliance**  (binary sensor): Shows if current conditions meet comfort standards.
 
 ### Control entities
-#### Number entities (7):
+#### Number entities (8):
 - Minimum Comfort Temperature
 - Maximum Comfort Temperature
 - if Air Velocity
@@ -96,14 +99,16 @@ The integration:
 - Natural Ventilation Threshold
 - Setback Temperature Offset
 - Auto Shutdown Minutes
+- Auto Start Minutes
 
 #### Select entity (1):
 - Comfort Category (I, II, III)
 
-#### Switch entities (3):
+#### Switch entities (4):
 - Energy Save Mode
 - Natural Ventilation Enable
 - Auto Shutdown Enable
+- Auto Start Enable
 
 ## Usage
 
