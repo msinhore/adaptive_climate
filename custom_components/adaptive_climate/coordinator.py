@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
+import asyncio
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
@@ -297,7 +298,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         }
 
     async def _execute_actions(self, actions: dict[str, Any]) -> None:
-        """Execute the determined HVAC and temperature actions only if needed."""
+        """Update temperature and fan_mode before setting hvac_mode, with delays between calls."""
 
         state = self.hass.states.get(self.climate_entity_id)
         if not state or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
@@ -312,63 +313,54 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         target_hvac_mode = actions["set_hvac_mode"]
         target_fan_mode = actions.get("set_fan_mode")
 
-        rounded_current_temp = current_temp
-        if current_temp is not None:
-            if target_hvac_mode == HVACMode.COOL:
-                rounded_current_temp = int(current_temp)
-            elif target_hvac_mode == HVACMode.HEAT:
-                rounded_current_temp = math.ceil(current_temp)
-            else:
-                rounded_current_temp = int(current_temp)
-
-        _LOGGER.debug(f"[{self.config.get('name')}] Current temp: {current_temp}, rounded: {rounded_current_temp}, target: {target_temp}, hvac_mode: {target_hvac_mode}")
-
-        # change Temperature only if needed
-        if target_temp is not None and (rounded_current_temp is None or abs(rounded_current_temp - target_temp) >= 0.5):
-            _LOGGER.info(f"[{self.config.get('name')}] Setting temperature to {target_temp} (current rounded: {rounded_current_temp}) on {self.climate_entity_id}")
-            await self.hass.services.async_call(
-                CLIMATE_DOMAIN, "set_temperature",
-                {"entity_id": self.climate_entity_id, ATTR_TEMPERATURE: target_temp},
+        # Only execute if any parameter has changed
+        if (
+            target_hvac_mode != current_hvac_mode
+            or (target_temp is not None and current_temp is not None and abs(target_temp - current_temp) >= 0.5)
+            or (target_fan_mode and target_fan_mode != current_fan_mode)
+        ):
+            _LOGGER.info(
+                f"[{self.config.get('name')}] Setting temperature={target_temp}, fan_mode={target_fan_mode}, hvac_mode={target_hvac_mode} on {self.climate_entity_id}"
             )
-            await asyncio.sleep(0.5)
-        else:
-            _LOGGER.debug(f"[{self.config.get('name')}] Temperature {target_temp} already set (current rounded: {rounded_current_temp}) on {self.climate_entity_id}, skipping set_temperature.")
 
-        # change hvac_mode only if needed
-        if target_hvac_mode is not None and target_hvac_mode != current_hvac_mode:
-            _LOGGER.info(f"[{self.config.get('name')}] Setting hvac_mode to {target_hvac_mode} (current: {current_hvac_mode}) on {self.climate_entity_id}")
-            await self.hass.services.async_call(
-                CLIMATE_DOMAIN, "set_hvac_mode",
-                {"entity_id": self.climate_entity_id, "hvac_mode": target_hvac_mode},
+            # Set temperature first if needed
+            if target_temp is not None and (current_temp is None or abs(target_temp - current_temp) >= 0.5):
+                await self.hass.services.async_call(
+                    CLIMATE_DOMAIN,
+                    "set_temperature",
+                    {
+                        "entity_id": self.climate_entity_id,
+                        "temperature": target_temp,
+                    },
+                )
+                await asyncio.sleep(0.5)
+
+            # Set fan mode if needed
+            if target_fan_mode is not None and target_fan_mode != current_fan_mode:
+                await self.hass.services.async_call(
+                    CLIMATE_DOMAIN,
+                    "set_fan_mode",
+                    {
+                        "entity_id": self.climate_entity_id,
+                        "fan_mode": target_fan_mode,
+                    },
+                )
+                await asyncio.sleep(0.5)
+
+            # Finally, set hvac mode
+            if target_hvac_mode != current_hvac_mode:
+                await self.hass.services.async_call(
+                    CLIMATE_DOMAIN,
+                    "set_hvac_mode",
+                    {
+                        "entity_id": self.climate_entity_id,
+                        "hvac_mode": target_hvac_mode,
+                    },
+                )
+        else:
+            _LOGGER.debug(
+                f"[{self.config.get('name')}] No change needed for {self.climate_entity_id} (hvac_mode={current_hvac_mode}, fan_mode={current_fan_mode}, temperature={current_temp})"
             )
-            await asyncio.sleep(0.5)
-        else:
-            _LOGGER.debug(f"[{self.config.get('name')}] hvac_mode {target_hvac_mode} already set on {self.climate_entity_id}, skipping set_hvac_mode.")
-
-        # change fan_mode only if needed
-        if target_fan_mode and target_fan_mode != current_fan_mode:
-            _LOGGER.info(f"[{self.config.get('name')}] Setting fan mode to {target_fan_mode} (current: {current_fan_mode}) on {self.climate_entity_id}")
-            await self.hass.services.async_call(
-                CLIMATE_DOMAIN, "set_fan_mode",
-                {"entity_id": self.climate_entity_id, "fan_mode": target_fan_mode},
-            )
-            await asyncio.sleep(0.5)
-        else:
-            _LOGGER.debug(f"[{self.config.get('name')}] Fan mode {target_fan_mode} already set on {self.climate_entity_id}, skipping set_fan_mode.")
-
-    async def _shutdown_climate(self) -> None:
-        """Turn off climate entity as part of auto shutdown."""
-        state = self.hass.states.get(self.climate_entity_id)
-        if not state or state.state == HVACMode.OFF:
-            _LOGGER.debug(f"[{self.config.get('name')}] {self.climate_entity_id} already off or unavailable.")
-            return
-
-        _LOGGER.info(f"[{self.config.get('name')}] Shutting down {self.climate_entity_id} due to auto shutdown policy.")
-        self._system_turned_off = True
-        await self.hass.services.async_call(
-            CLIMATE_DOMAIN, "turn_off",
-            {"entity_id": self.climate_entity_id},
-        )
 
     async def _load_persisted_data(self) -> None:
         data = await self._store.async_load()
