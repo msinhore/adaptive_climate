@@ -341,6 +341,25 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             await asyncio.sleep(0.5)
             changed = True
 
+        # If changing to a mode different from current and not OFF, send OFF first
+        if (
+            target_hvac_mode != current_hvac_mode
+            and target_hvac_mode != HVACMode.OFF
+            and current_hvac_mode != HVACMode.OFF
+        ):
+            _LOGGER.info(
+                f"[{self.config.get('name')}] Sending intermediate OFF before changing hvac_mode from {current_hvac_mode} to {target_hvac_mode} on {self.climate_entity_id}"
+            )
+            await self.hass.services.async_call(
+                CLIMATE_DOMAIN,
+                "set_hvac_mode",
+                {
+                    "entity_id": self.climate_entity_id,
+                    "hvac_mode": HVACMode.OFF,
+                },
+            )
+            await asyncio.sleep(0.5)
+
         # Set hvac mode if needed
         if target_hvac_mode != current_hvac_mode:
             await self.hass.services.async_call(
