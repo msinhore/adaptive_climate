@@ -235,9 +235,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
     def _update_occupancy(self) -> None:
         if not self.occupancy_sensor_id:
             return
+        was_occupied = self._occupied
         state = self.hass.states.get(self.occupancy_sensor_id)
         if state and state.state in (STATE_ON, STATE_OFF):
-            was_occupied = self._occupied
             self._occupied = state.state == STATE_ON
 
         if self._occupied:
