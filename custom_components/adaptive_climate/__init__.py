@@ -29,43 +29,45 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Adaptive Climate component."""
     hass.data.setdefault(DOMAIN, {})
 
-    # This approach avoids any reference to hass.components
-    async def _setup_logbook():
-        """Set up logbook integration."""
+    # Call the setup function but don't block on it
+    hass.async_create_task(_setup_logbook())
+
+    return True
+
+# This approach avoids any reference to hass.components
+async def _setup_logbook():
+    """Set up logbook integration."""
+    try:
+        # Dynamic import to avoid dependency issues
+        import importlib
         try:
-            # Dynamic import to avoid dependency issues
-            import importlib
-            
-            try:
-                # Try to import logbook module
-                logbook_module = importlib.import_module("homeassistant.components.logbook")
-                
-                # Check if the registration function exists
-                if hasattr(logbook_module, "async_register_event_type"):
-                    # Register event types
-                    logbook_module.async_register_event_type(
-                        hass,
-                        EVENT_ADAPTIVE_CLIMATE_MODE_CHANGE,
-                        "changed HVAC mode",
-                    )
-                    logbook_module.async_register_event_type(
-                        hass,
-                        EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP, 
-                        "changed target temperature",
-                    )
-                    _LOGGER.debug("Successfully registered logbook event types")
-                else:
-                    _LOGGER.debug("Logbook module found but missing registration function")
-            except (ImportError, ModuleNotFoundError):
-                _LOGGER.debug("Could not import logbook module")
-        except Exception as err:
-            _LOGGER.debug("Error setting up logbook integration: %s", err)
+            # Try to import logbook module
+            logbook_module = importlib.import_module("homeassistant.components.logbook")
+            # Check if the registration function exists
+            if hasattr(logbook_module, "async_register_event_type"):
+                # Register event types
+                logbook_module.async_register_event_type(
+                    hass,
+                    EVENT_ADAPTIVE_CLIMATE_MODE_CHANGE,
+                    "changed HVAC mode",
+                )
+                logbook_module.async_register_event_type(
+                    hass,
+                    EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP, 
+                    "changed target temperature",
+                )
+                _LOGGER.debug("Successfully registered logbook event types")
+            else:
+                _LOGGER.debug("Logbook module found but missing registration function")
+        except (ImportError, ModuleNotFoundError):
+            _LOGGER.debug("Could not import logbook module")
+    except Exception as err:
+        _LOGGER.debug("Error setting up logbook integration: %s", err)
     
     # Call the setup function but don't block on it
     hass.async_create_task(_setup_logbook())
     
     return True
-
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Adaptive Climate from a config entry."""
@@ -73,27 +75,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     # Create coordinator
     coordinator = AdaptiveClimateCoordinator(hass, entry.data)
-    
+        
     # Store coordinator
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
-    
+        
     # Perform initial data fetch with retry logic
     try:
         await coordinator.async_config_entry_first_refresh()
     except Exception as err:
         _LOGGER.warning("Initial data fetch failed, will retry on next update: %s", err)
         # Don't fail setup, just log and continue - sensors will show as unavailable until data is available
-    
+        
     # Set up platforms (sensors only, no climate entity)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    
+        
     # Set up services
     await _async_setup_services(hass, coordinator)
-    
+        
     # Add update listener for options flow
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
-    
+        
     return True
 
 

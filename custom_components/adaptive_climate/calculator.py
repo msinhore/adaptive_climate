@@ -67,15 +67,22 @@ def calculate_hvac_and_fan(
 
     # Summer logic with dry mode
     if season == "summer":
-        if indoor_humidity is not None and indoor_humidity > 70:
-            hvac_mode = "dry"
-            fan = "low"
-        elif indoor_temp < comfort_temp:
+        if outdoor_temp <= min_temp:
             if energy_save_mode:
                 hvac_mode = "off"
                 fan = "off"
             else:
-                hvac_mode = "cool"
+                hvac_mode = "fan_only"
+                fan = "low"
+        elif indoor_humidity is not None and indoor_humidity > 70:
+            hvac_mode = "dry"
+            fan = "low"
+        elif indoor_temp <= comfort_temp:
+            if energy_save_mode:
+                hvac_mode = "off"
+                fan = "off"
+            else:
+                hvac_mode = "fan_only"
                 fan = "low"
         else:
             hvac_mode = "cool"

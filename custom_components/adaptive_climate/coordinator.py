@@ -17,6 +17,8 @@ from homeassistant.const import (
 )
 from homeassistant.components.climate.const import DOMAIN as CLIMATE_DOMAIN
 from homeassistant.components.climate import HVACMode
+from homeassistant.components.recorder.history import get_significant_states
+
 
 from .const import (
     DOMAIN, UPDATE_INTERVAL_MEDIUM,
@@ -224,13 +226,30 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             "status": status,
         }
 
+    async def _load_outdoor_temp_history(self, days: int = 7):
+        """Load outdoor temperature history from the recorder."""
+        start_time = dt_util.now() - timedelta(days=days)
+        entity_id = self.outdoor_temp_sensor_id
+        states = await self.hass.async_add_executor_job(
+            get_significant_states,
+            self.hass, start_time, dt_util.now(), [entity_id], False
+        )
+        history = []
+        for state in states.get(entity_id, []):
+            try:
+                temp = float(state.state)
+                history.append((state.last_updated, temp))
+            except Exception:
+                continue
+        self._outdoor_temp_history = history
+        self._calculate_exponential_running_mean()
+
     def _update_outdoor_temp_history(self, outdoor_temp: float) -> None:
         now = dt_util.now()
         self._outdoor_temp_history.append((now, outdoor_temp))
         self._outdoor_temp_history = [(ts, temp) for ts, temp in self._outdoor_temp_history
                                       if ts > now - timedelta(days=7)]
-        temps = [temp for _, temp in self._outdoor_temp_history]
-        self._running_mean_outdoor_temp = sum(temps) / len(temps) if temps else outdoor_temp
+        self._calculate_exponential_running_mean()      
 
     def _update_occupancy(self) -> None:
         if not self.occupancy_sensor_id:
@@ -239,7 +258,6 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         state = self.hass.states.get(self.occupancy_sensor_id)
         if state and state.state in (STATE_ON, STATE_OFF):
             self._occupied = state.state == STATE_ON
-
         if self._occupied:
             if not was_occupied:
                 self._presence_returned_at = dt_util.now()
@@ -248,6 +266,19 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             if self._last_no_occupancy is None:
                 self._last_no_occupancy = dt_util.now()
             self._presence_returned_at = None
+        
+    def _calculate_exponential_running_mean(self) -> None:
+        """Calculates the exponential moving average of external temperature(ASHRAE 55)."""
+        alpha = 0.8
+        temps = sorted(self._outdoor_temp_history, key=lambda x: x[0])
+        running_mean = None
+        for _, temp in temps:
+            if running_mean is None:
+                running_mean = temp
+            else:
+                running_mean = (1 - alpha) * temp + alpha * running_mean
+        if running_mean is not None:
+            self._running_mean_outdoor_temp = running_mean
 
     def _check_override_expiry(self) -> None:
         if self._manual_override and self._override_expiry:
@@ -397,6 +428,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 self._override_expiry = dt_util.parse_datetime(expiry_str)
             else:
                 self._override_expiry = None
+        await self._load_outdoor_temp_history()
             
     async def _save_persisted_data(self, data: dict[str, Any]) -> None:
         data_to_save = {

@@ -1,1 +1,0 @@
-# Adaptive Climate Custom Component
