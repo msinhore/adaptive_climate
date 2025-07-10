@@ -302,7 +302,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         """Determine control actions based on comfort calculation and supported HVAC modes."""
         target_temp = comfort.get("comfort_temp", indoor_temp)
         hvac_mode = comfort.get("hvac_mode", "off")
+        
         fan_mode = comfort.get("fan_mode", "off")
+
+        if fan_mode == 'mid':
+            fan_mode = 'medium'
 
         _LOGGER.debug(f"[{self.config.get('name')}] Initial determine_actions: target_temp={target_temp}, hvac_mode={hvac_mode}, fan_mode={fan_mode}")
 
