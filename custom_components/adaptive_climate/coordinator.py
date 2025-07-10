@@ -18,7 +18,7 @@ from homeassistant.const import (
 from homeassistant.components.climate.const import DOMAIN as CLIMATE_DOMAIN
 from homeassistant.components.climate import HVACMode
 from homeassistant.components.recorder.history import get_significant_states
-
+from homeassistant.components import recorder
 
 from .const import (
     DOMAIN, UPDATE_INTERVAL_MEDIUM,
@@ -237,10 +237,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         start_time = dt_util.now() - timedelta(days=days)
         entity_id = self.outdoor_temp_sensor_id
 
-        states = await self.hass.async_add_executor_job(
+        states = await recorder.get_instance(self.hass).async_add_executor_job(
             get_significant_states,
-            self.hass, start_time, dt_util.now(),
-            entity_ids=[entity_id]
+            self.hass, start_time, dt_util.now(), [entity_id]
         )
 
         history = []
