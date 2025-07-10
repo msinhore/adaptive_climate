@@ -6,7 +6,8 @@
     ],
     "config_flow": true,
     "dependencies": [
-        "logbook"
+        "logbook",
+        "recorder"
     ],
     "documentation": "https://github.com/msinhore/adaptive-climate",
     "integration_type": "hub",
