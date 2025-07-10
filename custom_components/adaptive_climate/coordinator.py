@@ -24,6 +24,8 @@ from .const import (
     DOMAIN, UPDATE_INTERVAL_MEDIUM,
 )
 from .calculator import calculate_hvac_and_fan
+from .mode_mapper import map_fan_mode, map_hvac_mode
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,8 +43,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
         self.config = dict(config_entry_data)
 
-        self._manual_override = False
-        self._override_expiry: Optional[datetime] = None
+        self._user_override_enable = False
+        self._user_override_expiry: Optional[datetime] = None 
+        self._user_override_minutes: int = 30 
+
         self._last_target_temp: Optional[float] = None
         self._occupied = True
         self._last_no_occupancy: Optional[datetime] = None
@@ -79,12 +83,20 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             return self._last_valid_params or self._default_params("ha_starting")
         
         """Fetch latest data and determine actions."""
+        self._user_override_enable = self.config.get("user_override_enable", False)
+        self._user_override_minutes = self.config.get("user_override_minutes", 30)
+
+        self._check_override_expiry()
+
+        # User override: skip actions if enabled and not expired
+        if self._user_override_enable and self._user_override_expiry and dt_util.now() < self._user_override_expiry:
+            _LOGGER.info(f"[{self.config.get('name')}] User override active. Skipping automatic control actions.")
+            return self._last_valid_params or self._default_params("manual_override")
+
         indoor_temp = self._get_value(self.indoor_temp_sensor_id, "indoor_temp")
         outdoor_temp = self._get_value(self.outdoor_temp_sensor_id, "outdoor_temp")
         indoor_humidity = self._get_value(self.indoor_humidity_sensor_id, "indoor_humidity")
         outdoor_humidity = self._get_value(self.outdoor_humidity_sensor_id, "outdoor_humidity")
-
-        self._check_override_expiry()
 
         if indoor_temp is None or outdoor_temp is None:
             _LOGGER.warning(f"[{self.config.get('name')}] Indoor or outdoor temperature unavailable. Skipping update.")
@@ -157,10 +169,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         control_actions = self._determine_actions(indoor_temp, comfort_params)
         _LOGGER.debug(f"[{self.config.get('name')}] Determined control actions: {control_actions}")
 
-        if not self._manual_override:
+        if not self._user_override_enable:
             await self._execute_actions(control_actions)
         else:
-            _LOGGER.info(f"[{self.config.get('name')}] Manual override active. Skipping automatic control actions.")
+            _LOGGER.info(f"[{self.config.get('name')}] User override active. Skipping automatic control actions.")
 
         params = self._build_params(indoor_temp, outdoor_temp, indoor_humidity, outdoor_humidity, comfort_params, control_actions)
         self._last_valid_params = params.copy()
@@ -224,7 +236,8 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             "outdoor_humidity": outdoor_hum,
             "running_mean_outdoor_temp": self._running_mean_outdoor_temp,
             "occupancy": "occupied" if self._occupied else "unoccupied",
-            "manual_override": self._manual_override,
+            "user_override_enable": self._user_override_enable,
+            "user_override_expiry": self._user_override_expiry,
             "control_actions": actions,
             "ashrae_compliant": comfort.get("ashrae_compliant"),
             "last_updated": dt_util.now(),
@@ -295,14 +308,13 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             self._running_mean_outdoor_temp = running_mean
 
     def _check_override_expiry(self) -> None:
-        if self._manual_override and self._override_expiry:
-            remaining = (self._override_expiry - dt_util.now()).total_seconds()
+        if self._user_override_enable and self._user_override_expiry:
+            remaining = (self._user_override_expiry - dt_util.now()).total_seconds()
             if remaining > 0:
-                _LOGGER.debug(f"[{self.config.get('name')}] Manual override active. Time remaining: {remaining/60:.1f} minutes.")
-            if dt_util.now() >= self._override_expiry:
-                _LOGGER.info(f"[{self.config.get('name')}] Manual override expired.")
-                self._manual_override = False
-                self._override_expiry = None
+                _LOGGER.debug(f"[{self.config.get('name')}] User override active. Time remaining: {remaining/60:.1f} minutes.")
+            if dt_util.now() >= self._user_override_expiry:
+                _LOGGER.info(f"[{self.config.get('name')}] User override expired.")
+                self._user_override_expiry = None
 
     def _determine_actions(self, indoor_temp: float, comfort: dict[str, Any]) -> dict[str, Any]:
         """Determine control actions based on comfort calculation and supported HVAC modes."""
@@ -329,25 +341,8 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug(f"[{self.config.get('name')}] Supported hvac_modes: {supported_hvac_modes}")
         _LOGGER.debug(f"[{self.config.get('name')}] Supported fan_modes: {supported_fan_modes}")
 
-        hvac_mode_str = str(hvac_mode)
-        if hvac_mode_str not in supported_hvac_modes:
-            _LOGGER.warning(
-                f"[{self.config.get('name')}] hvac_mode '{hvac_mode_str}' not supported by {self.climate_entity_id}. Falling back to OFF."
-            )
-            if str(HVACMode.FAN_ONLY) in supported_hvac_modes:
-                hvac_mode = HVACMode.FAN_ONLY
-            else:
-                hvac_mode = state.state if state else HVACMode.OFF
-        
-        fan_mode_str = str(fan_mode)
-        if fan_mode_str not in supported_fan_modes:
-            _LOGGER.warning(
-                f"[{self.config.get('name')}] Fan mode '{fan_mode_str}' not supported by {self.climate_entity_id}. Using default fan mode."
-            )
-            if supported_fan_modes:
-                fan_mode = supported_fan_modes[0] 
-            else:
-                fan_mode = None
+        hvac_mode = map_hvac_mode(str(hvac_mode), supported_hvac_modes) if supported_hvac_modes else hvac_mode
+        fan_mode = map_fan_mode(str(fan_mode), supported_fan_modes) if supported_fan_modes else fan_mode
         
         return {
             "set_temperature": target_temp,
@@ -378,7 +373,8 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         changed = False
 
         # Set temperature if needed
-        if target_temp is not None and (current_temp is None or abs(target_temp - current_temp) >= 0.5):
+        temperature_change_threshold=self.config.get("temperature_change_threshold", 0.5)
+        if target_temp is not None and (current_temp is None or abs(target_temp - current_temp) >= temperature_change_threshold):
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN,
                 "set_temperature",
@@ -454,23 +450,22 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         if data:
             self._last_valid_params = data.get("last_sensor_data")
             self._system_turned_off = data.get("system_turned_off", False)
-
-            # Restore manual override state
-            self._manual_override = data.get("manual_override", False)
-            expiry_str = data.get("override_expiry")
+            self._user_override_enable = data.get("user_override_enable", False)
+            expiry_str = data.get("user_override_expiry")
             if expiry_str:
-                self._override_expiry = dt_util.parse_datetime(expiry_str)
+                self._user_override_expiry = dt_util.parse_datetime(expiry_str)
             else:
-                self._override_expiry = None
+                self._user_override_expiry = None
         await self._load_outdoor_temp_history()
+        
             
     async def _save_persisted_data(self, data: dict[str, Any]) -> None:
         data_to_save = {
             "last_sensor_data": data,
             "last_updated": dt_util.now().isoformat(),
             "system_turned_off": getattr(self, "_system_turned_off", False),
-            "manual_override": getattr(self, "_manual_override", False),
-            "override_expiry": self._override_expiry.isoformat() if self._override_expiry else None,
+            "user_override_enable": getattr(self, "_user_override_enable", False),
+            "user_override_expiry": self._user_override_expiry.isoformat() if self._user_override_expiry else None,
         }
         await self._store.async_save(data_to_save)
 
@@ -493,18 +488,19 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         if state and state.state != HVACMode.OFF:
             self._system_turned_off = False
 
-        # User override detection
-        if self.config.get("user_override_enable", True):
-            if event.data.get("entity_id") == self.climate_entity_id and event.data.get("old_state") and event.data.get("new_state"):
-                attrs_old = event.data["old_state"].attributes
-                attrs_new = event.data["new_state"].attributes
-                # Only activate override if the new state is not OFF
-                if event.data["new_state"].state != HVACMode.OFF:
-                    temp_changed = attrs_old.get("temperature") != attrs_new.get("temperature")
-                    fan_changed = attrs_old.get("fan_mode") != attrs_new.get("fan_mode")
-                    mode_changed = event.data["old_state"].state != event.data["new_state"].state
-                    if temp_changed or fan_changed or mode_changed:
-                        minutes = self.config.get("user_override_minutes", 30)
-                        self._manual_override = True
-                        self._override_expiry = dt_util.now() + timedelta(minutes=minutes)
-                        _LOGGER.info(f"[{self.config.get('name')}] Manual override activated for {minutes} minutes.")
+        # User override detection (only if feature enabled)
+        if (
+            self._user_override_enable and
+            event.data.get("entity_id") == self.climate_entity_id and
+            event.data.get("old_state") and event.data.get("new_state")
+        ):
+            attrs_old = event.data["old_state"].attributes
+            attrs_new = event.data["new_state"].attributes
+            if event.data["new_state"].state != HVACMode.OFF:
+                temp_changed = attrs_old.get("temperature") != attrs_new.get("temperature")
+                fan_changed = attrs_old.get("fan_mode") != attrs_new.get("fan_mode")
+                mode_changed = event.data["old_state"].state != event.data["new_state"].state
+                if temp_changed or fan_changed or mode_changed:
+                    minutes = self._user_override_minutes
+                    self._user_override_expiry = dt_util.now() + timedelta(minutes=minutes)
+                    _LOGGER.info(f"[{self.config.get('name')}] User override activated for {minutes} minutes.")
