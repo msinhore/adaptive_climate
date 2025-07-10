@@ -129,22 +129,6 @@ The integration:
 4. **Energy saving**: Enable energy save mode for automatic HVAC off when comfort is met
 5. **Manual override**: Set a manual temperature with expiry to temporarily override automatic control
 
-## Automation example
-
-```yaml
-automation:
-  - alias: "Adaptive Climate Control"
-    trigger:
-      - platform: state
-        entity_id: sensor.adaptive_climate_hvac_recommendation
-    action:
-      - service: climate.set_hvac_mode
-        target:
-          entity_id: climate.living_room
-        data:
-          hvac_mode: "{{ states('sensor.adaptive_climate_hvac_recommendation') }}"
-```
-
 ## Supported languages
 
 English, Portuguese (Brazil), Italian, French, Spanish, German
