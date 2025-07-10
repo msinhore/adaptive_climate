@@ -19,7 +19,7 @@ AIR_VELOCITY_MAP = {
 }
 
 ASHRAE_55_TEMP_MIN = 10.0
-ASHRAE_55_TEMP_MAX = 33.5
+ASHRAE_55_TEMP_MAX = 33.5    
 
 def calculate_hvac_and_fan(
     indoor_temp: float,
