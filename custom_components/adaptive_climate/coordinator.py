@@ -73,11 +73,18 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         self.hass.async_create_task(self._load_persisted_data())
 
     async def _async_update_data(self) -> dict[str, Any]:
+        """Check if Home Assistant is running."""
+        if not self.hass.is_running:
+            _LOGGER.info(f"[{self.config.get('name')}] Home Assistant ainda não iniciou completamente. Aguardando entidades serem populadas.")
+            return self._last_valid_params or self._default_params("ha_starting")
+        
         """Fetch latest data and determine actions."""
         indoor_temp = self._get_value(self.indoor_temp_sensor_id, "indoor_temp")
         outdoor_temp = self._get_value(self.outdoor_temp_sensor_id, "outdoor_temp")
         indoor_humidity = self._get_value(self.indoor_humidity_sensor_id, "indoor_humidity")
         outdoor_humidity = self._get_value(self.outdoor_humidity_sensor_id, "outdoor_humidity")
+
+        self._check_override_expiry()
 
         if indoor_temp is None or outdoor_temp is None:
             _LOGGER.warning(f"[{self.config.get('name')}] Indoor or outdoor temperature unavailable. Skipping update.")
@@ -85,7 +92,6 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
         self._update_outdoor_temp_history(outdoor_temp)
         self._update_occupancy()
-        self._check_override_expiry()
 
         climate_state = self.hass.states.get(self.climate_entity_id)
         auto_start_enable = self.config.get("auto_start_enable", False)
@@ -301,38 +307,48 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
     def _determine_actions(self, indoor_temp: float, comfort: dict[str, Any]) -> dict[str, Any]:
         """Determine control actions based on comfort calculation and supported HVAC modes."""
         target_temp = comfort.get("comfort_temp", indoor_temp)
-        hvac_mode = comfort.get("hvac_mode", "off")
-        
-        fan_mode = comfort.get("fan_mode", "off")
-
-        if fan_mode == 'mid':
-            fan_mode = 'medium'
+        hvac_mode = comfort.get("hvac_mode")
+        fan_mode = comfort.get("fan_mode")
 
         _LOGGER.debug(f"[{self.config.get('name')}] Initial determine_actions: target_temp={target_temp}, hvac_mode={hvac_mode}, fan_mode={fan_mode}")
 
-        # Do not switch off for comfort if energy_save_mode is False
-        if not self.config.get("energy_save_mode", True) and hvac_mode == HVACMode.OFF:
+        if hvac_mode == HVACMode.OFF:
             state = self.hass.states.get(self.climate_entity_id)
-            _LOGGER.debug(f"[{self.config.get('name')}] energy_save_mode is False and calculated hvac_mode is OFF. Current state: {state.state if state else 'unknown'}")
             if state and state.state != HVACMode.OFF:
                 _LOGGER.debug(f"[{self.config.get('name')}] Overriding hvac_mode OFF to {state.state} and fan_mode to {state.attributes.get('fan_mode', fan_mode)}")
                 hvac_mode = state.state
                 fan_mode = state.attributes.get("fan_mode", fan_mode)
     
         state = self.hass.states.get(self.climate_entity_id)
-        supported_modes = []
+        supported_hvac_modes = []
+        supported_fan_modes = []
         if state:
-            supported_modes = [str(mode) for mode in state.attributes.get("hvac_modes", [])]
-        _LOGGER.debug(f"[{self.config.get('name')}] Supported hvac_modes: {supported_modes}")
+            supported_hvac_modes = [str(mode) for mode in state.attributes.get("hvac_modes", [])]
+            supported_fan_modes = [str(mode) for mode in state.attributes.get("fan_modes", [])]
+
+        _LOGGER.debug(f"[{self.config.get('name')}] Supported hvac_modes: {supported_hvac_modes}")
+        _LOGGER.debug(f"[{self.config.get('name')}] Supported fan_modes: {supported_fan_modes}")
 
         hvac_mode_str = str(hvac_mode)
-        if hvac_mode_str not in supported_modes:
-            _LOGGER.warning(f"[{self.config.get('name')}] hvac_mode '{hvac_mode_str}' not supported by {self.climate_entity_id}. Falling back to OFF.")
-            if str(HVACMode.FAN_ONLY) in supported_modes:
+        if hvac_mode_str not in supported_hvac_modes:
+            _LOGGER.warning(
+                f"[{self.config.get('name')}] hvac_mode '{hvac_mode_str}' not supported by {self.climate_entity_id}. Falling back to OFF."
+            )
+            if str(HVACMode.FAN_ONLY) in supported_hvac_modes:
                 hvac_mode = HVACMode.FAN_ONLY
             else:
                 hvac_mode = state.state if state else HVACMode.OFF
-        _LOGGER.debug(f"[{self.config.get('name')}] Final determine_actions: set_temperature={target_temp}, set_hvac_mode={hvac_mode}, set_fan_mode={fan_mode}")
+        
+        fan_mode_str = str(fan_mode)
+        if fan_mode_str not in supported_fan_modes:
+            _LOGGER.warning(
+                f"[{self.config.get('name')}] Fan mode '{fan_mode_str}' not supported by {self.climate_entity_id}. Using default fan mode."
+            )
+            if supported_fan_modes:
+                fan_mode = supported_fan_modes[0] 
+            else:
+                fan_mode = None
+        
         return {
             "set_temperature": target_temp,
             "set_hvac_mode": hvac_mode,

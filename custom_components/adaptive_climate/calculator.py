@@ -18,6 +18,11 @@ AIR_VELOCITY_MAP = {
     "high": 0.45,
 }
 
+# ASHRAE 55 temperature limits
+# These are the minimum and maximum temperatures defined by ASHRAE 55 for adaptive comfort
+# They are used to clamp outdoor temperatures to ensure they fall within the acceptable range.
+# The values are based on the ASHRAE 55 standard for adaptive thermal comfort.
+# Reference: https://www.ashrae.org/technical-resources/bookstore/ashrae-55-2020
 ASHRAE_55_TEMP_MIN = 10.0
 ASHRAE_55_TEMP_MAX = 33.5    
 
@@ -68,22 +73,14 @@ def calculate_hvac_and_fan(
     # Summer logic with dry mode
     if season == "summer":
         if outdoor_temp <= min_temp:
-            if energy_save_mode:
-                hvac_mode = "off"
-                fan = "off"
-            else:
-                hvac_mode = "fan_only"
-                fan = "low"
+            hvac_mode = "off" if energy_save_mode else "fan_only"
+            fan = "off" if energy_save_mode else "fan_only"
         elif indoor_humidity is not None and indoor_humidity > 70:
             hvac_mode = "dry"
             fan = "low"
         elif indoor_temp <= comfort_temp:
-            if energy_save_mode:
-                hvac_mode = "off"
-                fan = "off"
-            else:
-                hvac_mode = "fan_only"
-                fan = "low"
+            hvac_mode = "off" if energy_save_mode else "fan_only"
+            fan = "off" if energy_save_mode else "fan_only"
         else:
             hvac_mode = "cool"
             if indoor_temp < (max_temp - (tolerance / 2)):
@@ -107,11 +104,12 @@ def calculate_hvac_and_fan(
             else:
                 fan = "low"
         elif indoor_temp > comfort_temp:
-            hvac_mode = "off"
-            fan = "off"
+                hvac_mode = "off" if energy_save_mode else "fan_only"
+                fan = "off" if energy_save_mode else "fan_only"
         else:
-            hvac_mode = "off"
-            fan = "off"
+            hvac_mode = "off" if energy_save_mode else "fan_only"
+            fan = "off" if energy_save_mode else "fan_only"
+
 
     # Spring and Autumn logic with dry mode
     elif season in ["spring", "autumn"]:
@@ -125,8 +123,9 @@ def calculate_hvac_and_fan(
             hvac_mode = "cool"  # ou fan_only se preferir economia
             fan = "high"
         else:
-            hvac_mode = "off"
-            fan = "off"
+            hvac_mode = "off" if energy_save_mode else "fan_only"
+            fan = "off" if energy_save_mode else "fan_only"
+
    # Clamp comfort_temp to user min/max config
     comfort_temp = max(min_temp, min(comfort_temp, max_temp))
 
