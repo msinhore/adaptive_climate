@@ -240,11 +240,8 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         states = await self.hass.async_add_executor_job(
             get_significant_states,
             self.hass, start_time, dt_util.now()
+            entity_ids=[entity_id]
         )
-
-        filtered_states = {
-            k: v for k, v in states.items() if k == entity_id
-        }
 
         history = []
         for state in states.get(entity_id, []):
