@@ -162,6 +162,12 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
         return params
 
+    async def async_update_config_value(self, key: str, value: Any) -> None:
+        """Update a single config value and trigger refresh."""
+        self.config[key] = value
+        _LOGGER.debug(f"[{self.config.get('name')}] Config key '{key}' updated to: {value}")
+        await self.async_request_refresh()
+
     async def update_config(self, new_config: dict[str, Any]) -> None:
         """Update the coordinator configuration with new values."""
         self.config.update(new_config)
