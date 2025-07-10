@@ -30,22 +30,18 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.data.setdefault(DOMAIN, {})
 
     # Call the setup function but don't block on it
-    hass.async_create_task(_setup_logbook())
+    hass.async_create_task(_setup_logbook(hass))
 
     return True
 
 # This approach avoids any reference to hass.components
-async def _setup_logbook():
+async def _setup_logbook(hass):
     """Set up logbook integration."""
     try:
-        # Dynamic import to avoid dependency issues
         import importlib
         try:
-            # Try to import logbook module
             logbook_module = importlib.import_module("homeassistant.components.logbook")
-            # Check if the registration function exists
             if hasattr(logbook_module, "async_register_event_type"):
-                # Register event types
                 logbook_module.async_register_event_type(
                     hass,
                     EVENT_ADAPTIVE_CLIMATE_MODE_CHANGE,
@@ -63,9 +59,6 @@ async def _setup_logbook():
             _LOGGER.debug("Could not import logbook module")
     except Exception as err:
         _LOGGER.debug("Error setting up logbook integration: %s", err)
-    
-    # Call the setup function but don't block on it
-    hass.async_create_task(_setup_logbook())
     
     return True
 
