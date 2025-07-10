@@ -236,10 +236,16 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         """Load outdoor temperature history from the recorder."""
         start_time = dt_util.now() - timedelta(days=days)
         entity_id = self.outdoor_temp_sensor_id
+
         states = await self.hass.async_add_executor_job(
             get_significant_states,
-            self.hass, start_time, dt_util.now(), [entity_id], False
+            self.hass, start_time, dt_util.now()
         )
+
+        filtered_states = {
+            k: v for k, v in states.items() if k == entity_id
+        }
+
         history = []
         for state in states.get(entity_id, []):
             try:
