@@ -8,10 +8,10 @@
 [![Last commit](https://img.shields.io/github/last-commit/msinhore/adaptive_climate.svg)](https://github.com/msinhore/adaptive_climate)
 ![Project Status](https://img.shields.io/badge/status-active-brightgreen.svg)
 
+
+[<img width="170" height="37" alt="Buy me a coffee" src="https://github.com/user-attachments/assets/0ce08a2b-1bc6-4f16-91f0-70c273cf4d47" />](https://buymeacoffee.com/msinhore)
+
 A Home Assistant integration that implements ASHRAE 55 Adaptive Thermal Comfort standards for intelligent climate control.
-
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=msinhore&repository=adaptive_climate)
-
 
 ![image](https://github.com/user-attachments/assets/e09bceeb-1794-44cc-9d94-98ff4471c57f)
 
@@ -39,6 +39,8 @@ A Home Assistant integration that implements ASHRAE 55 Adaptive Thermal Comfort 
 🙋 **User Respect:** Never turns on the AC if the user turned it off manually.  
 
 Instead of fixed temperature setpoints, Adaptive Climate adapts to weather, season, and occupancy to improve comfort and reduce energy consumption, providing a truly intelligent and scientific climate control experience.
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=msinhore&repository=adaptive_climate)
 
 ## Problem it solves
 
@@ -253,5 +255,3 @@ flowchart TD
     CheckManualOverride -- "No" --> ExecuteActions --> BuildParams --> End
     CheckManualOverride -- "Yes" --> SkipActions --> BuildParams --> End
 ```
-
-☕ Found this helpful? You can fuel future updates by [buying me a coffee](https://buymeacoffee.com/msinhore). Thanks!
