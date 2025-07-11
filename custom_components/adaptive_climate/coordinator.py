@@ -19,6 +19,7 @@ from homeassistant.components.climate.const import DOMAIN as CLIMATE_DOMAIN
 from homeassistant.components.climate import HVACMode
 from homeassistant.components.recorder.history import get_significant_states
 from homeassistant.components import recorder
+from homeassistant.util import slugify
 
 from .const import (
     DOMAIN, UPDATE_INTERVAL_MEDIUM,
@@ -35,13 +36,23 @@ STORAGE_KEY = "adaptive_climate_data"
 
 class AdaptiveClimateCoordinator(DataUpdateCoordinator):
     """Coordinator for adaptive climate control."""
-
-    def __init__(self, hass: HomeAssistant, config_entry_data: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config_entry_data: dict[str, Any],
+        config_entry_options: dict[str, Any] = None
+    ) -> None:
+        
         """Initialize."""
         super().__init__(hass, _LOGGER, name=DOMAIN,
                          update_interval=timedelta(minutes=UPDATE_INTERVAL_MEDIUM))
 
         self.config = dict(config_entry_data)
+        if config_entry_options:
+            self.config.update(config_entry_options)
+
+        slug = slugify(self.config.get("name", "Adaptive Climate"))
+        self.primary_entity_id = f"binary_sensor.{slug}_ashrae_compliance"
 
         self._user_override_enable = False
         self._user_override_expiry: Optional[datetime] = None 
@@ -81,7 +92,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         if not self.hass.is_running:
             _LOGGER.info(f"[{self.config.get('name')}] Home Assistant ainda não iniciou completamente. Aguardando entidades serem populadas.")
             return self._last_valid_params or self._default_params("ha_starting")
-        
+        state = self.hass.states.get(self.climate_entity_id)
+        if not state or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            _LOGGER.info(f"[{self.config.get('name')}] Climate entity is disabled or unavailable. Skipping all calculations.")
+            return self._last_valid_params or self._default_params("entity_disabled")
+
         """Fetch latest data and determine actions."""
         self._user_override_enable = self.config.get("user_override_enable", False)
         self._user_override_minutes = self.config.get("user_override_minutes", 30)
@@ -120,10 +135,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                         self._system_turned_off = False
                         # Continue normal flow to re-start the AC
                     else:
-                        _LOGGER.debug(f"[{self.config.get('name')}] Presence returned but not enough time elapsed ({elapsed:.1f} min). Skipping auto start.")
+                        _LOGGER.debug(f"[{self.config.get('name')}] Presence returned after {elapsed:.1f} minutes. Starting AC.")
                         return self._last_valid_params or self._default_params("waiting_presence")
                 else:
                     _LOGGER.info(f"[{self.config.get('name')}] Presence returned but auto start is disabled. Skipping.")
+                    self.logbook(f"[{self.config.get('name')}] Presence returned but auto start is disabled. Skipping.")
                     return self._last_valid_params or self._default_params("waiting_presence")
             elif getattr(self, "_system_turned_off", False):
                 # If system turned off by itself and no presence, do nothing
@@ -133,7 +149,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 return self._last_valid_params or self._default_params("ac_off")
     
         # Auto shutdown logic
-        if self.config.get("auto_shutdown_enable", False):
+        _occupancy = self.config.get("auto_shutdown_enable", False)
+
+        _LOGGER.debug(f"[{self.config.get('name')}] Auto shutdown enabled: {_occupancy}")
+        if _occupancy:
             shutdown_minutes = self.config.get("auto_shutdown_minutes", 60)
             if climate_state.state != HVACMode.OFF and not self._occupied:
                 if self._last_no_occupancy is None:
@@ -143,6 +162,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                     _LOGGER.debug(f"[{self.config.get('name')}] No occupancy detected for {elapsed:.1f} minutes of {shutdown_minutes}; waiting for shutdown threshold.")
                 elif elapsed >= shutdown_minutes:
                     _LOGGER.info(f"[{self.config.get('name')}] No occupancy for {elapsed:.1f} minutes of {shutdown_minutes}; shutting down AC.")
+                    self.logbook(f"[{self.config.get('name')}] No occupancy for {elapsed:.1f} minutes of {shutdown_minutes}; shutting down AC.")
                     self._system_turned_off = True 
                     await self._shutdown_climate()
                     return self._last_valid_params or self._default_params("auto_shutdown")
@@ -180,11 +200,33 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
         return params
 
+    def logbook(self, message: str, entity_id: str = None, name: str = None) -> None:
+        """Log a custom message to the Home Assistant logbook."""
+        self.hass.async_create_task(
+            self.hass.services.async_call(
+                "logbook",
+                "log",
+                {
+                    "name": name or self.config.get("name"),
+                    "message": message,
+                    "entity_id": entity_id or self.primary_entity_id,
+                }
+            )
+        )
+
     async def async_update_config_value(self, key: str, value: Any) -> None:
         """Update a single config value and trigger refresh."""
+        options = dict(self.hass.config_entries.async_get_entry(self.config_entry.entry_id).options)
+        options[key] = value
+
+        self.hass.config_entries.async_update_entry(
+            self.config_entry,
+            options=options
+        )
+
         self.config[key] = value
-        _LOGGER.debug(f"[{self.config.get('name')}] Config key '{key}' updated to: {value}")
-        await self.async_request_refresh()
+
+        _LOGGER.debug(f"[{self.config.get('name')}] Config key '{key}' updated to: {value}, Primary entity: {self.primary_entity_id}")
 
     async def update_config(self, new_config: dict[str, Any]) -> None:
         """Update the coordinator configuration with new values."""
@@ -283,6 +325,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             return
         was_occupied = self._occupied
         state = self.hass.states.get(self.occupancy_sensor_id)
+
         if state and state.state in (STATE_ON, STATE_OFF):
             self._occupied = state.state == STATE_ON
         if self._occupied:
@@ -315,6 +358,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             if dt_util.now() >= self._user_override_expiry:
                 _LOGGER.info(f"[{self.config.get('name')}] User override expired.")
                 self._user_override_expiry = None
+                self.logbook("User override expired. Returning to automatic control.")
 
     def _determine_actions(self, indoor_temp: float, comfort: dict[str, Any]) -> dict[str, Any]:
         """Determine control actions based on comfort calculation and supported HVAC modes."""
@@ -440,10 +484,15 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             _LOGGER.info(
                 f"[{self.config.get('name')}] Set temperature={target_temp}, fan_mode={target_fan_mode}, hvac_mode={target_hvac_mode} on {self.climate_entity_id}"
             )
+            # Triggers event to the logbook
+            self.logbook("Set temperature to {target_temp}, fan_mode={target_fan_mode}, hvac_mode={target_hvac_mode}")
+
         else:
             _LOGGER.debug(
                 f"[{self.config.get('name')}] No change needed for {self.climate_entity_id} (hvac_mode={current_hvac_mode}, fan_mode={current_fan_mode}, temperature={current_temp})"
             )
+        
+
 
     async def _load_persisted_data(self) -> None:
         data = await self._store.async_load()
@@ -503,4 +552,5 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 if temp_changed or fan_changed or mode_changed:
                     minutes = self._user_override_minutes
                     self._user_override_expiry = dt_util.now() + timedelta(minutes=minutes)
+                    self.logbook(f"[{self.config.get('name')}] User override activated for {minutes} minutes.")
                     _LOGGER.info(f"[{self.config.get('name')}] User override activated for {minutes} minutes.")

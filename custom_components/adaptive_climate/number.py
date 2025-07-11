@@ -179,9 +179,10 @@ class AdaptiveClimateNumberEntity(CoordinatorEntity, NumberEntity):
     @property
     def native_value(self) -> float | None:
         """Return the current value."""
-        value = None
+        value = self._config_entry.options.get(self._entity_key)
         
-        if self.coordinator.data:
+        if value is None and self.coordinator.data:
+            # Try to get the value from the coordinator data
             value = self.coordinator.data.get(self._entity_key)
         
         if value is None:

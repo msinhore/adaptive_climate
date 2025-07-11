@@ -87,10 +87,6 @@ class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
         self._icon_off = icon_off
         self._default_value = default_value
         self._attr_unique_id = f"{config_entry.entry_id}_{entity_key}"
-        _LOGGER.debug(
-            "Initialized switch entity: %s (key: %s, unique_id: %s)",
-            self._attr_name, entity_key, self._attr_unique_id
-        )
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -110,6 +106,7 @@ class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
         return self.coordinator.config.get(self._entity_key, self._default_value)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
+
         """Turn the switch on."""
         _LOGGER.info("Turning on %s", self._entity_key)
         try:
@@ -120,6 +117,7 @@ class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
             _LOGGER.error("Failed to turn on %s: %s", self._entity_key, e)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
+
         """Turn the switch off."""
         _LOGGER.info("Turning off %s", self._entity_key)
         try:
