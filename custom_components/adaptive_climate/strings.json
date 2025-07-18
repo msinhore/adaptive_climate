@@ -38,40 +38,26 @@
     },
     "number": {
       "min_comfort_temp": {
-        "name": "Minimum Comfort Temperature"
+        "name": "Minimum Temperature"
       },
       "max_comfort_temp": {
-        "name": "Maximum Comfort Temperature"
-      },
-      "air_velocity": {
-        "name": "Air Velocity"
+        "name": "Maximum Temperature"
       },
       "temperature_change_threshold": {
         "name": "Temperature Change Threshold"
       },
-      "setback_temperature_offset": {
-        "name": "Setback Temperature Offset"
-      },
-      "auto_shutdown_minutes": {
-        "name": "Auto Shutdown Minutes"
-      }
-    },
     "select": {
       "comfort_category": {
         "name": "Comfort Category",
         "state": {
           "i": "Category I (90% satisfaction)",
-          "ii": "Category II (80% satisfaction)",
-          "iii": "Category III (70% satisfaction)"
+          "ii": "Category II (80% satisfaction)"
         }
       }
     },
     "switch": {
       "energy_save_mode": {
         "name": "Energy Save Mode"
-      },
-      "auto_shutdown_enable": {
-        "name": "Auto Shutdown Enable"
       }
     }
   }

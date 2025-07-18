@@ -9,19 +9,18 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import selector
 
 from .const import (
     DOMAIN,
     # Default values
-    DEFAULT_AIR_VELOCITY,
     DEFAULT_COMFORT_CATEGORY,
     DEFAULT_MIN_COMFORT_TEMP,
     DEFAULT_MAX_COMFORT_TEMP,
-    DEFAULT_SETBACK_TEMPERATURE_OFFSET,
     DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
-    DEFAULT_AUTO_SHUTDOWN_MINUTES,
-    DEFAULT_AUTO_START_MINUTES,
-    DEFAULT_USER_OVERRIDE_MINUTES,
+    DEFAULT_OVERRIDE_TEMPERATURE,
+    DEFAULT_AGGRESSIVE_COOLING_THRESHOLD,
+    DEFAULT_AGGRESSIVE_HEATING_THRESHOLD,
     # Categories
     COMFORT_CATEGORIES,
 )
@@ -44,8 +43,38 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         options = self.config_entry.options
+        data = self.config_entry.data  # <-- importante
+
+        def get_value(key):
+            return options.get(key) or data.get(key)
 
         schema = vol.Schema({
+            # === Entity Configuration ===
+            vol.Required(
+                "climate_entity",
+                default=get_value("climate_entity")
+            ): selector.selector({"entity": {"domain": "climate"}}),
+
+            vol.Required(
+                "indoor_temp_sensor",
+                default=get_value("indoor_temp_sensor")
+            ): selector.selector({"entity": {"device_class": "temperature"}}),
+
+            vol.Required(
+                "outdoor_temp_sensor",
+                default=get_value("outdoor_temp_sensor")
+            ): selector.selector({"entity": {"device_class": "temperature"}}),
+
+            vol.Optional(
+                "indoor_humidity_sensor",
+                default=get_value("indoor_humidity_sensor")
+            ): selector.selector({"entity": {"device_class": "humidity"}}),
+
+            vol.Optional(
+                "outdoor_humidity_sensor",
+                default=get_value("outdoor_humidity_sensor")
+            ): selector.selector({"entity": {"device_class": "humidity"}}),
+
             # === Comfort Category ===
             vol.Optional(
                 "comfort_category",
@@ -64,14 +93,14 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
             ): vol.All(vol.Coerce(float), vol.Range(min=15.0, max=35.0)),
 
             vol.Optional(
-                "air_velocity",
-                default=options.get("air_velocity", DEFAULT_AIR_VELOCITY)
-            ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
-
-            vol.Optional(
                 "temperature_change_threshold",
                 default=options.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
             ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=5.0)),
+
+            vol.Optional(
+                "override_temperature",
+                default=options.get("override_temperature", DEFAULT_OVERRIDE_TEMPERATURE)
+            ): vol.All(vol.Coerce(float), vol.Range(min=-2, max=2)),
 
             # === Energy Save ===
             vol.Optional(
@@ -79,66 +108,28 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 default=options.get("energy_save_mode", True)
             ): bool,
 
+            # === Adaptive Climate Auto Mode ===
             vol.Optional(
-                "setback_temperature_offset",
-                default=options.get("setback_temperature_offset", DEFAULT_SETBACK_TEMPERATURE_OFFSET)
+                "auto_mode_enable",
+                default=options.get("auto_mode_enable", True)
+            ): bool,
+
+            # === Aggressive Cooling / Heating ===
+            vol.Optional(
+                "aggressive_cooling_threshold",
+                default=options.get("aggressive_cooling_threshold", DEFAULT_AGGRESSIVE_COOLING_THRESHOLD)
             ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
 
-            # === Auto Shutdown ===
             vol.Optional(
-                "auto_shutdown_enable",
-                default=options.get("auto_shutdown_enable", False)
-            ): bool,
-
-            vol.Optional(
-                "auto_shutdown_minutes",
-                default=options.get("auto_shutdown_minutes", DEFAULT_AUTO_SHUTDOWN_MINUTES)
-            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=240)),
-
-            # === Auto Start on Presence ===
-            vol.Optional(
-                "auto_start_enable",
-                default=options.get("auto_start_enable", False)
-            ): bool,
-
-            vol.Optional(
-                "auto_start_minutes",
-                default=options.get("auto_start_minutes", DEFAULT_AUTO_START_MINUTES)
-            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
-
-            # === User Override Settings ===
-            vol.Optional(
-                "user_override_enable", 
-                default=options.get("user_override_enable", True)
-            ): bool,
-
-            vol.Optional(
-                "user_override_minutes",
-                default=options.get("user_override_minutes", DEFAULT_USER_OVERRIDE_MINUTES)
-            ): vol.All(vol.Coerce(int), vol.Range(min=10, max=240)),
-
-            # === Fan Mode Velocities ===
-            vol.Optional(
-                "fan_mode_low_velocity",
-                default=options.get("fan_mode_low_velocity", 0.15)
-            ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
-
-            vol.Optional(
-                "fan_mode_mid_velocity",
-                default=options.get("fan_mode_mid_velocity", 0.25)
-            ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
-
-            vol.Optional(
-                "fan_mode_high_velocity",
-                default=options.get("fan_mode_high_velocity", 0.4)
-            ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=2.0)),
+                "aggressive_heating_threshold",
+                default=options.get("aggressive_heating_threshold", DEFAULT_AGGRESSIVE_HEATING_THRESHOLD)
+            ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
         })
 
         return self.async_show_form(
             step_id="init",
             data_schema=schema,
         )
-
 
 @callback
 def async_get_options_flow(

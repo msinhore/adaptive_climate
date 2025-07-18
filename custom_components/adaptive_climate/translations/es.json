@@ -45,7 +45,6 @@
           "comfort_range_max_offset": "Desplazamiento Superior de Zona de Confort (°C)",
           "air_velocity": "Velocidad del Aire (m/s)",
           "temperature_change_threshold": "Umbral de Cambio de Temperatura (°C)",
-          "setback_temperature_offset": "Desplazamiento de Temperatura de Ahorro Energético (°C)",
           "comfort_category": "Categoría de Confort ASHRAE 55",
           "energy_save_mode": "Activar Modo de Ahorro de Energía",
           "adaptive_air_velocity": "Activar Velocidad de Aire Adaptativa",
@@ -98,9 +97,6 @@
       },
       "temperature_change_threshold": {
         "name": "Umbral de Cambio de Temperatura"
-      },
-      "setback_temperature_offset": {
-        "name": "Desplazamiento de Temperatura Setback"
       },
       "comfort_range_min_offset": {
         "name": "Desplazamiento Mínimo de Zona de Confort"

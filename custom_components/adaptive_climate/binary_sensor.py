@@ -72,6 +72,7 @@ class ASHRAEComplianceSensor(CoordinatorEntity, BinarySensorEntity):
         attrs = {
             "indoor_temperature": data.get("indoor_temperature"),
             "outdoor_temperature": data.get("outdoor_temperature"),
+            "running_mean_indoor_temp": data.get("running_mean_indoor_temp"),
             "running_mean_outdoor_temp": data.get("running_mean_outdoor_temp"),
             "adaptive_comfort_temp": round(data.get("adaptive_comfort_temp", 0), 1),
             "comfort_temp_min": round(data.get("comfort_temp_min", 0), 1),

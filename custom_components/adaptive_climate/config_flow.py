@@ -46,29 +46,55 @@ CONFIG_SCHEMA = vol.Schema(
                 options=[
                     {"value": "I", "label": f"Category I - {COMFORT_CATEGORIES['I']['description']}"},
                     {"value": "II", "label": f"Category II - {COMFORT_CATEGORIES['II']['description']}"},
-                    {"value": "III", "label": f"Category III - {COMFORT_CATEGORIES['III']['description']}"},
                 ],
                 mode=selector.SelectSelectorMode.DROPDOWN,
             )
         ),
+        vol.Optional(
+            "min_comfort_temp",
+            default=21
+        ): vol.All(vol.Coerce(float), vol.Range(min=10.0, max=30.0)),
+
+        vol.Optional(
+            "max_comfort_temp",
+            default=27
+        ): vol.All(vol.Coerce(float), vol.Range(min=15.0, max=35.0)),
+
+        vol.Optional(
+            "temperature_change_threshold",
+            default=0.5
+        ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=5.0)),
+
+        vol.Optional(
+            "override_temperature",
+            default=0
+        ): vol.All(vol.Coerce(float), vol.Range(min=-2, max=2)),
+
+        vol.Optional(
+            "energy_save_mode",
+            default=True
+        ): bool,
+
+        vol.Optional(
+            "auto_mode_enabled",
+            default=True
+        ): bool,
+
+        vol.Optional(
+            "aggressive_cooling_threshold",
+            default=2.0
+        ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
+
+        vol.Optional(
+            "aggressive_heating_threshold",
+            default=2.0
+        ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
     }
 )
 
 # Optional sensors schema for second step
 OPTIONAL_SENSORS_SCHEMA = vol.Schema(
     {
-        vol.Optional("occupancy_sensor"): selector.EntitySelector(
-            selector.EntitySelectorConfig(
-                domain="binary_sensor",
-                device_class=["motion", "occupancy", "presence"]
-            )
-        ),
-        vol.Optional("mean_radiant_temp_sensor"): selector.EntitySelector(
-            selector.EntitySelectorConfig(
-                domain=["sensor", "input_number"],
-                device_class=["temperature"]
-            )
-        ),
         vol.Optional("indoor_humidity_sensor"): selector.EntitySelector(
             selector.EntitySelectorConfig(
                 domain=["sensor", "input_number"],

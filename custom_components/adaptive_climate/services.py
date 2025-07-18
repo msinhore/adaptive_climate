@@ -16,15 +16,8 @@ from .const import (
     DEFAULT_MIN_COMFORT_TEMP,
     DEFAULT_MAX_COMFORT_TEMP,
     DEFAULT_TEMPERATURE_CHANGE_THRESHOLD,
-    DEFAULT_AIR_VELOCITY,
-    DEFAULT_SETBACK_TEMPERATURE_OFFSET,
-    DEFAULT_PROLONGED_ABSENCE_MINUTES,
-    DEFAULT_AUTO_SHUTDOWN_MINUTES,
-    DEFAULT_AUTO_START_MINUTES,
-    DEFAULT_USER_OVERRIDE_MINUTES,
-    DEFAULT_COMFORT_TEMP_MIN_OFFSET,
-    DEFAULT_COMFORT_TEMP_MAX_OFFSET,
     DEFAULT_COMFORT_CATEGORY,
+    DEFAULT_OVERRIDE_TEMPERATURE,
 )
 from .coordinator import AdaptiveClimateCoordinator
 
@@ -33,8 +26,6 @@ _LOGGER = logging.getLogger(__name__)
 # Service names
 SERVICE_SET_PARAMETER = "set_parameter"
 SERVICE_RESET_PARAMETER = "reset_parameter"
-SERVICE_SET_MANUAL_OVERRIDE = "set_manual_override"
-SERVICE_CLEAR_MANUAL_OVERRIDE = "clear_manual_override"
 
 # Parameter definitions with validation
 EDITABLE_PARAMETERS = {
@@ -63,130 +54,32 @@ EDITABLE_PARAMETERS = {
         "unit": "°C",
         "description": "Minimum temperature change to trigger adjustment"
     },
-    
-    # Air velocity parameters
-    "air_velocity": {
+    "override_temperature": {
         "type": float,
-        "min": 0.0,
-        "max": 2.0,
-        "default": DEFAULT_AIR_VELOCITY,
-        "unit": "m/s",
-        "description": "Indoor air velocity for comfort calculations"
-    },
-    
-    # Setback parameters
-    "setback_temperature_offset": {
-        "type": float,
-        "min": 0.0,
-        "max": 10.0,
-        "default": DEFAULT_SETBACK_TEMPERATURE_OFFSET,
+        "min": -2,
+        "max": 2,
+        "default": DEFAULT_OVERRIDE_TEMPERATURE,
         "unit": "°C",
-        "description": "Temperature offset during unoccupied periods"
+        "description": "Override temperature for manual control"
     },
-    "prolonged_absence_minutes": {
-        "type": int,
-        "min": 5,
-        "max": 480,
-        "default": DEFAULT_PROLONGED_ABSENCE_MINUTES,
-        "unit": "minutes",
-        "description": "Minutes of absence before applying setback"
-    },
-    "auto_shutdown_minutes": {
-        "type": int,
-        "min": 10,
-        "max": 1440,
-        "default": DEFAULT_AUTO_SHUTDOWN_MINUTES,
-        "unit": "minutes",
-        "description": "Minutes of absence before auto shutdown"
-    },
-        "auto_start_minutes": {
-        "type": int,
-        "min": 1,
-        "max": 30,
-        "default": DEFAULT_AUTO_START_MINUTES,
-        "unit": "minutes",
-        "description": "Minutes of presence before auto start"
-    },
-        "user_overide_minutes": {
-        "type": int,
-        "min": 10,
-        "max": 240,
-        "default": DEFAULT_USER_OVERRIDE_MINUTES,
-        "unit": "minutes",
-        "description": "Minutes of user override before assume auto control"
-    },
-    
-    # Comfort zone offsets
-    "comfort_temp_min_offset": {
-        "type": float,
-        "min": -5.0,
-        "max": 0.0,
-        "default": DEFAULT_COMFORT_TEMP_MIN_OFFSET,
-        "unit": "°C",
-        "description": "Negative offset for minimum comfort temperature"
-    },
-    "comfort_temp_max_offset": {
-        "type": float,
-        "min": 0.0,
-        "max": 5.0,
-        "default": DEFAULT_COMFORT_TEMP_MAX_OFFSET,
-        "unit": "°C",
-        "description": "Positive offset for maximum comfort temperature"
-    },
-    
     # Category parameter
     "comfort_category": {
         "type": str,
-        "options": ["I", "II", "III"],
+        "options": ["I", "II"],
         "default": DEFAULT_COMFORT_CATEGORY,
-        "description": "ASHRAE 55 comfort category (I=±2°C, II=±3°C, III=±4°C)"
+        "description": "ASHRAE 55 comfort category (I=±2.5°C, II=±3.5°C)"
     },
     
     # Boolean parameters
-    "comfort_precision_mode": {
-        "type": bool,
-        "default": False,
-        "description": "Enable precision mode for tighter comfort control"
-    },
-    "use_operative_temperature": {
-        "type": bool,
-        "default": False,
-        "description": "Use operative temperature instead of air temperature"
-    },
-    "adaptive_air_velocity": {
-        "type": bool,
-        "default": False,
-        "description": "Enable adaptive air velocity corrections"
-    },
-    "auto_shutdown_enable": {
-        "type": bool,
-        "default": False,
-        "description": "Enable automatic shutdown during prolonged absence"
-    },
-    "auto_start_enable": {
-        "type": bool,
-        "default": False,
-        "description": "Enable automatic start after prolonged absence"
-    },
-    "user_override_enable": {
-        "type": bool,
-        "default": False,
-        "description": "Enable user override settings",
-    },
     "energy_save_mode": {
         "type": bool,
         "default": True,
-        "description": "Enable energy saving setback features"
+        "description": "Enable energy saving features"
     },
-    "use_occupancy_features": {
+    "auto_mode_enable": {
         "type": bool,
         "default": True,
-        "description": "Enable occupancy-based features"
-    },
-    "humidity_comfort_enable": {
-        "type": bool,
-        "default": True,
-        "description": "Enable humidity-based comfort corrections"
+        "description": "Enable automatic mode for climate control"
     },
 }
 
@@ -219,7 +112,6 @@ CLEAR_OVERRIDE_SCHEMA = vol.Schema(
         vol.Required("entity_id"): cv.entity_id,
     }
 )
-
 
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Set up services for Adaptive Climate."""
@@ -330,12 +222,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, SERVICE_RESET_PARAMETER, async_reset_parameter, schema=RESET_PARAMETER_SCHEMA
     )
-    hass.services.async_register(
-        DOMAIN, SERVICE_SET_MANUAL_OVERRIDE, async_set_manual_override, schema=MANUAL_OVERRIDE_SCHEMA
-    )
-    hass.services.async_register(
-        DOMAIN, SERVICE_CLEAR_MANUAL_OVERRIDE, async_clear_manual_override, schema=CLEAR_OVERRIDE_SCHEMA
-    )
     
     _LOGGER.info("Adaptive Climate services registered")
 
@@ -363,7 +249,5 @@ def async_unload_services(hass: HomeAssistant) -> None:
     """Unload services."""
     hass.services.async_remove(DOMAIN, SERVICE_SET_PARAMETER)
     hass.services.async_remove(DOMAIN, SERVICE_RESET_PARAMETER)
-    hass.services.async_remove(DOMAIN, SERVICE_SET_MANUAL_OVERRIDE)
-    hass.services.async_remove(DOMAIN, SERVICE_CLEAR_MANUAL_OVERRIDE)
-    
+ 
     _LOGGER.info("Adaptive Climate services unloaded")

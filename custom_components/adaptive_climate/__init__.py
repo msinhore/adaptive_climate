@@ -19,14 +19,21 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
-    Platform.NUMBER,
     Platform.SWITCH,
     Platform.SELECT,
 ]
 
+async def handle_reset_override_service(call):
+    hass = call.hass  # sempre disponível
+    entity_id = call.data.get("entity_id")
+    for coordinator in hass.data[DOMAIN].values():
+        if hasattr(coordinator, "primary_entity_id") and coordinator.primary_entity_id == entity_id:
+            await coordinator.async_reset_override()
+            break
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the Adaptive Climate component."""
     hass.data.setdefault(DOMAIN, {})
+    hass.services.async_register(DOMAIN, "reset_override", handle_reset_override_service)
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -78,9 +85,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     if unload_ok:
         coordinator = hass.data[DOMAIN].pop(entry.entry_id)
-        # Clean up coordinator
-        if hasattr(coordinator, 'async_shutdown'):
-            await coordinator.async_shutdown()
         # Remove services if this was the last entry
         if not hass.data[DOMAIN]:
             hass.services.async_remove(DOMAIN, "clear_override")

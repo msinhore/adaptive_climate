@@ -23,34 +23,14 @@ set_parameter:
               label: "Maximum Comfort Temperature (18-30°C)"
             - value: "temperature_change_threshold"
               label: "Temperature Change Threshold (0.1-5.0°C)"
-            - value: "air_velocity"
-              label: "Air Velocity (0.0-2.0 m/s)"
-            - value: "setback_temperature_offset"
-              label: "Setback Temperature Offset (0.0-10.0°C)"
-            - value: "prolonged_absence_minutes"
-              label: "Prolonged Absence Minutes (5-480)"
-            - value: "auto_shutdown_minutes"
-              label: "Auto Shutdown Minutes (10-1440)"
-            - value: "comfort_temp_min_offset"
-              label: "Comfort Min Offset (-5.0-0.0°C)"
-            - value: "comfort_temp_max_offset"
-              label: "Comfort Max Offset (0.0-5.0°C)"
+            - value: "override_temperature"
+              label: "Override Temperature (-2.0 to 2.0°C)"
             - value: "comfort_category"
-              label: "Comfort Category (I/II/III)"
-            - value: "comfort_precision_mode"
-              label: "Comfort Precision Mode (boolean)"
-            - value: "use_operative_temperature"
-              label: "Use Operative Temperature (boolean)"
-            - value: "adaptive_air_velocity"
-              label: "Adaptive Air Velocity (boolean)"
-            - value: "auto_shutdown_enable"
-              label: "Auto Shutdown Enable (boolean)"
+              label: "Comfort Category (I/II)"
             - value: "energy_save_mode"
               label: "Energy Save Mode (boolean)"
-            - value: "use_occupancy_features"
-              label: "Use Occupancy Features (boolean)"
-            - value: "humidity_comfort_enable"
-              label: "Humidity Comfort Enable (boolean)"
+            - value: "auto_mode_enable"
+              label: "Auto Mode Enable (boolean)"
     value:
       name: Value
       description: New value for the parameter
@@ -83,34 +63,14 @@ reset_parameter:
               label: "Maximum Comfort Temperature"
             - value: "temperature_change_threshold"
               label: "Temperature Change Threshold"
-            - value: "air_velocity"
-              label: "Air Velocity"
-            - value: "setback_temperature_offset"
-              label: "Setback Temperature Offset"
-            - value: "prolonged_absence_minutes"
-              label: "Prolonged Absence Minutes"
-            - value: "auto_shutdown_minutes"
-              label: "Auto Shutdown Minutes"
-            - value: "comfort_temp_min_offset"
-              label: "Comfort Min Offset"
-            - value: "comfort_temp_max_offset"
-              label: "Comfort Max Offset"
+            - value: "override_temperature"
+              label: "Override Temperature"
             - value: "comfort_category"
               label: "Comfort Category"
-            - value: "comfort_precision_mode"
-              label: "Comfort Precision Mode"
-            - value: "use_operative_temperature"
-              label: "Use Operative Temperature"
-            - value: "adaptive_air_velocity"
-              label: "Adaptive Air Velocity"
-            - value: "auto_shutdown_enable"
-              label: "Auto Shutdown Enable"
             - value: "energy_save_mode"
               label: "Energy Save Mode"
-            - value: "use_occupancy_features"
-              label: "Use Occupancy Features"
-            - value: "humidity_comfort_enable"
-              label: "Humidity Comfort Enable"
+            - value: "auto_mode_enable"
+              label: "Auto Mode Enable"
 
 set_manual_override:
   name: Set Manual Override
@@ -145,15 +105,5 @@ set_manual_override:
           step: 1
           unit_of_measurement: "hours"
 
-clear_manual_override:
-  name: Clear Manual Override
-  description: Clear manual override and resume adaptive control
-  fields:
-    entity_id:
-      name: Entity ID
-      description: Adaptive Climate binary sensor entity ID
-      required: true
-      selector:
-        entity:
-          domain: binary_sensor
-          integration: adaptive_climate
+
+

@@ -45,7 +45,6 @@
           "comfort_range_max_offset": "Oberer Komfortbereich-Versatz (°C)",
           "air_velocity": "Luftgeschwindigkeit (m/s)",
           "temperature_change_threshold": "Temperaturänderungs-Schwellenwert (°C)",
-          "setback_temperature_offset": "Energiespar-Temperatur-Versatz (°C)",
           "comfort_category": "ASHRAE 55 Komfort-Kategorie",
           "energy_save_mode": "Energiesparmodus Aktivieren",
           "adaptive_air_velocity": "Adaptive Luftgeschwindigkeit Aktivieren",
@@ -98,9 +97,6 @@
       },
       "temperature_change_threshold": {
         "name": "Temperaturänderungs-Schwellenwert"
-      },
-      "setback_temperature_offset": {
-        "name": "Setback-Temperatur-Versatz"
       },
       "comfort_range_min_offset": {
         "name": "Minimaler Komfortbereich-Versatz"

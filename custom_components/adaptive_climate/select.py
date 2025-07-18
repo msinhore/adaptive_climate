@@ -36,7 +36,7 @@ async def async_setup_entry(
             entity_key="comfort_category",
             name="Comfort Category",
             icon="mdi:account-group",
-            options=["I", "II", "III"],
+            options=["I", "II"],
         ),
     ]
     
@@ -94,7 +94,7 @@ class AdaptiveClimateSelectEntity(CoordinatorEntity, SelectEntity):
             value = self.coordinator.data.get(self._entity_key)
 
         if value is None:
-            value = self.coordinator.config.get(self._entity_key, "II")
+            value = self.coordinator.config.get(self._entity_key, "I")
         
         _LOGGER.debug(
             "Select entity %s current_option: %s (source: %s)",

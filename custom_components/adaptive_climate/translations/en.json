@@ -39,26 +39,18 @@
         "title": "Adaptive Climate Options",
         "description": "Configure advanced settings for your adaptive climate control.",
         "data": {
+          "climate_entity": "Climate Entity",
+          "indoor_temp_sensor": "Indoor Temperature Sensor",
+          "outdoor_temp_sensor": "Outdoor Temperature Sensor",
+          "indoor_humidity_sensor": "Indoor Humidity Sensor",
+          "outdoor_humidity_sensor": "Outdoor Humidity Sensor",
+          "comfort_category": "ASHRAE 55 Comfort Category",
           "min_comfort_temp": "Minimum Comfort Temperature (°C)",
           "max_comfort_temp": "Maximum Comfort Temperature (°C)",
-          "comfort_range_min_offset": "Comfort Range Lower Offset (°C)",
-          "comfort_range_max_offset": "Comfort Range Upper Offset (°C)",
-          "air_velocity": "Air Velocity (m/s)",
           "temperature_change_threshold": "Temperature Change Threshold (°C)",
-          "setback_temperature_offset": "Energy Saving Temperature Offset (°C)",
-          "comfort_category": "ASHRAE 55 Comfort Category",
+          "override_temperature": "Override Temperature (°C)",
           "energy_save_mode": "Enable Energy Saving Mode",
-          "adaptive_air_velocity": "Enable Adaptive Air Velocity",
-          "humidity_comfort_enable": "Enable Humidity Comfort Adjustments",
-          "comfort_precision_mode": "Enable Comfort Precision Mode",
-          "use_operative_temperature": "Use Operative Temperature",
-          "auto_shutdown_enable": "Enable Auto Shutdown",
-          "auto_shutdown_minutes": "Auto Shutdown Time (minutes)",
-          "auto_start_enable": "Enable Auto Start",
-          "auto_start_minutes": "Auto Start Time (minutes)",
-          "fan_mode_low_velocity": "Fan Mode: Low Velocity (m/s)",
-          "fan_mode_mid_velocity": "Fan Mode: Medium Velocity (m/s)",
-          "fan_mode_high_velocity": "Fan Mode: High Velocity (m/s)"
+          "auto_mode_enable": "Enable Auto Mode"
         }
       }
     }
@@ -88,69 +80,24 @@
     },
     "number": {
       "min_comfort_temp": {
-        "name": "Minimum Comfort Temperature"
+        "name": "Minimum Comfort Temperature (°C)"
       },
       "max_comfort_temp": {
-        "name": "Maximum Comfort Temperature"
-      },
-      "air_velocity": {
-        "name": "Air Velocity"
+        "name": "Maximum Comfort Temperature (°C)"
       },
       "temperature_change_threshold": {
-        "name": "Temperature Change Threshold"
+        "name": "Temperature Change Threshold (°C)"
       },
-      "setback_temperature_offset": {
-        "name": "Setback Temperature Offset"
-      },
-      "comfort_range_min_offset": {
-        "name": "Comfort Range Min Offset"
-      },
-      "comfort_range_max_offset": {
-        "name": "Comfort Range Max Offset"
-      },
-      "auto_shutdown_minutes": {
-        "name": "Auto Shutdown Time (minutes)"
-      },
-      "auto_start_minutes": {
-        "name": "Auto Start Time (minutes)"
-      },
-      "fan_mode_low_velocity": {
-        "name": "Fan Mode: Low Velocity"
-      },
-      "fan_mode_mid_velocity": {
-        "name": "Fan Mode: Medium Velocity"
-      },
-      "fan_mode_high_velocity": {
-        "name": "Fan Mode: High Velocity"
-      },
-      "user_override_enable": {
-        "name": "Enable User Override"
-      },
-      "user_override_minutes": {
-        "name": "User Override Minutes"
+      "override_temperature": {
+        "name": "Override Temperature (°C)"
       }
     },
     "switch": {
       "energy_save_mode": {
         "name": "Energy Save Mode"
       },
-      "adaptive_air_velocity": {
-        "name": "Adaptive Air Velocity"
-      },
-      "humidity_comfort_enable": {
-        "name": "Humidity Comfort Enable"
-      },
-      "comfort_precision_mode": {
-        "name": "Comfort Precision Mode"
-      },
-      "use_operative_temperature": {
-        "name": "Use Operative Temperature"
-      },
-      "auto_shutdown_enable": {
-        "name": "Enable Auto Shutdown"
-      },
-      "auto_start_enable": {
-        "name": "Enable Auto Start"
+      "auto_mode_enable": {
+        "name": "Enable Auto Mode"
       }
     },
     "select": {
@@ -158,8 +105,7 @@
         "name": "Comfort Category",
         "state": {
           "cat_i": "Category I (90% satisfaction)",
-          "cat_ii": "Category II (80% satisfaction)",
-          "cat_iii": "Category III (70% satisfaction)"
+          "cat_ii": "Category II (80% satisfaction)"
         }
       }
     }

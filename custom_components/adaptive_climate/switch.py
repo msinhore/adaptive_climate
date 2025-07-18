@@ -40,23 +40,9 @@ async def async_setup_entry(
         AdaptiveClimateSwitchEntity(
             coordinator=coordinator,
             config_entry=config_entry,
-            entity_key="auto_shutdown_enable",
-            name="Auto Shutdown Enable",
-            icon="mdi:power-off",
-        ),
-        AdaptiveClimateSwitchEntity(
-            coordinator=coordinator,
-            config_entry=config_entry,
-            entity_key="auto_start_enable",
-            name="Auto Resume on Presence Enable",
-            icon="mdi:power-on",
-        ),
-        AdaptiveClimateSwitchEntity(
-            coordinator=coordinator,
-            config_entry=config_entry,
-            entity_key="user_override_enable",
-            name="User Override Settings Enable",
-            icon="mdi:autorenew",
+            entity_key="auto_mode_enable",
+            name="Adaptive Climate Auto Mode",
+            icon="mdi:robot",
         ),
     ]
     

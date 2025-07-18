@@ -16,6 +16,7 @@ HVAC_MODE_EQUIVALENTS = {
     "cool": ["cool", "Cool"],
     "heat": ["heat", "Heat"],
     "dry": ["dry", "Dry", "dehumidify"],
+    "humidify": ["humidify", "Humidify", "humidification"], 
     "fan_only": ["fan_only", "fan", "Fan only", "Fan", "fanonly"],
     "off": ["off", "Off"],
 }
