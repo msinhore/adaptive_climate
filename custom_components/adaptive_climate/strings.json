@@ -45,7 +45,8 @@
       },
       "temperature_change_threshold": {
         "name": "Temperature Change Threshold"
-      },
+      }
+    },
     "select": {
       "comfort_category": {
         "name": "Comfort Category",
