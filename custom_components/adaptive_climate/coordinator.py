@@ -94,6 +94,8 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         if not state or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
             return self._last_valid_params or self._default_params("entity_disabled")
 
+        energy_save_mode_active = self.config.get("energy_save_mode", True)
+
         auto_mode_enable = self.config.get("auto_mode_enable", True)
 
         if not auto_mode_enable:
@@ -126,7 +128,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             outdoor_humidity=outdoor_humidity,
             running_mean_outdoor_temp=self._running_mean_outdoor_temp,
             running_mean_indoor_temp=self._running_mean_indoor_temp,
-            energy_save_mode=self.config.get("energy_save_mode", True),
+            energy_save_mode=energy_save_mode_active,
             device_name=self.config.get("name", "Adaptive Climate"),
             override_temperature=self.config.get("override_temperature", 0),
             aggressive_cooling_threshold=self.config.get("aggressive_cooling_threshold", 2.0),
@@ -243,6 +245,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
     def _check_manual_override(self, state) -> bool:
         """Check if the climate entity has been manually overridden."""
+        if getattr(self, "_system_turned_off", False):
+            # Se o sistema desligou, ignorar alterações seguintes feitas pelo sistema
+            self._system_turned_off = False  # Resetar após religar pelo sistema
+            return False
+
         ac_hvac_mode = str(state.state)
         ac_fan_mode = str(state.attributes.get("fan_mode"))
         ac_temperature = round(float(state.attributes.get("temperature")), 2) if state.attributes.get("temperature") else None
@@ -257,12 +264,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         last_temperature = last_command.get("temperature")
 
         def _values_different(a, b, tolerance=0.1):
-            """Compare floats with tolerance."""
             if a is None or b is None:
                 return False
             return abs(float(a) - float(b)) > tolerance
 
-        # Check if the current state differs from the last command
         if (
             last_hvac_mode is not None and
             (
@@ -271,8 +276,19 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 _values_different(ac_temperature, last_temperature)
             )
         ):
+            if self.config.get("auto_mode_enable", True):
+                self.config["auto_mode_enable"] = False
+                self.log_event("Manual control detected. Auto mode disabled.")
             return True
+
         return False
+    async def _shutdown_climate(self) -> None:
+        """Shutdown climate entity as system action."""
+        self._system_turned_off = True  # Marca que foi o sistema que desligou
+        await self._call_service(CLIMATE_DOMAIN, "turn_off", {
+            "entity_id": self.climate_entity_id
+        })
+        self.log_event("System turned off the climate entity.")
 
     # --- Dynamic Configuration ---
     async def async_update_config_value(self, key: str, value: Any) -> None:
@@ -429,10 +445,15 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         # HVAC mode
         if target_hvac_mode != current_hvac_mode:
             if target_hvac_mode in supported_hvac_modes:
+                if target_hvac_mode == HVACMode.OFF:
+                    self._system_turned_off = True  # Registrar desligamento pelo sistema
                 await self._call_service(CLIMATE_DOMAIN, "set_hvac_mode", {
                     "entity_id": self.climate_entity_id,
                     "hvac_mode": target_hvac_mode,
                 })
+                if self._system_turned_off and target_hvac_mode != HVACMode.OFF:
+                    self._system_turned_off = False  # Reset após religar pelo sistema
+                    self.log_event("System turned climate entity ON. Resetting system_turned_off flag.")
                 hvac_changed = True
 
         if temperature_changed or fan_changed or hvac_changed:
@@ -459,17 +480,18 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             self._last_system_command = data.get("last_system_command", {})
             timestamp = data.get("last_command_timestamp")
             self._last_command_timestamp = dt_util.parse_datetime(timestamp) if timestamp else None
+            self._system_turned_off = data.get("system_turned_off", False)
 
         await self._save_persisted_parameters_only()
         await self._load_outdoor_temp_history()
         await self._load_indoor_temp_history()
 
     async def _save_persisted_data(self, data: dict[str, Any]) -> None:
-        """Save the current state to persistent storage."""
         data_to_save = {
             "last_system_command": self._last_system_command,
             "last_command_timestamp": self._last_command_timestamp.isoformat() if self._last_command_timestamp else None,
             "last_sensor_data": data,
+            "system_turned_off": getattr(self, "_system_turned_off", False),
             "config_parameters": {
                 "min_comfort_temp": self.config.get("min_comfort_temp"),
                 "max_comfort_temp": self.config.get("max_comfort_temp"),
