@@ -14,7 +14,7 @@ except (FileNotFoundError, json.JSONDecodeError):
     VERSION = "1.1.3"
 
 # Default configurable parameters (stored in config_entry.options)
-DEFAULT_COMFORT_CATEGORY = "II"
+DEFAULT_COMFORT_CATEGORY = "I"
 DEFAULT_MIN_COMFORT_TEMP = 18.0
 DEFAULT_MAX_COMFORT_TEMP = 28.0
 DEFAULT_TEMPERATURE_CHANGE_THRESHOLD = 0.5

@@ -1,7 +1,6 @@
 """
 Adaptive Climate Coordinator: Home Assistant DataUpdateCoordinator for adaptive climate control.
 """
-
 # --- Imports ---
 from __future__ import annotations
 import logging
@@ -80,6 +79,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         # Aggressive Cooling / Heating
         self._last_system_command = {}
         self._last_command_timestamp: Optional[datetime] = None
+        self.command_ignore_interval: int = self.config.get("command_ignore_interval", 15)  # seconds
+
+        self._system_turned_off = False  # Tracks if the system turned off the climate device
+        self._user_power_off = False  # Tracks if the user manually turned off the climate device
 
         self._setup_listeners()
         self.hass.async_create_task(self._load_persisted_data())
@@ -94,7 +97,12 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         if not state or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
             return self._last_valid_params or self._default_params("entity_disabled")
 
-        energy_save_mode_active = self.config.get("energy_save_mode", True)
+        # If user powered off, pause automatic control until user turns it back on
+        if self._user_power_off:
+            self.log_event("User powered off the climate entity. Automatic control paused until user turns it back on.")
+            return self._last_valid_params or self._default_params("user_power_off")
+
+        energy_save_mode_active = self.config["energy_save_mode"]
 
         auto_mode_enable = self.config.get("auto_mode_enable", True)
 
@@ -136,21 +144,21 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         )
         _LOGGER.debug(
             f"[{self.config.get('name')}] Comfort parameters: "
+            f"ashrae_compliant={comfort_params.get('ashrae_compliant')}, "
             f"season={comfort_params.get('season')}, "
             f"category={comfort_params.get('category')}, "
-            f"comfort_temp={comfort_params.get('comfort_temp')}, "
+            f"energy_save_mode={self.config.get('energy_save_mode')}, "
             f"hvac_mode={comfort_params.get('hvac_mode')}, "
             f"fan_mode={comfort_params.get('fan_mode')}, "
-            f"ashrae_compliant={comfort_params.get('ashrae_compliant')}, "
-            f"comfort_min_ashrae={comfort_params.get('comfort_min_ashrae')}, "
-            f"comfort_max_ashrae={comfort_params.get('comfort_max_ashrae')}, "
-            f"indoor_humidity={indoor_humidity}, "
-            f"outdoor_humidity={outdoor_humidity}, "
-            f"indoor_temp={indoor_temp}, "
-            f"outdoor_temp={outdoor_temp}, "
-            f"running_mean_indoor_temp={self._running_mean_indoor_temp}, "
-            f"running_mean_outdoor_temp={self._running_mean_outdoor_temp}, "
-            f"energy_save_mode={self.config.get('energy_save_mode')}"
+            f"indoor_temp={int(round(indoor_temp))}°C, "
+            f"outdoor_temp={int(round(outdoor_temp))}°C, "
+            f"comfort_temp={int(round(comfort_params.get('comfort_temp')))}°C, "
+            f"comfort_min_ashrae={int(round(comfort_params.get('comfort_min_ashrae')))}°C, "
+            f"comfort_max_ashrae={int(round(comfort_params.get('comfort_max_ashrae')))}°C, "
+            f"running_mean_indoor_temp={int(round(self._running_mean_indoor_temp))}°C, "
+            f"running_mean_outdoor_temp={int(round(self._running_mean_outdoor_temp))}°C, "
+            f"indoor_humidity={int(round(indoor_humidity))}%, "
+            f"outdoor_humidity={int(round(outdoor_humidity))}%"
         )
 
         # Determine control actions based on comfort parameters
@@ -194,9 +202,6 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         )
         self._last_valid_params = params.copy()
         await self._save_persisted_data(params)
-        _LOGGER.debug(f"[{self.config.get('name')}] Control decision: {decision}. "
-                      f"AC state: {ac_state_dict}, Desired: {desired_state_dict}, "
-                      f"Last command: {self._last_system_command}")
         return params
 
     # --- Log event ---
@@ -239,52 +244,46 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         self._last_system_command = {
             "hvac_mode": str(state.get("set_hvac_mode")),
             "fan_mode": str(state.get("set_fan_mode")),
-            "temperature": round(float(state.get("set_temperature")), 2),
+            "temperature": int(round(state.get("set_temperature"))),
         }
         self._last_command_timestamp = dt_util.utcnow()
 
     def _check_manual_override(self, state) -> bool:
-        """Check if the climate entity has been manually overridden."""
-        if getattr(self, "_system_turned_off", False):
-            # Se o sistema desligou, ignorar alterações seguintes feitas pelo sistema
-            self._system_turned_off = False  # Resetar após religar pelo sistema
+        """Detect manual override based on state difference from last system command."""
+        if not self._last_system_command:
+            return False  # No command issued yet
+
+        # If within ignore interval, do not consider manual override
+        if self._last_command_timestamp and (dt_util.utcnow() - self._last_command_timestamp).total_seconds() < self.command_ignore_interval:
             return False
+
+        # If user manually powered off, set flag and pause auto mode (but do not disable auto mode)
+        if state.state == HVACMode.OFF:
+            if self._last_system_command.get("hvac_mode") != HVACMode.OFF:
+                self._user_power_off = True
+            return False  # Respect power-off without disabling auto mode
 
         ac_hvac_mode = str(state.state)
         ac_fan_mode = str(state.attributes.get("fan_mode"))
-        ac_temperature = round(float(state.attributes.get("temperature")), 2) if state.attributes.get("temperature") else None
+        ac_temperature = int(round(float(state.attributes.get("temperature") or 0)))
 
-        last_command = self._last_system_command
-
-        if self._last_command_timestamp and (dt_util.utcnow() - self._last_command_timestamp).total_seconds() < 15:
-            return False
-
-        last_hvac_mode = last_command.get("hvac_mode")
-        last_fan_mode = last_command.get("fan_mode")
-        last_temperature = last_command.get("temperature")
-
-        def _values_different(a, b, tolerance=0.1):
-            if a is None or b is None:
-                return False
-            return abs(float(a) - float(b)) > tolerance
-
+        expected_temperature = int(self._last_system_command.get("temperature") or 0)
         if (
-            last_hvac_mode is not None and
-            (
-                ac_hvac_mode != last_hvac_mode or
-                ac_fan_mode != last_fan_mode or
-                _values_different(ac_temperature, last_temperature)
-            )
+            ac_hvac_mode != self._last_system_command.get("hvac_mode") or
+            ac_fan_mode != self._last_system_command.get("fan_mode") or
+            ac_temperature != expected_temperature
         ):
-            if self.config.get("auto_mode_enable", True):
-                self.config["auto_mode_enable"] = False
-                self.log_event("Manual control detected. Auto mode disabled.")
+            # Manual override detected (not powering off)
+            self.log_event("Manual control detected. Auto mode disabled.")
+            # Remove disabling auto_mode_enable here (no longer set to False)
             return True
 
         return False
+
     async def _shutdown_climate(self) -> None:
         """Shutdown climate entity as system action."""
         self._system_turned_off = True  # Marca que foi o sistema que desligou
+        await self._save_persisted_data(self._last_valid_params or {})
         await self._call_service(CLIMATE_DOMAIN, "turn_off", {
             "entity_id": self.climate_entity_id
         })
@@ -318,6 +317,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             "override_temperature": self.config.get("override_temperature"),
             "aggressive_cooling_threshold": self.config.get("aggressive_cooling_threshold"),
             "aggressive_heating_threshold": self.config.get("aggressive_heating_threshold"),
+            "energy_save_mode": self.config.get("energy_save_mode", False),
         }
         await self._store.async_save(data)
 
@@ -381,6 +381,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
     # --- Action Execution ---
     async def _execute_actions(self, actions: dict[str, Any]) -> None:
         """Execute climate actions with minimal repeated logic."""
+        # If user powered off, do not execute any actions
+        if self._user_power_off:
+            self.log_event(f"User has manually powered off {self.climate_entity_id}. No actions executed.")
+            return
+
         state = self.hass.states.get(self.climate_entity_id)
         if not state or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             _LOGGER.warning(
@@ -409,6 +414,16 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         if not auto_mode_enable:
             self.log_event(f"Auto mode disabled. No actions will be taken.")
             return
+
+        if target_hvac_mode != current_hvac_mode:
+            if target_hvac_mode in supported_hvac_modes:
+                if target_hvac_mode == HVACMode.OFF:
+                    self._system_turned_off = True
+                    await self._save_persisted_data(self._last_valid_params or {})
+                elif getattr(self, "_system_turned_off", False) and target_hvac_mode != HVACMode.OFF:
+                    self._system_turned_off = False
+                    await self._save_persisted_data(self._last_valid_params or {})
+                    self.log_event("System turned climate entity ON. Resetting system_turned_off flag.")
 
         if current_hvac_mode == HVACMode.OFF:
             self.log_event(f"HVAC is OFF, skipping further actions.")
@@ -445,25 +460,22 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         # HVAC mode
         if target_hvac_mode != current_hvac_mode:
             if target_hvac_mode in supported_hvac_modes:
-                if target_hvac_mode == HVACMode.OFF:
-                    self._system_turned_off = True  # Registrar desligamento pelo sistema
                 await self._call_service(CLIMATE_DOMAIN, "set_hvac_mode", {
                     "entity_id": self.climate_entity_id,
                     "hvac_mode": target_hvac_mode,
                 })
-                if self._system_turned_off and target_hvac_mode != HVACMode.OFF:
-                    self._system_turned_off = False  # Reset após religar pelo sistema
-                    self.log_event("System turned climate entity ON. Resetting system_turned_off flag.")
                 hvac_changed = True
 
         if temperature_changed or fan_changed or hvac_changed:
             self._update_last_system_command(actions)
+            # Reset the system turned off flag after issuing commands, only if previously set
+            if self._system_turned_off:
+                self._system_turned_off = False
+            await self._save_persisted_data(self._last_valid_params or {})
             self.log_event(f"Set temperature to {target_temperature}, "
                            f"fan_mode={target_fan_mode}, "
                            f"hvac_mode={target_hvac_mode}"
                            f" on {self.climate_entity_id}")
-        else:
-            self.log_event(f"No changes needed for climate entity {self.climate_entity_id}.")
 
     async def _call_service(self, domain, service, data):
         """Helper to call Home Assistant service with delay."""
@@ -481,6 +493,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             timestamp = data.get("last_command_timestamp")
             self._last_command_timestamp = dt_util.parse_datetime(timestamp) if timestamp else None
             self._system_turned_off = data.get("system_turned_off", False)
+            self._user_power_off = data.get("user_power_off", False)
 
         await self._save_persisted_parameters_only()
         await self._load_outdoor_temp_history()
@@ -492,6 +505,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             "last_command_timestamp": self._last_command_timestamp.isoformat() if self._last_command_timestamp else None,
             "last_sensor_data": data,
             "system_turned_off": getattr(self, "_system_turned_off", False),
+            "user_power_off": self._user_power_off,
             "config_parameters": {
                 "min_comfort_temp": self.config.get("min_comfort_temp"),
                 "max_comfort_temp": self.config.get("max_comfort_temp"),
@@ -512,19 +526,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             return None
 
         state = self.hass.states.get(entity_id)
-        if state is None:
-            _LOGGER.error(f"[{self.config.get('name')}] Sensor '{entity_id}' not found in Home Assistant.")
+        if state is None or (state is not None and state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE)):
+            _LOGGER.warning(f"[{self.config.get('name')}] Sensor '{entity_id}' not found or unavailable. Skipping update until available.")
             return None
-
-        if state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-            _LOGGER.warning(f"[{self.config.get('name')}] Sensor '{entity_id}' is unavailable. Using last known value.")
-            last_valid_map = {
-                "indoor_temp": self._last_valid_indoor_temp,
-                "outdoor_temp": self._last_valid_outdoor_temp,
-                "indoor_humidity": self._last_valid_indoor_humidity,
-                "outdoor_humidity": self._last_valid_outdoor_humidity
-            }
-            return last_valid_map.get(sensor_type)
 
         try:
             value = float(state.state)
@@ -608,7 +612,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             fan_mode = "high"
 
         _LOGGER.debug(f"[{self.config.get('name')}] Initial determine_actions: "
-                      f"target_temp={target_temp}, hvac_mode={hvac_mode}, fan_mode={fan_mode}"
+                      f"target_temp={int(round(target_temp))}°C, hvac_mode={hvac_mode}, fan_mode={fan_mode}"
                       )
 
         state = self.hass.states.get(self.climate_entity_id)
@@ -646,12 +650,20 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         """
         Handle state changes of monitored entities.
         Only disables auto mode if manual control is detected and auto mode is currently enabled.
+        Also handles user power-on to resume automatic control.
         """
         # Check if the event is for the monitored climate entity
         entity_id = event.data.get("entity_id")
         if entity_id != self.climate_entity_id:
             _LOGGER.debug(f"[{self.config.get('name')}] Ignored state change for {entity_id}")
             return
-        
+
+        # If user powers ON after having powered OFF, resume automatic control
+        state = self.hass.states.get(self.climate_entity_id)
+        if state is not None and state.state != HVACMode.OFF and self._user_power_off:
+            self._user_power_off = False
+            self.config["auto_mode_enable"] = True
+            self.log_event("User powered on climate entity. Automatic control resumed.")
+
         # Continue with normal update/refresh
         self.hass.async_create_task(self.async_request_refresh())
