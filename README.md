@@ -19,7 +19,7 @@ A Home Assistant integration that implements ASHRAE 55 Adaptive Thermal Comfort 
 
 **Adaptive Climate** intelligently manages your climate system with a scientific adaptive approach. It offers:
 
-🌡️ **Continuous Monitoring:** Tracks indoor temperature, outdoor temperature, radiant temperature (if available), humidity, and occupancy sensors.  
+🌡️ **Continuous Monitoring:** Tracks indoor temperature, outdoor temperature, radiant temperature (if available), and humidity sensors.  
 🌎 **Automatic Season Detection:** Detects the current season based on your latitude and date, adapting comfort logic for summer, winter, spring, and autumn.  
 🎯 **Configurable Comfort Ranges:** Sets minimum and maximum comfort temperature limits.  
 📐 **ASHRAE 55-2020 Model:** Uses the Adaptive Thermal Comfort model to determine optimal comfort zones.  
@@ -29,7 +29,7 @@ A Home Assistant integration that implements ASHRAE 55 Adaptive Thermal Comfort 
 ⏳ **Auto Shutdown:** Turns off the climate system after a configurable absence time.  
 🔄 **Auto Start:** Restarts the climate system automatically after presence returns, with configurable delay.  
 🕹️ **User Override:** Any manual change (mode, temperature, fan) pauses automatic control for a user-defined time, with state persistence across restarts.  
-🧠 **Full Sensor Integration:** Uses temperature, humidity, radiant temperature, and occupancy data for science-based decisions.  
+🧠 **Full Sensor Integration:** Uses temperature, humidity, and radiant temperature data for science-based decisions.  
 📊 **Running Mean Outdoor Temperature:** Stores outdoor temperature history for accurate adaptive calculations.  
 🌐 **International Comfort Standards:** Actions are based on global standards, not just fixed setpoints.  
 📝 **Advanced Logging:** Logs all comfort calculations, actions, and override events in detail.  
@@ -56,7 +56,7 @@ Traditional thermostats use static temperature settings that don't account for:
 
 The integration:
 
-1. Monitors indoor and outdoor temperatures, humidity, occupancy, and optional radiant temperature.
+1. Monitors indoor and outdoor temperatures, humidity, and optional radiant temperature.
 2. Calculates adaptive comfort zones using ASHRAE 55 standards and pythermalcomfort.
 3. Provides real Home Assistant entities to control and monitor your climate system:
    - Binary sensor: ASHRAE compliance
@@ -95,7 +95,6 @@ The integration:
 ### Optional
 
 - Indoor/outdoor humidity sensors
-- Occupancy sensor
 - Mean radiant temperature sensor
 - Air velocity sensor
 
@@ -157,89 +156,3 @@ The adaptive comfort calculations follow ASHRAE Standard 55-2020 implementations
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
-
-## Architecture Diagram
-
-```mermaid
-graph TD
-    subgraph Sensors
-        OUT["Outdoor Temp Sensor"]
-        IN["Indoor Temp Sensor"]
-        RAD["Radiant Temp Sensor"]
-        OUT_HUM["Outdoor Humidity Sensor"]
-        IN_HUM["Indoor Humidity Sensor"]
-        OCC["Occupancy Sensor"]
-    end
-    USER["User Settings (Comfort Range, Preferences)"]
-    SEASON["Season Detector (Latitude + Date)"]
-    ASHRAE["ASHRAE 55-2020 Comfort Model"]
-    AC["Climate Device (AC/Heater/Fan)"]
-    HA["Adaptive Climate Integration"]
-
-    OUT --> HA
-    IN --> HA
-    RAD --> HA
-    OUT_HUM --> HA
-    IN_HUM --> HA
-    OCC --> HA
-    USER --> HA
-    SEASON --> HA
-    ASHRAE --> HA
-    HA --> AC
-    AC -- "State Feedback" --> HA
-```
-## Workflow Decision
-
-```mermaid
-flowchart TD
-    Start(["Start _async_update_data"])
-    Sensors["Get indoor, outdoor temp and humidity"]
-    CheckUnavailable{"Indoor or outdoor temp unavailable?"}
-    Skip["Return last_valid_params or default"]
-    UpdateOutdoor["Update outdoor temp history"]
-    UpdateOccupancy["Update occupancy state"]
-    CheckOverrideExpiry["Check manual override expiry"]
-    CheckAutoShutdown{"auto_shutdown_enable ON?"}
-    CheckOccupancy{"Occupied?"}
-    AutoShutdown["Shutdown climate (auto shutdown)"]
-    CalculateComfort["calculate_hvac_and_fan"]
-    EnergySaveON{"energy_save_mode ON?"}
-    CheckSummerTempON{"indoor_temp < comfort_temp?"}
-    HVACOffON["hvac_mode = off; fan = off"]
-    CoolModeON["hvac_mode = cool; fan based on temp"]
-    EnergySaveOFF{"energy_save_mode OFF?"}
-    CheckSummerTempOFF{"indoor_temp < comfort_temp?"}
-    HVACCoolLow["hvac_mode = cool; fan = low"]
-    CoolModeOFF["hvac_mode = cool; fan based on temp"]
-    CheckManualOverride{"Manual override active?"}
-    ExecuteActions["Execute determined actions"]
-    SkipActions["Skip actions due to manual override"]
-    BuildParams["Build params and save to store"]
-    End(["Return params"])
-
-    Start --> Sensors --> CheckUnavailable
-    CheckUnavailable -- "Yes" --> Skip --> End
-    CheckUnavailable -- "No" --> UpdateOutdoor --> UpdateOccupancy --> CheckOverrideExpiry --> CheckAutoShutdown
-
-    CheckAutoShutdown -- "Yes" --> CheckOccupancy
-    CheckAutoShutdown -- "No" --> CalculateComfort
-
-    CheckOccupancy -- "No" --> AutoShutdown --> CalculateComfort
-    CheckOccupancy -- "Yes" --> CalculateComfort
-
-    CalculateComfort --> EnergySaveON
-    EnergySaveON -- "Yes" --> CheckSummerTempON
-    EnergySaveON -- "No" --> EnergySaveOFF
-
-    CheckSummerTempON -- "Yes" --> HVACOffON --> NextSummer
-    CheckSummerTempON -- "No" --> CoolModeON --> NextSummer
-
-    EnergySaveOFF --> CheckSummerTempOFF
-    CheckSummerTempOFF -- "Yes" --> HVACCoolLow --> NextSummer
-    CheckSummerTempOFF -- "No" --> CoolModeOFF --> NextSummer
-
-    NextSummer --> CheckManualOverride
-
-    CheckManualOverride -- "No" --> ExecuteActions --> BuildParams --> End
-    CheckManualOverride -- "Yes" --> SkipActions --> BuildParams --> End
-```
