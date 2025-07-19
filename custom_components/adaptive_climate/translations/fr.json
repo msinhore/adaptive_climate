@@ -15,18 +15,18 @@
       },
       "optional_sensors": {
         "title": "Capteurs Optionnels",
-        "description": "Ajoutez des capteurs optionnels pour des calculs de confort améliorés.",
+        "description": "Ajoutez des capteurs optionnels pour améliorer les calculs de confort.",
         "data": {
           "indoor_humidity_sensor": "Capteur d'Humidité Intérieure",
           "outdoor_humidity_sensor": "Capteur d'Humidité Extérieure",
           "mean_radiant_temp_sensor": "Capteur de Température Radiante Moyenne",
-          "occupancy_sensor": "Capteur d'Occupation"
+          "occupancy_sensor": "Capteur de Présence"
         }
       }
     },
     "error": {
       "cannot_connect": "Échec de la connexion",
-      "invalid_entity": "Entité invalide sélectionnée",
+      "invalid_entity": "Entité sélectionnée invalide",
       "unknown": "Erreur inattendue"
     },
     "abort": {
@@ -39,25 +39,23 @@
         "title": "Options du Climat Adaptatif",
         "description": "Configurez les paramètres avancés pour votre contrôle climatique adaptatif.",
         "data": {
+          "climate_entity": "Entité Climatique",
+          "indoor_temp_sensor": "Capteur de Température Intérieure",
+          "outdoor_temp_sensor": "Capteur de Température Extérieure",
+          "indoor_humidity_sensor": "Capteur d'Humidité Intérieure",
+          "outdoor_humidity_sensor": "Capteur d'Humidité Extérieure",
+          "comfort_category": "Catégorie de Confort ASHRAE 55",
           "min_comfort_temp": "Température Minimale de Confort (°C)",
           "max_comfort_temp": "Température Maximale de Confort (°C)",
-          "comfort_range_min_offset": "Décalage Inférieur de la Zone de Confort (°C)",
-          "comfort_range_max_offset": "Décalage Supérieur de la Zone de Confort (°C)",
-          "air_velocity": "Vitesse de l'Air (m/s)",
           "temperature_change_threshold": "Seuil de Changement de Température (°C)",
-          "comfort_category": "Catégorie de Confort ASHRAE 55",
-          "energy_save_mode": "Activer le Mode d'Économie d'Énergie",
-          "adaptive_air_velocity": "Activer la Vitesse d'Air Adaptative",
-          "humidity_comfort_enable": "Activer les Ajustements de Confort d'Humidité",
-          "comfort_precision_mode": "Activer le Mode de Précision de Confort",
-          "use_operative_temperature": "Utiliser la Température Opérative",
-          "auto_shutdown_enable": "Activer l'arrêt automatique",
-          "auto_shutdown_minutes": "Temps d'arrêt automatique (minutes)",
-          "auto_start_enable": "Activer le démarrage automatique",
-          "auto_start_minutes": "Temps de démarrage automatique (minutes)",
-          "fan_mode_low_velocity": "Mode ventilateur : basse vitesse (m/s)",
-          "fan_mode_mid_velocity": "Mode ventilateur : vitesse moyenne (m/s)",
-          "fan_mode_high_velocity": "Mode ventilateur : haute vitesse (m/s)"
+          "override_temperature": "Température de Substitution (°C)",
+          "energy_save_mode": "Activer le Mode Économie d'Énergie",
+          "auto_mode_enable": "Activer le Mode Automatique",
+          "aggressive_cooling_threshold": "Seuil de Refroidissement Agressif (°C)",
+          "aggressive_heating_threshold": "Seuil de Chauffage Agressif (°C)",
+          "mean_radiant_temp_sensor": "Capteur de Température Radiante Moyenne",
+          "occupancy_sensor": "Capteur de Présence",
+          "command_ignore_interval": "Intervalle d'Ignorance des Commandes (secondes)"
         }
       }
     }
@@ -87,75 +85,38 @@
     },
     "number": {
       "min_comfort_temp": {
-        "name": "Température Minimale de Confort"
+        "name": "Température Minimale de Confort (°C)"
       },
       "max_comfort_temp": {
-        "name": "Température Maximale de Confort"
-      },
-      "air_velocity": {
-        "name": "Vitesse de l'Air"
+        "name": "Température Maximale de Confort (°C)"
       },
       "temperature_change_threshold": {
-        "name": "Seuil de Changement de Température"
+        "name": "Seuil de Changement de Température (°C)"
       },
-      "comfort_range_min_offset": {
-        "name": "Décalage Minimum de la Zone de Confort"
+      "override_temperature": {
+        "name": "Température de Substitution (°C)"
       },
-      "comfort_range_max_offset": {
-        "name": "Décalage Maximum de la Zone de Confort"
+      "aggressive_cooling_threshold": {
+        "name": "Seuil de Refroidissement Agressif (°C)"
       },
-      "auto_shutdown_minutes": {
-        "name": "Temps d'arrêt automatique (minutes)"
-      },
-      "auto_start_minutes": {
-        "name": "Temps de démarrage automatique (minutes)"
-      },
-      "fan_mode_low_velocity": {
-        "name": "Mode ventilateur : basse vitesse"
-      },
-      "fan_mode_mid_velocity": {
-        "name": "Mode ventilateur : vitesse moyenne"
-      },
-      "fan_mode_high_velocity": {
-        "name": "Mode ventilateur : haute vitesse"
-      },
-      "user_override_enable": {
-        "name": "Activer l'Override Utilisateur"
-      },
-      "user_override_minutes": {
-        "name": "Minutes d'Override Utilisateur"
+      "aggressive_heating_threshold": {
+        "name": "Seuil de Chauffage Agressif (°C)"
       }
     },
     "switch": {
       "energy_save_mode": {
-        "name": "Mode d'Économie d'Énergie"
+        "name": "Mode Économie d'Énergie"
       },
-      "adaptive_air_velocity": {
-        "name": "Vitesse d'Air Adaptative"
-      },
-      "humidity_comfort_enable": {
-        "name": "Activer le Confort d'Humidité"
-      },
-      "comfort_precision_mode": {
-        "name": "Mode de Précision de Confort"
-      },
-      "use_operative_temperature": {
-        "name": "Utiliser la Température Opérative"
-      },
-      "auto_shutdown_enable": {
-        "name": "Activer l'arrêt automatique"
-      },
-      "auto_start_enable": {
-        "name": "Activer le démarrage automatique"
+      "auto_mode_enable": {
+        "name": "Activer le Mode Automatique"
       }
     },
     "select": {
       "comfort_category": {
         "name": "Catégorie de Confort",
         "state": {
-          "cat_i": "Catégorie I (90% satisfaction)",
-          "cat_ii": "Catégorie II (80% satisfaction)",
-          "cat_iii": "Catégorie III (70% satisfaction)"
+          "cat_i": "Catégorie I (90% de satisfaction)",
+          "cat_ii": "Catégorie II (80% de satisfaction)"
         }
       }
     }

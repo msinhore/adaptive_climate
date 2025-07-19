@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Configura Clima Adattivo",
-        "description": "Configura il tuo controllo climatico adattivo basato sullo standard ASHRAE 55.",
+        "description": "Configura il controllo climatico adattivo basato sullo standard ASHRAE 55.",
         "data": {
           "name": "Nome Integrazione",
           "climate_entity": "Entità Climatica",
@@ -20,13 +20,13 @@
           "indoor_humidity_sensor": "Sensore Umidità Interna",
           "outdoor_humidity_sensor": "Sensore Umidità Esterna",
           "mean_radiant_temp_sensor": "Sensore Temperatura Radiante Media",
-          "occupancy_sensor": "Sensore di Occupazione"
+          "occupancy_sensor": "Sensore di Presenza"
         }
       }
     },
     "error": {
-      "cannot_connect": "Impossibile connettersi",
-      "invalid_entity": "Entità non valida selezionata",
+      "cannot_connect": "Connessione fallita",
+      "invalid_entity": "Entità selezionata non valida",
       "unknown": "Errore imprevisto"
     },
     "abort": {
@@ -39,25 +39,23 @@
         "title": "Opzioni Clima Adattivo",
         "description": "Configura impostazioni avanzate per il tuo controllo climatico adattivo.",
         "data": {
+          "climate_entity": "Entità Climatica",
+          "indoor_temp_sensor": "Sensore Temperatura Interna",
+          "outdoor_temp_sensor": "Sensore Temperatura Esterna",
+          "indoor_humidity_sensor": "Sensore Umidità Interna",
+          "outdoor_humidity_sensor": "Sensore Umidità Esterna",
+          "comfort_category": "Categoria Comfort ASHRAE 55",
           "min_comfort_temp": "Temperatura Minima di Comfort (°C)",
           "max_comfort_temp": "Temperatura Massima di Comfort (°C)",
-          "comfort_range_min_offset": "Offset Inferiore Zona Comfort (°C)",
-          "comfort_range_max_offset": "Offset Superiore Zona Comfort (°C)",
-          "air_velocity": "Velocità dell'Aria (m/s)",
-          "temperature_change_threshold": "Soglia Cambiamento Temperatura (°C)",
-          "comfort_category": "Categoria Comfort ASHRAE 55",
-          "energy_save_mode": "Attiva Modalità Risparmio Energetico",
-          "adaptive_air_velocity": "Attiva Velocità Aria Adattiva",
-          "humidity_comfort_enable": "Attiva Aggiustamenti Comfort Umidità",
-          "comfort_precision_mode": "Attiva Modalità Precisione Comfort",
-          "use_operative_temperature": "Usa Temperatura Operativa",
-          "auto_shutdown_enable": "Abilita Spegnimento Automatico",
-          "auto_shutdown_minutes": "Tempo di Spegnimento Automatico (minuti)",
-          "auto_start_enable": "Abilita Avvio Automatico",
-          "auto_start_minutes": "Tempo di Avvio Automatico (minuti)",
-          "fan_mode_low_velocity": "Modalità Ventola: Bassa Velocità (m/s)",
-          "fan_mode_mid_velocity": "Modalità Ventola: Velocità Media (m/s)",
-          "fan_mode_high_velocity": "Modalità Ventola: Alta Velocità (m/s)"
+          "temperature_change_threshold": "Soglia di Variazione Temperatura (°C)",
+          "override_temperature": "Sovrascrivi Temperatura (°C)",
+          "energy_save_mode": "Abilita Modalità Risparmio Energetico",
+          "auto_mode_enable": "Abilita Modalità Automatica",
+          "aggressive_cooling_threshold": "Soglia Raffreddamento Aggressivo (°C)",
+          "aggressive_heating_threshold": "Soglia Riscaldamento Aggressivo (°C)",
+          "mean_radiant_temp_sensor": "Sensore Temperatura Radiante Media",
+          "occupancy_sensor": "Sensore di Presenza",
+          "command_ignore_interval": "Intervallo Ignora Comando (secondi)"
         }
       }
     }
@@ -68,10 +66,10 @@
         "name": "Temperatura di Comfort"
       },
       "comfort_range_min": {
-        "name": "Minimo Zona Comfort"
+        "name": "Minimo Intervallo Comfort"
       },
       "comfort_range_max": {
-        "name": "Massimo Zona Comfort"
+        "name": "Massimo Intervallo Comfort"
       },
       "running_mean_outdoor_temp": {
         "name": "Temperatura Esterna Media Mobile"
@@ -87,66 +85,30 @@
     },
     "number": {
       "min_comfort_temp": {
-        "name": "Temperatura Minima di Comfort"
+        "name": "Temperatura Minima di Comfort (°C)"
       },
       "max_comfort_temp": {
-        "name": "Temperatura Massima di Comfort"
-      },
-      "air_velocity": {
-        "name": "Velocità dell'Aria"
+        "name": "Temperatura Massima di Comfort (°C)"
       },
       "temperature_change_threshold": {
-        "name": "Soglia Cambiamento Temperatura"
+        "name": "Soglia di Variazione Temperatura (°C)"
       },
-      "comfort_range_min_offset": {
-        "name": "Offset Minimo Zona Comfort"
+      "override_temperature": {
+        "name": "Sovrascrivi Temperatura (°C)"
       },
-      "comfort_range_max_offset": {
-        "name": "Offset Massimo Zona Comfort"
+      "aggressive_cooling_threshold": {
+        "name": "Soglia Raffreddamento Aggressivo (°C)"
       },
-      "auto_shutdown_minutes": {
-        "name": "Tempo di Spegnimento Automatico (minuti)"
-      },
-      "auto_start_minutes": {
-        "name": "Tempo di Avvio Automatico (minuti)"
-      },
-      "fan_mode_low_velocity": {
-        "name": "Modalità Ventola: Bassa Velocità"
-      },
-      "fan_mode_mid_velocity": {
-        "name": "Modalità Ventola: Velocità Media"
-      },
-      "fan_mode_high_velocity": {
-        "name": "Modalità Ventola: Alta Velocità"
-      },
-      "user_override_enable": {
-        "name": "Abilita Override Utente"
-      },
-      "user_override_minutes": {
-        "name": "Minuti di Override Utente"
+      "aggressive_heating_threshold": {
+        "name": "Soglia Riscaldamento Aggressivo (°C)"
       }
     },
     "switch": {
       "energy_save_mode": {
         "name": "Modalità Risparmio Energetico"
       },
-      "adaptive_air_velocity": {
-        "name": "Velocità Aria Adattiva"
-      },
-      "humidity_comfort_enable": {
-        "name": "Attiva Comfort Umidità"
-      },
-      "comfort_precision_mode": {
-        "name": "Modalità Precisione Comfort"
-      },
-      "use_operative_temperature": {
-        "name": "Usa Temperatura Operativa"
-      },
-      "auto_shutdown_enable": {
-        "name": "Abilita Spegnimento Automatico"
-      },
-      "auto_start_enable": {
-        "name": "Abilita Avvio Automatico"
+      "auto_mode_enable": {
+        "name": "Abilita Modalità Automatica"
       }
     },
     "select": {
@@ -154,8 +116,7 @@
         "name": "Categoria di Comfort",
         "state": {
           "cat_i": "Categoria I (90% soddisfazione)",
-          "cat_ii": "Categoria II (80% soddisfazione)",
-          "cat_iii": "Categoria III (70% soddisfazione)"
+          "cat_ii": "Categoria II (80% soddisfazione)"
         }
       }
     }

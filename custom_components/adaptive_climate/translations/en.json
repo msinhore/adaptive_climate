@@ -50,7 +50,12 @@
           "temperature_change_threshold": "Temperature Change Threshold (°C)",
           "override_temperature": "Override Temperature (°C)",
           "energy_save_mode": "Enable Energy Saving Mode",
-          "auto_mode_enable": "Enable Auto Mode"
+          "auto_mode_enable": "Enable Auto Mode",
+          "aggressive_cooling_threshold": "Aggressive Cooling Threshold (°C)",
+          "aggressive_heating_threshold": "Aggressive Heating Threshold (°C)",
+          "mean_radiant_temp_sensor": "Mean Radiant Temperature Sensor",
+          "occupancy_sensor": "Occupancy Sensor",
+          "command_ignore_interval": "Command Ignore Interval (seconds)"
         }
       }
     }
@@ -90,6 +95,12 @@
       },
       "override_temperature": {
         "name": "Override Temperature (°C)"
+      },
+      "aggressive_cooling_threshold": {
+        "name": "Aggressive Cooling Threshold (°C)"
+      },
+      "aggressive_heating_threshold": {
+        "name": "Aggressive Heating Threshold (°C)"
       }
     },
     "switch": {

@@ -9,9 +9,9 @@ MANIFEST_PATH = os.path.join(os.path.dirname(__file__), "manifest.json")
 try:
     with open(MANIFEST_PATH, "r") as manifest_file:
         _MANIFEST = json.load(manifest_file)
-        VERSION = _MANIFEST.get("version", "1.1.3")
+        VERSION = _MANIFEST.get("version", "1.2.0")
 except (FileNotFoundError, json.JSONDecodeError):
-    VERSION = "1.1.3"
+    VERSION = "1.2.0"
 
 # Default configurable parameters (stored in config_entry.options)
 DEFAULT_COMFORT_CATEGORY = "I"
