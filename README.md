@@ -95,6 +95,8 @@ All other options are configurable via the Home Assistant UI.
 
 ## 📈 How It Works
 
+<img width="2561" height="1101" alt="image" src="https://github.com/user-attachments/assets/98451b40-a040-4420-993d-5d64a851d31e" />
+
 - Continuously monitors temperatures and humidity.
 - Calculates adaptive comfort targets using ASHRAE 55.
 - Controls HVAC and fan modes to optimize comfort.
