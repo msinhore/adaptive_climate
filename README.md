@@ -37,6 +37,7 @@ A Home Assistant integration that implements ASHRAE 55 Adaptive Thermal Comfort 
 🌍 **Multi-language Support:** Supports multiple languages for UI and entity names.  
 💾 **State Persistence:** Maintains state (including overrides and system-off state) across Home Assistant restarts.  
 🙋 **User Respect:** Never turns on the AC if the user turned it off manually.  
+- **Pure Home Assistant Control:** Uses standard entities (selects, switches, binary sensors), no proprietary APIs.
 
 Instead of fixed temperature setpoints, Adaptive Climate adapts to weather, season, and occupancy to improve comfort and reduce energy consumption, providing a truly intelligent and scientific climate control experience.
 
@@ -98,30 +99,17 @@ The integration:
 - Mean radiant temperature sensor
 - Air velocity sensor
 
-## What you get
+## 📊 Entities Provided
 
-### Information entity (1)
-- ** and ASHRAE Compliance**  (binary sensor): Shows if current conditions meet comfort standards.
+- **Binary Sensor:** ASHRAE Compliance  
+- **Select:** Comfort Category (I or II)  
+- **Switches:**  
+  - Energy Save Mode  
+  - Auto Mode  
 
-### Control entities
-#### Number entities (8):
-- Minimum Comfort Temperature
-- Maximum Comfort Temperature
-- if Air Velocity
-- Temperature Change Threshold
-- Natural Ventilation Threshold
-- Setback Temperature Offset
-- Auto Shutdown Minutes
-- Auto Start Minutes
+All configuration is now handled via the UI options flow.
 
-#### Select entity (1):
-- Comfort Category (I, II, III)
-
-#### Switch entities (4):
-- Energy Save Mode
-- Natural Ventilation Enable
-- Auto Shutdown Enable
-- Auto Start Enable
+**Note:** Currently, only a single climate entity is supported as the controlled device. Support for multiple categorized devices (primary/auxiliary, summer/winter) is planned for version 2.x including switches and fan entities.
 
 ## Usage
 
