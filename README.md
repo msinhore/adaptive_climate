@@ -75,7 +75,21 @@ A Home Assistant integration implementing ASHRAE 55 Adaptive Thermal Comfort for
   - Indoor Humidity Sensor
   - Outdoor Humidity Sensor
 
-All other options (comfort temperature range, aggressive cooling/heating thresholds, override adjustments, energy save mode, and auto mode) are configurable via the Home Assistant UI.
+All other options are configurable via the Home Assistant UI.
+
+### Configuration Options Explained
+
+| Option                                  | Description |
+|-----------------------------------------|-------------|
+| **ASHRAE 55 Comfort Category**          | Category I (90% satisfaction) or II (80% satisfaction) for stricter or looser comfort bounds. |
+| **Enable Energy Saving Mode**           | Reduces HVAC usage by prioritizing ventilation and comfort tolerance. Must be manually enabled. |
+| **Enable Auto Mode**                    | Enables autonomous operation. Disable for fully manual control. |
+| **Minimum Comfort Temperature (°C)**   | Lower limit for calculated comfort temperature (default: 18°C). |
+| **Maximum Comfort Temperature (°C)**   | Upper limit for calculated comfort temperature (default: 28°C). |
+| **Temperature Change Threshold (°C)**  | Minimum temperature delta to trigger a new setpoint change (default: 0.5°C). Prevents unnecessary changes. |
+| **Override Temperature (°C)**          | Manual adjustment applied to the calculated comfort temperature (example: -1 for cooler targets). |
+| **Aggressive Cooling Threshold (°C)**  | Defines how strongly the system responds to overheating (default: 2°C). |
+| **Aggressive Heating Threshold (°C)**  | Defines how strongly the system responds to overcooling (default: 2°C). |
 
 ---
 
