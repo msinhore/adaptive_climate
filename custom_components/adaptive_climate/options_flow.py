@@ -13,7 +13,6 @@ from homeassistant.helpers import selector
 
 from .const import (
     DOMAIN,
-    # Default values
     DEFAULT_COMFORT_CATEGORY,
     DEFAULT_MIN_COMFORT_TEMP,
     DEFAULT_MAX_COMFORT_TEMP,
@@ -21,7 +20,6 @@ from .const import (
     DEFAULT_OVERRIDE_TEMPERATURE,
     DEFAULT_AGGRESSIVE_COOLING_THRESHOLD,
     DEFAULT_AGGRESSIVE_HEATING_THRESHOLD,
-    # Categories
     COMFORT_CATEGORIES,
 )
 
@@ -38,23 +36,63 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Manage the options."""
+        """Manage the options step."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
         options = self.config_entry.options
-        data = self.config_entry.data  # <-- importante
+        data = self.config_entry.data
 
         def get_value(key):
             return options.get(key) or data.get(key)
 
+        # Define the options form schema
         schema = vol.Schema({
-            # === Entity Configuration ===
+            # Step 1: Comfort Category and Modes
             vol.Required(
-                "climate_entity",
-                default=get_value("climate_entity")
-            ): selector.selector({"entity": {"domain": "climate"}}),
+                "comfort_category",
+                default=get_value("comfort_category") or DEFAULT_COMFORT_CATEGORY
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"value": "I", "label": f"Category I - {COMFORT_CATEGORIES['I']['description']}"},
+                        {"value": "II", "label": f"Category II - {COMFORT_CATEGORIES['II']['description']}"},
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Optional("energy_save_mode", default=get_value("energy_save_mode") or True): bool,
+            vol.Optional("auto_mode_enabled", default=get_value("auto_mode_enabled") or True): bool,
 
+            # Step 2: Cooling Devices
+            vol.Required(
+                "cooling_devices_primary",
+                default=get_value("cooling_devices_primary") or []
+            ): selector.selector({
+                "entity": {"multiple": True, "domain": ["climate", "fan"]}
+            }),
+            vol.Optional(
+                "cooling_devices_secondary",
+                default=get_value("cooling_devices_secondary") or []
+            ): selector.selector({
+                "entity": {"multiple": True, "domain": ["fan", "switch"]}
+            }),
+
+            # Step 2: Heating Devices
+            vol.Optional(
+                "heating_devices_primary",
+                default=get_value("heating_devices_primary") or []
+            ): selector.selector({
+                "entity": {"multiple": True, "domain": ["climate", "switch"]}
+            }),
+            vol.Optional(
+                "heating_devices_secondary",
+                default=get_value("heating_devices_secondary") or []
+            ): selector.selector({
+                "entity": {"multiple": True, "domain": ["climate", "switch"]}
+            }),
+
+            # Step 3: Sensors
             vol.Required(
                 "indoor_temp_sensor",
                 default=get_value("indoor_temp_sensor")
@@ -75,54 +113,35 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 default=get_value("outdoor_humidity_sensor")
             ): selector.selector({"entity": {"device_class": "humidity"}}),
 
-            # === Comfort Category ===
-            vol.Optional(
-                "comfort_category",
-                default=options.get("comfort_category", DEFAULT_COMFORT_CATEGORY)
-            ): vol.In(list(COMFORT_CATEGORIES.keys())),
-
-            # === Globais ===
+            # Step 4: Advanced Configuration
             vol.Optional(
                 "min_comfort_temp",
-                default=options.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)
+                default=get_value("min_comfort_temp") or DEFAULT_MIN_COMFORT_TEMP
             ): vol.All(vol.Coerce(float), vol.Range(min=10.0, max=30.0)),
 
             vol.Optional(
-                "max_comfort_temp", 
-                default=options.get("max_comfort_temp", DEFAULT_MAX_COMFORT_TEMP)
+                "max_comfort_temp",
+                default=get_value("max_comfort_temp") or DEFAULT_MAX_COMFORT_TEMP
             ): vol.All(vol.Coerce(float), vol.Range(min=15.0, max=35.0)),
 
             vol.Optional(
                 "temperature_change_threshold",
-                default=options.get("temperature_change_threshold", DEFAULT_TEMPERATURE_CHANGE_THRESHOLD)
+                default=get_value("temperature_change_threshold") or DEFAULT_TEMPERATURE_CHANGE_THRESHOLD
             ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=5.0)),
 
             vol.Optional(
                 "override_temperature",
-                default=options.get("override_temperature", DEFAULT_OVERRIDE_TEMPERATURE)
+                default=get_value("override_temperature") or DEFAULT_OVERRIDE_TEMPERATURE
             ): vol.All(vol.Coerce(float), vol.Range(min=-2, max=2)),
 
-            # === Energy Save ===
-            vol.Optional(
-                "energy_save_mode",
-                default=options.get("energy_save_mode", True)
-            ): bool,
-
-            # === Adaptive Climate Auto Mode ===
-            vol.Optional(
-                "auto_mode_enable",
-                default=options.get("auto_mode_enable", True)
-            ): bool,
-
-            # === Aggressive Cooling / Heating ===
             vol.Optional(
                 "aggressive_cooling_threshold",
-                default=options.get("aggressive_cooling_threshold", DEFAULT_AGGRESSIVE_COOLING_THRESHOLD)
+                default=get_value("aggressive_cooling_threshold") or DEFAULT_AGGRESSIVE_COOLING_THRESHOLD
             ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
 
             vol.Optional(
                 "aggressive_heating_threshold",
-                default=options.get("aggressive_heating_threshold", DEFAULT_AGGRESSIVE_HEATING_THRESHOLD)
+                default=get_value("aggressive_heating_threshold") or DEFAULT_AGGRESSIVE_HEATING_THRESHOLD
             ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
         })
 
@@ -131,9 +150,10 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=schema,
         )
 
+
 @callback
 def async_get_options_flow(
     config_entry: config_entries.ConfigEntry,
 ) -> AdaptiveClimateOptionsFlowHandler:
-    """Get the options flow for this handler."""
+    """Get the options flow handler."""
     return AdaptiveClimateOptionsFlowHandler(config_entry)

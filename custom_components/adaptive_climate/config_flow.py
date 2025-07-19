@@ -25,23 +25,8 @@ _LOGGER = logging.getLogger(__name__)
 # Config Schema for initial setup - only essential entities
 CONFIG_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_NAME, default="Adaptive Climate"): str,
-        vol.Required("climate_entity"): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="climate")
-        ),
-        vol.Required("indoor_temp_sensor"): selector.EntitySelector(
-            selector.EntitySelectorConfig(
-                domain=["sensor", "input_number", "weather"],
-                device_class=["temperature"]
-            )
-        ),
-        vol.Required("outdoor_temp_sensor"): selector.EntitySelector(
-            selector.EntitySelectorConfig(
-                domain=["sensor", "input_number", "weather"],
-                device_class=["temperature", "weather"]
-            )
-        ),
-        vol.Optional("comfort_category", default=DEFAULT_COMFORT_CATEGORY): selector.SelectSelector(
+        # Comfort Category
+        vol.Required("comfort_category", default=DEFAULT_COMFORT_CATEGORY): selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=[
                     {"value": "I", "label": f"Category I - {COMFORT_CATEGORIES['I']['description']}"},
@@ -50,66 +35,51 @@ CONFIG_SCHEMA = vol.Schema(
                 mode=selector.SelectSelectorMode.DROPDOWN,
             )
         ),
-        vol.Optional(
-            "min_comfort_temp",
-            default=21
-        ): vol.All(vol.Coerce(float), vol.Range(min=10.0, max=30.0)),
+        vol.Optional("energy_save_mode", default=True): bool,
+        vol.Optional("auto_mode_enabled", default=True): bool,
 
-        vol.Optional(
-            "max_comfort_temp",
-            default=27
-        ): vol.All(vol.Coerce(float), vol.Range(min=15.0, max=35.0)),
+        # Cooling Devices
+        vol.Required("cooling_devices_primary", default=[]): selector.selector({
+            "entity": {"multiple": True, "domain": ["climate", "fan"]}
+        }),
+        vol.Optional("cooling_devices_secondary", default=[]): selector.selector({
+            "entity": {"multiple": True, "domain": ["fan", "switch"]}
+        }),
 
-        vol.Optional(
-            "temperature_change_threshold",
-            default=0.5
-        ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=5.0)),
+        # Heating Devices
+        vol.Optional("heating_devices_primary", default=[]): selector.selector({
+            "entity": {"multiple": True, "domain": ["climate", "switch"]}
+        }),
+        vol.Optional("heating_devices_secondary", default=[]): selector.selector({
+            "entity": {"multiple": True, "domain": ["climate", "switch"]}
+        }),
 
-        vol.Optional(
-            "override_temperature",
-            default=0
-        ): vol.All(vol.Coerce(float), vol.Range(min=-2, max=2)),
-
-        vol.Optional(
-            "energy_save_mode",
-            default=True
-        ): bool,
-
-        vol.Optional(
-            "auto_mode_enabled",
-            default=True
-        ): bool,
-
-        vol.Optional(
-            "aggressive_cooling_threshold",
-            default=2.0
-        ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
-
-        vol.Optional(
-            "aggressive_heating_threshold",
-            default=2.0
-        ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
-    }
-)
-
-# Optional sensors schema for second step
-OPTIONAL_SENSORS_SCHEMA = vol.Schema(
-    {
+        # Sensors
+        vol.Required("indoor_temp_sensor"): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain=["sensor", "input_number", "weather"], device_class=["temperature"])
+        ),
+        vol.Required("outdoor_temp_sensor"): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain=["sensor", "input_number", "weather"], device_class=["temperature", "weather"])
+        ),
         vol.Optional("indoor_humidity_sensor"): selector.EntitySelector(
-            selector.EntitySelectorConfig(
-                domain=["sensor", "input_number"],
-                device_class=["humidity"]
-            )
+            selector.EntitySelectorConfig(domain=["sensor", "input_number"], device_class=["humidity"])
         ),
         vol.Optional("outdoor_humidity_sensor"): selector.EntitySelector(
-            selector.EntitySelectorConfig(
-                domain=["sensor", "input_number", "weather"],
-                device_class=["humidity"]
-            )
+            selector.EntitySelectorConfig(domain=["sensor", "input_number", "weather"], device_class=["humidity"])
         ),
+
+        # Advanced Configuration
+        vol.Optional("min_comfort_temp", default=21): vol.All(vol.Coerce(float), vol.Range(min=10.0, max=30.0)),
+        vol.Optional("max_comfort_temp", default=27): vol.All(vol.Coerce(float), vol.Range(min=15.0, max=35.0)),
+        vol.Optional("temperature_change_threshold", default=0.5): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=5.0)),
+        vol.Optional("override_temperature", default=0): vol.All(vol.Coerce(float), vol.Range(min=-2, max=2)),
+        vol.Optional("aggressive_cooling_threshold", default=2.0): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
+        vol.Optional("aggressive_heating_threshold", default=2.0): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
+
+        # Instance Name
+        vol.Required(CONF_NAME, default="Adaptive Climate"): str,
     }
 )
-
 
 class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Adaptive Climate."""
@@ -137,9 +107,9 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         errors = {}
 
-        # Validate that entities exist
+        # Validate only temperature sensors
         registry = async_get_entity_registry(self.hass)
-        for field in ["climate_entity", "indoor_temp_sensor", "outdoor_temp_sensor"]:
+        for field in ["indoor_temp_sensor", "outdoor_temp_sensor"]:
             entity_id = user_input[field]
             if not registry.async_is_registered(entity_id):
                 if entity_id not in self.hass.states.async_entity_ids():
@@ -150,41 +120,14 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 step_id="user", data_schema=CONFIG_SCHEMA, errors=errors
             )
 
-        # Update config data with user inputs
-        self.config_data.update(user_input)
-        return await self.async_step_optional_sensors()
-
-    async def async_step_optional_sensors(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle optional sensors step."""
-        if user_input is None:
-            return self.async_show_form(
-                step_id="optional_sensors", 
-                data_schema=OPTIONAL_SENSORS_SCHEMA
-            )
-
-        # Update config data with optional sensors
+        # Save config and create entry
         self.config_data.update(user_input)
 
-        # Create unique ID based on climate entity to prevent duplicates
-        unique_id = f"adaptive_climate_{self.config_data['climate_entity'].replace('.', '_')}"
+        unique_id = f"adaptive_climate_{self.config_data[CONF_NAME].replace(' ', '_').lower()}"
         await self.async_set_unique_id(unique_id)
-        self._abort_if_unique_id_configured(
-            updates={CONF_NAME: self.config_data[CONF_NAME]}
+        self._abort_if_unique_id_configured(updates={CONF_NAME: self.config_data[CONF_NAME]})
+
+        return self.async_create_entry(
+            title=self.config_data[CONF_NAME],
+            data=self.config_data
         )
-
-        # Create dynamic title based on climate entity
-        climate_entity = self.config_data["climate_entity"]
-        climate_state = self.hass.states.get(climate_entity)
-        
-        if climate_state and hasattr(climate_state, 'attributes'):
-            friendly_name = climate_state.attributes.get("friendly_name", "")
-            if friendly_name:
-                title = f"Adaptive Climate - {friendly_name}"
-            else:
-                title = f"Adaptive Climate - {climate_entity.split('.')[-1].replace('_', ' ').title()}"
-        else:
-            title = self.config_data[CONF_NAME]
-
-        return self.async_create_entry(title=title, data=self.config_data)
