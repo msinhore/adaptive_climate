@@ -27,7 +27,8 @@
     "error": {
       "cannot_connect": "Failed to connect",
       "invalid_entity": "Invalid entity selected",
-      "unknown": "Unexpected error occurred"
+      "unknown": "Unexpected error occurred",
+      "entity_not_found": "Entity not found or not available"
     },
     "abort": {
       "already_configured": "Device is already configured"
@@ -55,7 +56,13 @@
           "aggressive_heating_threshold": "Aggressive Heating Threshold (°C)",
           "mean_radiant_temp_sensor": "Mean Radiant Temperature Sensor",
           "occupancy_sensor": "Occupancy Sensor",
-          "command_ignore_interval": "Command Ignore Interval (seconds)"
+          "command_ignore_interval": "Command Ignore Interval (seconds)",
+          "enable_fan_mode": "Enable Fan Mode",
+          "enable_cool_mode": "Enable Cool Mode",
+          "enable_heat_mode": "Enable Heat Mode",
+          "enable_dry_mode": "Enable Dry Mode",
+          "max_fan_speed": "Maximum Fan Speed",
+          "min_fan_speed": "Minimum Fan Speed"
         }
       }
     }
@@ -74,13 +81,20 @@
       "running_mean_outdoor_temp": {
         "name": "Running Mean Outdoor Temperature"
       },
+      "outdoor_running_mean": {
+        "name": "Outdoor Running Mean"
+      },
       "ashrae_comfort_category": {
         "name": "ASHRAE Comfort Category"
       }
     },
     "binary_sensor": {
       "ashrae_compliance": {
-        "name": "ASHRAE Compliance"
+        "name": "ASHRAE Compliance",
+        "state": {
+          "on": "Yes",
+          "off": "No"
+        }
       }
     },
     "number": {
@@ -116,7 +130,9 @@
         "name": "Comfort Category",
         "state": {
           "cat_i": "Category I (90% satisfaction)",
-          "cat_ii": "Category II (80% satisfaction)"
+          "cat_ii": "Category II (80% satisfaction)",
+          "i": "Category I (90% satisfaction)",
+          "ii": "Category II (80% satisfaction)"
         }
       }
     }

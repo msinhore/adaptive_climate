@@ -27,7 +27,8 @@
     "error": {
       "cannot_connect": "Falha ao conectar",
       "invalid_entity": "Entidade selecionada inválida",
-      "unknown": "Erro inesperado"
+      "unknown": "Erro inesperado",
+      "entity_not_found": "Entidade não encontrada ou não disponível"
     },
     "abort": {
       "already_configured": "O dispositivo já está configurado"
@@ -55,7 +56,13 @@
           "aggressive_heating_threshold": "Limiar de Aquecimento Agressivo (°C)",
           "mean_radiant_temp_sensor": "Sensor de Temperatura Radiante Média",
           "occupancy_sensor": "Sensor de Ocupação",
-          "command_ignore_interval": "Intervalo para Ignorar Comandos (segundos)"
+          "command_ignore_interval": "Intervalo para Ignorar Comandos (segundos)",
+          "enable_fan_mode": "Ativar Modo Ventilador",
+          "enable_cool_mode": "Ativar Modo Resfriamento",
+          "enable_heat_mode": "Ativar Modo Aquecimento",
+          "enable_dry_mode": "Ativar Modo Secagem",
+          "max_fan_speed": "Velocidade Máxima do Ventilador",
+          "min_fan_speed": "Velocidade Mínima do Ventilador"
         }
       }
     }
@@ -74,13 +81,20 @@
       "running_mean_outdoor_temp": {
         "name": "Média Móvel da Temperatura Externa"
       },
+      "outdoor_running_mean": {
+        "name": "Média Móvel Externa"
+      },
       "ashrae_comfort_category": {
         "name": "Categoria de Conforto ASHRAE"
       }
     },
     "binary_sensor": {
       "ashrae_compliance": {
-        "name": "Conformidade ASHRAE"
+        "name": "Conformidade ASHRAE",
+        "state": {
+          "on": "Sim",
+          "off": "Não"
+        }
       }
     },
     "number": {
@@ -116,7 +130,9 @@
         "name": "Categoria de Conforto",
         "state": {
           "cat_i": "Categoria I (90% de satisfação)",
-          "cat_ii": "Categoria II (80% de satisfação)"
+          "cat_ii": "Categoria II (80% de satisfação)",
+          "i": "Categoria I (90% de satisfação)",
+          "ii": "Categoria II (80% de satisfação)"
         }
       }
     }

@@ -27,7 +27,8 @@
     "error": {
       "cannot_connect": "Verbindung fehlgeschlagen",
       "invalid_entity": "Ungültige Entität ausgewählt",
-      "unknown": "Unerwarteter Fehler"
+      "unknown": "Unerwarteter Fehler",
+      "entity_not_found": "Entität nicht gefunden oder nicht verfügbar"
     },
     "abort": {
       "already_configured": "Gerät ist bereits konfiguriert"
@@ -55,7 +56,13 @@
           "aggressive_heating_threshold": "Schwelle für aggressives Heizen (°C)",
           "mean_radiant_temp_sensor": "Sensor für mittlere Strahlungstemperatur",
           "occupancy_sensor": "Belegungssensor",
-          "command_ignore_interval": "Befehl-Ignorierintervall (Sekunden)"
+          "command_ignore_interval": "Befehl-Ignorierintervall (Sekunden)",
+          "enable_fan_mode": "Ventilatormodus aktivieren",
+          "enable_cool_mode": "Kühlmodus aktivieren",
+          "enable_heat_mode": "Heizmodus aktivieren",
+          "enable_dry_mode": "Trocknungsmodus aktivieren",
+          "max_fan_speed": "Maximale Ventilatorgeschwindigkeit",
+          "min_fan_speed": "Minimale Ventilatorgeschwindigkeit"
         }
       }
     }
@@ -74,13 +81,20 @@
       "running_mean_outdoor_temp": {
         "name": "Laufender Durchschnitt Außentemperatur"
       },
+      "outdoor_running_mean": {
+        "name": "Laufender Durchschnitt Außen"
+      },
       "ashrae_comfort_category": {
         "name": "ASHRAE Komfort-Kategorie"
       }
     },
     "binary_sensor": {
       "ashrae_compliance": {
-        "name": "ASHRAE-Konformität"
+        "name": "ASHRAE-Konformität",
+        "state": {
+          "on": "Ja",
+          "off": "Nein"
+        }
       }
     },
     "number": {
@@ -116,7 +130,9 @@
         "name": "Komfort-Kategorie",
         "state": {
           "cat_i": "Kategorie I (90% Zufriedenheit)",
-          "cat_ii": "Kategorie II (80% Zufriedenheit)"
+          "cat_ii": "Kategorie II (80% Zufriedenheit)",
+          "i": "Kategorie I (90% Zufriedenheit)",
+          "ii": "Kategorie II (80% Zufriedenheit)"
         }
       }
     }

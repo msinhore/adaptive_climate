@@ -27,7 +27,8 @@
     "error": {
       "cannot_connect": "Connessione fallita",
       "invalid_entity": "Entità selezionata non valida",
-      "unknown": "Errore imprevisto"
+      "unknown": "Errore imprevisto",
+      "entity_not_found": "Entità non trovata o non disponibile"
     },
     "abort": {
       "already_configured": "Dispositivo già configurato"
@@ -55,7 +56,13 @@
           "aggressive_heating_threshold": "Soglia Riscaldamento Aggressivo (°C)",
           "mean_radiant_temp_sensor": "Sensore Temperatura Radiante Media",
           "occupancy_sensor": "Sensore di Presenza",
-          "command_ignore_interval": "Intervallo Ignora Comando (secondi)"
+          "command_ignore_interval": "Intervallo Ignora Comando (secondi)",
+          "enable_fan_mode": "Abilita Modalità Ventilatore",
+          "enable_cool_mode": "Abilita Modalità Raffreddamento",
+          "enable_heat_mode": "Abilita Modalità Riscaldamento",
+          "enable_dry_mode": "Abilita Modalità Asciugatura",
+          "max_fan_speed": "Velocità Massima Ventilatore",
+          "min_fan_speed": "Velocità Minima Ventilatore"
         }
       }
     }
@@ -74,13 +81,20 @@
       "running_mean_outdoor_temp": {
         "name": "Temperatura Esterna Media Mobile"
       },
+      "outdoor_running_mean": {
+        "name": "Media Mobile Esterna"
+      },
       "ashrae_comfort_category": {
         "name": "Categoria Comfort ASHRAE"
       }
     },
     "binary_sensor": {
       "ashrae_compliance": {
-        "name": "Conformità ASHRAE"
+        "name": "Conformità ASHRAE",
+        "state": {
+          "on": "Sì",
+          "off": "No"
+        }
       }
     },
     "number": {
@@ -116,7 +130,9 @@
         "name": "Categoria di Comfort",
         "state": {
           "cat_i": "Categoria I (90% soddisfazione)",
-          "cat_ii": "Categoria II (80% soddisfazione)"
+          "cat_ii": "Categoria II (80% soddisfazione)",
+          "i": "Categoria I (90% soddisfazione)",
+          "ii": "Categoria II (80% soddisfazione)"
         }
       }
     }

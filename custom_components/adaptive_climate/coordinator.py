@@ -273,15 +273,15 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 data_to_save = {"config_parameters": self._get_config_params()}
                 _LOGGER.debug(f"[{self.device_name}] Persisting configuration parameters only")
             else:
-                data_to_save = {
-                    "last_system_command": self._last_system_command,
-                    "last_command_timestamp": self._last_command_timestamp.isoformat() if self._last_command_timestamp else None,
-                    "last_sensor_data": data,
+        data_to_save = {
+            "last_system_command": self._last_system_command,
+            "last_command_timestamp": self._last_command_timestamp.isoformat() if self._last_command_timestamp else None,
+            "last_sensor_data": data,
                     "config_parameters": self._get_config_params(),
-                    "last_updated": dt_util.now().isoformat(),
-                }
+            "last_updated": dt_util.now().isoformat(),
+        }
                 _LOGGER.debug(f"[{self.device_name}] Persisting full data with sensor data")
-            await self._store.async_save(data_to_save)
+        await self._store.async_save(data_to_save)
             _LOGGER.debug(f"[{self.device_name}] Data persisted successfully")
         except Exception as e:
             _LOGGER.error(f"[{self.device_name}] Failed to persist data: {e}")
@@ -406,7 +406,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         outdoor_temp = self._get_value(self.outdoor_temp_sensor_id, "outdoor_temp")
         indoor_humidity = self._get_value(self.indoor_humidity_sensor_id, "indoor_humidity")
         outdoor_humidity = self._get_value(self.outdoor_humidity_sensor_id, "outdoor_humidity")
-        
+
         if indoor_temp is None or outdoor_temp is None:
             _LOGGER.warning(f"[{self.device_name}] Indoor or outdoor temperature unavailable.")
             return None
@@ -426,7 +426,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         """Calculate comfort parameters with error handling."""
         _LOGGER.debug(f"[{self.device_name}] Starting comfort calculation...")
         try:
-            season = get_season(self.hass.config.latitude)
+        season = get_season(self.hass.config.latitude)
             _LOGGER.debug(f"[{self.device_name}] Detected season: {season}")
 
             # Log input parameters
@@ -444,21 +444,21 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             _LOGGER.debug(f"[{self.device_name}]   - Aggressive cooling threshold: {self.config.get('aggressive_cooling_threshold', 2.0)}°C")
             _LOGGER.debug(f"[{self.device_name}]   - Aggressive heating threshold: {self.config.get('aggressive_heating_threshold', 2.0)}°C")
 
-            comfort_params = self._calculator.calculate(
+        comfort_params = self._calculator.calculate(
                 indoor_temp=sensor_data["indoor_temp"],
                 outdoor_temp=sensor_data["outdoor_temp"],
-                min_temp=self.config.get("min_comfort_temp", 21),
-                max_temp=self.config.get("max_comfort_temp", 27),
-                season=season,
-                category=self.config.get("comfort_category", "I"),
+            min_temp=self.config.get("min_comfort_temp", 21),
+            max_temp=self.config.get("max_comfort_temp", 27),
+            season=season,
+            category=self.config.get("comfort_category", "I"),
                 air_velocity=sensor_data["current_fan_mode"] or "low",
                 indoor_humidity=sensor_data["indoor_humidity"],
                 outdoor_humidity=sensor_data["outdoor_humidity"],
-                running_mean_temp=self._running_mean_temp,
-                energy_save_mode=self.config.get("energy_save_mode", False),
+            running_mean_temp=self._running_mean_temp,
+            energy_save_mode=self.config.get("energy_save_mode", False),
                 device_name=self.device_name,
-                aggressive_cooling_threshold=self.config.get("aggressive_cooling_threshold", 2.0),
-                aggressive_heating_threshold=self.config.get("aggressive_heating_threshold", 2.0),
+            aggressive_cooling_threshold=self.config.get("aggressive_cooling_threshold", 2.0),
+            aggressive_heating_threshold=self.config.get("aggressive_heating_threshold", 2.0),
                 # New HVAC and Fan Control parameters
                 enable_fan_mode=self.config.get("enable_fan_mode", True),
                 enable_cool_mode=self.config.get("enable_cool_mode", True),
@@ -506,10 +506,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             "hvac_mode": str(state.state),
             "fan_mode": str(state.attributes.get("fan_mode")),
             "temperature": (
-                float(state.attributes.get("temperature"))
-                if state.attributes.get("temperature") is not None
-                else None
-            )
+            float(state.attributes.get("temperature"))
+            if state.attributes.get("temperature") is not None
+            else None
+        )
         }
 
         desired_state = {
@@ -950,7 +950,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug(f"[{self.device_name}] Starting control cycle...")
         comfort = await self._async_update_data()
         if isinstance(comfort, dict):
-            actions = self._determine_actions(comfort)
+        actions = self._determine_actions(comfort)
             await self._execute_all_actions(actions)
         _LOGGER.debug(f"[{self.device_name}] Control cycle completed")
 

@@ -27,7 +27,8 @@
     "error": {
       "cannot_connect": "Échec de la connexion",
       "invalid_entity": "Entité sélectionnée invalide",
-      "unknown": "Erreur inattendue"
+      "unknown": "Erreur inattendue",
+      "entity_not_found": "Entité non trouvée ou non disponible"
     },
     "abort": {
       "already_configured": "Appareil déjà configuré"
@@ -55,7 +56,13 @@
           "aggressive_heating_threshold": "Seuil de Chauffage Agressif (°C)",
           "mean_radiant_temp_sensor": "Capteur de Température Radiante Moyenne",
           "occupancy_sensor": "Capteur de Présence",
-          "command_ignore_interval": "Intervalle d'Ignorance des Commandes (secondes)"
+          "command_ignore_interval": "Intervalle d'Ignorance des Commandes (secondes)",
+          "enable_fan_mode": "Activer le Mode Ventilateur",
+          "enable_cool_mode": "Activer le Mode Refroidissement",
+          "enable_heat_mode": "Activer le Mode Chauffage",
+          "enable_dry_mode": "Activer le Mode Séchage",
+          "max_fan_speed": "Vitesse Maximale du Ventilateur",
+          "min_fan_speed": "Vitesse Minimale du Ventilateur"
         }
       }
     }
@@ -74,13 +81,20 @@
       "running_mean_outdoor_temp": {
         "name": "Température Extérieure Moyenne Mobile"
       },
+      "outdoor_running_mean": {
+        "name": "Moyenne Mobile Extérieure"
+      },
       "ashrae_comfort_category": {
         "name": "Catégorie de Confort ASHRAE"
       }
     },
     "binary_sensor": {
       "ashrae_compliance": {
-        "name": "Conformité ASHRAE"
+        "name": "Conformité ASHRAE",
+        "state": {
+          "on": "Oui",
+          "off": "Non"
+        }
       }
     },
     "number": {
@@ -116,7 +130,9 @@
         "name": "Catégorie de Confort",
         "state": {
           "cat_i": "Catégorie I (90% de satisfaction)",
-          "cat_ii": "Catégorie II (80% de satisfaction)"
+          "cat_ii": "Catégorie II (80% de satisfaction)",
+          "i": "Catégorie I (90% de satisfaction)",
+          "ii": "Catégorie II (80% de satisfaction)"
         }
       }
     }

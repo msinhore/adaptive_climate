@@ -27,7 +27,8 @@
     "error": {
       "cannot_connect": "Fallo al conectar",
       "invalid_entity": "Entidad seleccionada no válida",
-      "unknown": "Ocurrió un error inesperado"
+      "unknown": "Ocurrió un error inesperado",
+      "entity_not_found": "Entidad no encontrada o no disponible"
     },
     "abort": {
       "already_configured": "El dispositivo ya está configurado"
@@ -55,7 +56,13 @@
           "aggressive_heating_threshold": "Umbral de Calefacción Agresiva (°C)",
           "mean_radiant_temp_sensor": "Sensor de Temperatura Radiante Media",
           "occupancy_sensor": "Sensor de Ocupación",
-          "command_ignore_interval": "Intervalo de Ignorar Comandos (segundos)"
+          "command_ignore_interval": "Intervalo de Ignorar Comandos (segundos)",
+          "enable_fan_mode": "Activar Modo Ventilador",
+          "enable_cool_mode": "Activar Modo Refrigeración",
+          "enable_heat_mode": "Activar Modo Calefacción",
+          "enable_dry_mode": "Activar Modo Secado",
+          "max_fan_speed": "Velocidad Máxima del Ventilador",
+          "min_fan_speed": "Velocidad Mínima del Ventilador"
         }
       }
     }
@@ -74,13 +81,20 @@
       "running_mean_outdoor_temp": {
         "name": "Temperatura Exterior Media Móvil"
       },
+      "outdoor_running_mean": {
+        "name": "Media Móvil Exterior"
+      },
       "ashrae_comfort_category": {
         "name": "Categoría de Confort ASHRAE"
       }
     },
     "binary_sensor": {
       "ashrae_compliance": {
-        "name": "Cumplimiento ASHRAE"
+        "name": "Cumplimiento ASHRAE",
+        "state": {
+          "on": "Sí",
+          "off": "No"
+        }
       }
     },
     "number": {
@@ -116,7 +130,9 @@
         "name": "Categoría de Confort",
         "state": {
           "cat_i": "Categoría I (90% satisfacción)",
-          "cat_ii": "Categoría II (80% satisfacción)"
+          "cat_ii": "Categoría II (80% satisfacción)",
+          "i": "Categoría I (90% satisfacción)",
+          "ii": "Categoría II (80% satisfacción)"
         }
       }
     }

@@ -34,11 +34,25 @@ SEASON_THRESHOLDS = {
 
 
 class ComfortCalculator:
-    """Calculator for ASHRAE 55 adaptive comfort parameters."""
+    """Calculate comfort temperatures using ASHRAE 55-2020 standard."""
 
     def __init__(self) -> None:
-        """Initialize the comfort calculator."""
-        self._rc_model = None
+        """Initialize the calculator."""
+        pass
+
+    def _bounded_temp(self, target: float, min_t: float, max_t: float) -> float:
+        """Bound temperature between min and max values."""
+        return max(min_t, min(target, max_t))
+
+    def _limit_fan_speed(self, fan_speed: str, max_fan_speed: str, min_fan_speed: str) -> str:
+        """Limit fan speed based on user preferences."""
+        fan_speed_order = ["low", "mid", "high", "highest"]
+        max_index = fan_speed_order.index(max_fan_speed)
+        min_index = fan_speed_order.index(min_fan_speed)
+        
+        current_index = fan_speed_order.index(fan_speed) if fan_speed in fan_speed_order else 0
+        limited_index = max(min_index, min(current_index, max_index))
+        return fan_speed_order[limited_index]
 
     def calculate_ashrae(
         self, 
@@ -227,27 +241,44 @@ class ComfortCalculator:
     ) -> Tuple[str, str, float]:
         """Determine HVAC mode, fan mode, and target temperature."""
         
-        def _bounded_temp(target: float, min_t: float, max_t: float) -> float:
-            """Bound temperature between min and max values."""
-            return max(min_t, min(target, max_t))
-
-        _LOGGER.debug(f"Determining HVAC and fan mode for season: {season}, energy_save_mode: {energy_save_mode}")
-
         hvac_mode = "off"
         fan = "off"
         temperature = comfort_temp
 
         # Check for thermal equilibrium - only turn off if very close to comfort temp
         equilibrium_delta = 0.5  # Reduced from 1.0 to be less restrictive
-        if (
-            -equilibrium_delta <= (indoor_temp - outdoor_temp) <= equilibrium_delta and
-            -equilibrium_delta <= (indoor_temp - comfort_temp) <= equilibrium_delta
-        ):
-            _LOGGER.info(
-                f"Thermal equilibrium detected (indoor={indoor_temp}°C, "
-                f"comfort={comfort_temp}°C, outdoor={outdoor_temp}°C). Turning HVAC off."
-            )
-            return "off", "off", comfort_temp
+        
+        # Season-specific equilibrium logic
+        if season == "summer":
+            # In summer: turn off AC when both indoor and outdoor are below comfort temp
+            if (indoor_temp < comfort_temp and outdoor_temp < comfort_temp):
+                _LOGGER.info(
+                    f"Summer thermal equilibrium detected - temperatures below comfort "
+                    f"(indoor={indoor_temp}°C, outdoor={outdoor_temp}°C, comfort={comfort_temp}°C). "
+                    f"Turning HVAC off."
+                )
+                return "off", "off", comfort_temp
+        elif season == "winter":
+            # In winter: turn off AC when both indoor and outdoor are above comfort temp
+            if (indoor_temp > comfort_temp and outdoor_temp > comfort_temp):
+                _LOGGER.info(
+                    f"Winter thermal equilibrium detected - temperatures above comfort "
+                    f"(indoor={indoor_temp}°C, outdoor={outdoor_temp}°C, comfort={comfort_temp}°C). "
+                    f"Turning HVAC off."
+                )
+                return "off", "off", comfort_temp
+        else:  # spring or autumn
+            # In transition seasons: use original logic for general equilibrium
+            if (
+                -equilibrium_delta <= (indoor_temp - outdoor_temp) <= equilibrium_delta and
+                -equilibrium_delta <= (indoor_temp - comfort_temp) <= equilibrium_delta
+            ):
+                _LOGGER.info(
+                    f"Transition season thermal equilibrium detected "
+                    f"(indoor={indoor_temp}°C, comfort={comfort_temp}°C, outdoor={outdoor_temp}°C). "
+                    f"Turning HVAC off."
+                )
+                return "off", "off", comfort_temp
 
         # Determine mode based on season
         if season == "summer":
@@ -288,51 +319,38 @@ class ComfortCalculator:
     ) -> Tuple[str, str, float]:
         """Determine HVAC mode for summer season."""
         
-        def _bounded_temp(target: float, min_t: float, max_t: float) -> float:
-            return max(min_t, min(target, max_t))
-
-        def _limit_fan_speed(fan_speed: str) -> str:
-            """Limit fan speed based on user preferences."""
-            fan_speed_order = ["low", "mid", "high", "highest"]
-            max_index = fan_speed_order.index(max_fan_speed)
-            min_index = fan_speed_order.index(min_fan_speed)
-            
-            current_index = fan_speed_order.index(fan_speed) if fan_speed in fan_speed_order else 0
-            limited_index = max(min_index, min(current_index, max_index))
-            return fan_speed_order[limited_index]
-
         if not energy_save_mode:
             if ranges["below_min"]:
                 return "off", "off", comfort_temp
             elif ranges["slightly_cool"]:
-                return "fan_only" if enable_fan_mode else "off", _limit_fan_speed("mid"), comfort_temp
+                return "fan_only" if enable_fan_mode else "off", self._limit_fan_speed("mid", max_fan_speed, min_fan_speed), comfort_temp
             elif ranges["comfortably_cool"]:
-                return "cool" if enable_cool_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("low"), _bounded_temp(comfort_temp - 1, min_temp, max_temp)
+                return "cool" if enable_cool_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("low", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp - 1, min_temp, max_temp)
             elif ranges["comfortably_warm"]:
-                return "cool" if enable_cool_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("mid"), _bounded_temp(comfort_temp - 1, min_temp, max_temp)
+                return "cool" if enable_cool_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("mid", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp - 1, min_temp, max_temp)
             elif ranges["slightly_warm"]:
-                return "cool" if enable_cool_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("high"), _bounded_temp(comfort_temp - 2, min_temp, max_temp)
+                return "cool" if enable_cool_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("high", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp - 2, min_temp, max_temp)
             elif ranges["above_max"]:
                 if indoor_temp >= (max_comfort_temp + aggressive_cooling_threshold):
-                    return "cool" if enable_cool_mode else ("dry" if enable_dry_mode else "off"), _limit_fan_speed("highest"), _bounded_temp(comfort_temp - 3, min_temp, max_temp)
+                    return "cool" if enable_cool_mode else ("dry" if enable_dry_mode else "off"), self._limit_fan_speed("highest", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp - 3, min_temp, max_temp)
                 else:
-                    return "cool" if enable_cool_mode else ("dry" if enable_dry_mode else "off"), _limit_fan_speed("high"), _bounded_temp(comfort_temp - 3, min_temp, max_temp)
+                    return "cool" if enable_cool_mode else ("dry" if enable_dry_mode else "off"), self._limit_fan_speed("high", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp - 3, min_temp, max_temp)
         else:
             if ranges["below_min"]:
                 return "off", "off", comfort_temp
             elif ranges["slightly_cool"]:
-                return "fan_only" if enable_fan_mode else "off", _limit_fan_speed("low"), comfort_temp
+                return "fan_only" if enable_fan_mode else "off", self._limit_fan_speed("low", max_fan_speed, min_fan_speed), comfort_temp
             elif ranges["comfortably_cool"]:
-                return "fan_only" if enable_fan_mode else "off", _limit_fan_speed("mid"), comfort_temp
+                return "fan_only" if enable_fan_mode else "off", self._limit_fan_speed("mid", max_fan_speed, min_fan_speed), comfort_temp
             elif ranges["comfortably_warm"]:
-                return "cool" if enable_cool_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("low"), comfort_temp
+                return "cool" if enable_cool_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("low", max_fan_speed, min_fan_speed), comfort_temp
             elif ranges["slightly_warm"]:
-                return "cool" if enable_cool_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("mid"), comfort_temp
+                return "cool" if enable_cool_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("mid", max_fan_speed, min_fan_speed), comfort_temp
             elif ranges["above_max"]:
                 if indoor_temp >= (max_comfort_temp + aggressive_cooling_threshold):
-                    return "cool" if enable_cool_mode else ("dry" if enable_dry_mode else "off"), _limit_fan_speed("high"), comfort_temp
+                    return "cool" if enable_cool_mode else ("dry" if enable_dry_mode else "off"), self._limit_fan_speed("high", max_fan_speed, min_fan_speed), comfort_temp
                 else:
-                    return "cool" if enable_cool_mode else ("dry" if enable_dry_mode else "off"), _limit_fan_speed("mid"), comfort_temp
+                    return "cool" if enable_cool_mode else ("dry" if enable_dry_mode else "off"), self._limit_fan_speed("mid", max_fan_speed, min_fan_speed), comfort_temp
 
         return "off", "off", comfort_temp
 
@@ -354,45 +372,32 @@ class ComfortCalculator:
     ) -> Tuple[str, str, float]:
         """Determine HVAC mode for winter season."""
         
-        def _bounded_temp(target: float, min_t: float, max_t: float) -> float:
-            return max(min_t, min(target, max_t))
-
-        def _limit_fan_speed(fan_speed: str) -> str:
-            """Limit fan speed based on user preferences."""
-            fan_speed_order = ["low", "mid", "high", "highest"]
-            max_index = fan_speed_order.index(max_fan_speed)
-            min_index = fan_speed_order.index(min_fan_speed)
-            
-            current_index = fan_speed_order.index(fan_speed) if fan_speed in fan_speed_order else 0
-            limited_index = max(min_index, min(current_index, max_index))
-            return fan_speed_order[limited_index]
-
         if energy_save_mode:
             if ranges["above_max"] or ranges["slightly_warm"] or ranges["comfortably_warm"]:
                 return "off", "off", comfort_temp
             elif ranges["comfortably_cool"]:
-                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("low"), comfort_temp
+                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("low", max_fan_speed, min_fan_speed), comfort_temp
             elif ranges["slightly_cool"]:
-                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("mid"), comfort_temp
+                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("mid", max_fan_speed, min_fan_speed), comfort_temp
             elif ranges["below_min"]:
                 if indoor_temp <= (min_comfort_temp - aggressive_heating_threshold):
-                    return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("high"), _bounded_temp(comfort_temp + 2, min_temp, max_temp)
+                    return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("high", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp + 2, min_temp, max_temp)
                 else:
-                    return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("mid"), _bounded_temp(comfort_temp + 1, min_temp, max_temp)
+                    return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("mid", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp + 1, min_temp, max_temp)
         else:
             if ranges["above_max"] or ranges["slightly_warm"]:
                 return "off", "off", comfort_temp
             elif ranges["comfortably_warm"]:
-                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("low"), _bounded_temp(comfort_temp + 1, min_temp, max_temp)
+                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("low", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp + 1, min_temp, max_temp)
             elif ranges["comfortably_cool"]:
-                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("mid"), _bounded_temp(comfort_temp + 1, min_temp, max_temp)
+                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("mid", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp + 1, min_temp, max_temp)
             elif ranges["slightly_cool"]:
-                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("high"), _bounded_temp(comfort_temp + 2, min_temp, max_temp)
+                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("high", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp + 2, min_temp, max_temp)
             elif ranges["below_min"]:
                 if indoor_temp <= (min_comfort_temp - aggressive_heating_threshold):
-                    return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("highest"), _bounded_temp(comfort_temp + 3, min_temp, max_temp)
+                    return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("highest", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp + 3, min_temp, max_temp)
                 else:
-                    return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("high"), _bounded_temp(comfort_temp + 3, min_temp, max_temp)
+                    return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("high", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp + 3, min_temp, max_temp)
 
         return "off", "off", comfort_temp
 
@@ -412,40 +417,27 @@ class ComfortCalculator:
     ) -> Tuple[str, str, float]:
         """Determine HVAC mode for spring/autumn seasons."""
         
-        def _bounded_temp(target: float, min_t: float, max_t: float) -> float:
-            return max(min_t, min(target, max_t))
-
-        def _limit_fan_speed(fan_speed: str) -> str:
-            """Limit fan speed based on user preferences."""
-            fan_speed_order = ["low", "mid", "high", "highest"]
-            max_index = fan_speed_order.index(max_fan_speed)
-            min_index = fan_speed_order.index(min_fan_speed)
-            
-            current_index = fan_speed_order.index(fan_speed) if fan_speed in fan_speed_order else 0
-            limited_index = max(min_index, min(current_index, max_index))
-            return fan_speed_order[limited_index]
-
         if energy_save_mode:
             if ranges["comfortably_cool"] or ranges["comfortably_warm"]:
-                return "fan_only" if enable_fan_mode else "off", _limit_fan_speed("low"), comfort_temp
+                return "fan_only" if enable_fan_mode else "off", self._limit_fan_speed("low", max_fan_speed, min_fan_speed), comfort_temp
             elif ranges["slightly_cool"]:
-                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("low"), comfort_temp
+                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("low", max_fan_speed, min_fan_speed), comfort_temp
             elif ranges["slightly_warm"]:
-                return "cool" if enable_cool_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("low"), comfort_temp
+                return "cool" if enable_cool_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("low", max_fan_speed, min_fan_speed), comfort_temp
             elif ranges["below_min"]:
-                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("mid"), comfort_temp
+                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("mid", max_fan_speed, min_fan_speed), comfort_temp
             elif ranges["above_max"]:
-                return "cool" if enable_cool_mode else ("dry" if enable_dry_mode else "off"), _limit_fan_speed("mid"), comfort_temp
+                return "cool" if enable_cool_mode else ("dry" if enable_dry_mode else "off"), self._limit_fan_speed("mid", max_fan_speed, min_fan_speed), comfort_temp
         else:
             if ranges["comfortably_cool"] or ranges["comfortably_warm"]:
-                return "fan_only" if enable_fan_mode else "off", _limit_fan_speed("low"), comfort_temp
+                return "fan_only" if enable_fan_mode else "off", self._limit_fan_speed("low", max_fan_speed, min_fan_speed), comfort_temp
             elif ranges["slightly_cool"]:
-                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("mid"), _bounded_temp(comfort_temp + 1, min_temp, max_temp)
+                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("mid", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp + 1, min_temp, max_temp)
             elif ranges["slightly_warm"]:
-                return "cool" if enable_cool_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("mid"), _bounded_temp(comfort_temp - 1, min_temp, max_temp)
+                return "cool" if enable_cool_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("mid", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp - 1, min_temp, max_temp)
             elif ranges["below_min"]:
-                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), _limit_fan_speed("high"), _bounded_temp(comfort_temp + 2, min_temp, max_temp)
+                return "heat" if enable_heat_mode else ("fan_only" if enable_fan_mode else "off"), self._limit_fan_speed("high", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp + 2, min_temp, max_temp)
             elif ranges["above_max"]:
-                return "cool" if enable_cool_mode else ("dry" if enable_dry_mode else "off"), _limit_fan_speed("high"), _bounded_temp(comfort_temp - 2, min_temp, max_temp)
+                return "cool" if enable_cool_mode else ("dry" if enable_dry_mode else "off"), self._limit_fan_speed("high", max_fan_speed, min_fan_speed), self._bounded_temp(comfort_temp - 2, min_temp, max_temp)
 
         return "off", "off", comfort_temp
