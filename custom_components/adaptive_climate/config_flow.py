@@ -17,6 +17,14 @@ from .const import (
     DOMAIN,
     DEFAULT_COMFORT_CATEGORY,
     COMFORT_CATEGORIES,
+    DEFAULT_ENABLE_FAN_MODE,
+    DEFAULT_ENABLE_COOL_MODE,
+    DEFAULT_ENABLE_HEAT_MODE,
+    DEFAULT_ENABLE_DRY_MODE,
+    DEFAULT_MAX_FAN_SPEED,
+    DEFAULT_MIN_FAN_SPEED,
+    HVAC_MODE_OPTIONS,
+    FAN_SPEED_OPTIONS,
 )
 from .options_flow import async_get_options_flow
 
@@ -76,7 +84,7 @@ CONFIG_SCHEMA = vol.Schema(
         ): bool,
 
         vol.Optional(
-            "auto_mode_enabled",
+            "auto_mode_enable",
             default=True
         ): bool,
 
@@ -89,6 +97,37 @@ CONFIG_SCHEMA = vol.Schema(
             "aggressive_heating_threshold",
             default=2.0
         ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
+
+        # === HVAC and Fan Control ===
+        vol.Optional(
+            "enable_fan_mode",
+            default=DEFAULT_ENABLE_FAN_MODE
+        ): bool,
+
+        vol.Optional(
+            "enable_cool_mode",
+            default=DEFAULT_ENABLE_COOL_MODE
+        ): bool,
+
+        vol.Optional(
+            "enable_heat_mode",
+            default=DEFAULT_ENABLE_HEAT_MODE
+        ): bool,
+
+        vol.Optional(
+            "enable_dry_mode",
+            default=DEFAULT_ENABLE_DRY_MODE
+        ): bool,
+
+        vol.Optional(
+            "max_fan_speed",
+            default=DEFAULT_MAX_FAN_SPEED
+        ): vol.In(list(FAN_SPEED_OPTIONS.keys())),
+
+        vol.Optional(
+            "min_fan_speed",
+            default=DEFAULT_MIN_FAN_SPEED
+        ): vol.In(list(FAN_SPEED_OPTIONS.keys())),
     }
 )
 
@@ -138,12 +177,10 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         # Validate that entities exist
-        registry = async_get_entity_registry(self.hass)
         for field in ["climate_entity", "indoor_temp_sensor", "outdoor_temp_sensor"]:
             entity_id = user_input[field]
-            if not registry.async_is_registered(entity_id):
-                if entity_id not in self.hass.states.async_entity_ids():
-                    errors[field] = "entity_not_found"
+            if entity_id not in self.hass.states.async_entity_ids():
+                errors[field] = "entity_not_found"
 
         if errors:
             return self.async_show_form(

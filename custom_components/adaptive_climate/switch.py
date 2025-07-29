@@ -27,7 +27,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Adaptive Climate switch entities."""
-    coordinator: AdaptiveClimateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator: AdaptiveClimateCoordinator = hass.data[DOMAIN]["coordinators"][config_entry.entry_id]
     
     entities = [
         AdaptiveClimateSwitchEntity(
@@ -92,22 +92,20 @@ class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
         return self.coordinator.config.get(self._entity_key, self._default_value)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-
         """Turn the switch on."""
         _LOGGER.info("Turning on %s", self._entity_key)
         try:
-            await self.coordinator.async_update_config_value(self._entity_key, True)
+            await self.coordinator.update_config(**{self._entity_key: True})
             self.async_write_ha_state()
             _LOGGER.debug("Successfully turned on %s", self._entity_key)
         except Exception as e:
             _LOGGER.error("Failed to turn on %s: %s", self._entity_key, e)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-
         """Turn the switch off."""
         _LOGGER.info("Turning off %s", self._entity_key)
         try:
-            await self.coordinator.async_update_config_value(self._entity_key, False)
+            await self.coordinator.update_config(**{self._entity_key: False})
             self.async_write_ha_state()
             _LOGGER.debug("Successfully turned off %s", self._entity_key)
         except Exception as e:

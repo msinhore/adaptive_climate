@@ -21,19 +21,23 @@ from .const import (
     DEFAULT_OVERRIDE_TEMPERATURE,
     DEFAULT_AGGRESSIVE_COOLING_THRESHOLD,
     DEFAULT_AGGRESSIVE_HEATING_THRESHOLD,
+    # HVAC and Fan Control
+    DEFAULT_ENABLE_FAN_MODE,
+    DEFAULT_ENABLE_COOL_MODE,
+    DEFAULT_ENABLE_HEAT_MODE,
+    DEFAULT_ENABLE_DRY_MODE,
+    DEFAULT_MAX_FAN_SPEED,
+    DEFAULT_MIN_FAN_SPEED,
+    HVAC_MODE_OPTIONS,
+    FAN_SPEED_OPTIONS,
     # Categories
     COMFORT_CATEGORIES,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-
 class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle Adaptive Climate options flow."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -43,10 +47,10 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         options = self.config_entry.options
-        data = self.config_entry.data  # <-- importante
+        data = self.config_entry.data
 
         def get_value(key):
-            return options.get(key) or data.get(key)
+            return options.get(key) if key in options else data.get(key)
 
         schema = vol.Schema({
             # === Comfort Category ===
@@ -67,7 +71,7 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 default=options.get("auto_mode_enable", True)
             ): bool,
 
-            # === Globais ===
+            # === Temperature Configuration ===
             vol.Optional(
                 "min_comfort_temp",
                 default=options.get("min_comfort_temp", DEFAULT_MIN_COMFORT_TEMP)
@@ -98,6 +102,32 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 "aggressive_heating_threshold",
                 default=options.get("aggressive_heating_threshold", DEFAULT_AGGRESSIVE_HEATING_THRESHOLD)
             ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
+
+            # === HVAC and Fan Control ===
+            vol.Optional(
+                "enable_fan_mode",
+                default=options.get("enable_fan_mode", DEFAULT_ENABLE_FAN_MODE)
+            ): bool,
+            vol.Optional(
+                "enable_cool_mode",
+                default=options.get("enable_cool_mode", DEFAULT_ENABLE_COOL_MODE)
+            ): bool,
+            vol.Optional(
+                "enable_heat_mode",
+                default=options.get("enable_heat_mode", DEFAULT_ENABLE_HEAT_MODE)
+            ): bool,
+            vol.Optional(
+                "enable_dry_mode",
+                default=options.get("enable_dry_mode", DEFAULT_ENABLE_DRY_MODE)
+            ): bool,
+            vol.Optional(
+                "max_fan_speed",
+                default=options.get("max_fan_speed", DEFAULT_MAX_FAN_SPEED)
+            ): vol.In(list(FAN_SPEED_OPTIONS.keys())),
+            vol.Optional(
+                "min_fan_speed",
+                default=options.get("min_fan_speed", DEFAULT_MIN_FAN_SPEED)
+            ): vol.In(list(FAN_SPEED_OPTIONS.keys())),
 
             # === Entity Configuration ===
             vol.Required(
@@ -136,4 +166,4 @@ def async_get_options_flow(
     config_entry: config_entries.ConfigEntry,
 ) -> AdaptiveClimateOptionsFlowHandler:
     """Get the options flow for this handler."""
-    return AdaptiveClimateOptionsFlowHandler(config_entry)
+    return AdaptiveClimateOptionsFlowHandler()

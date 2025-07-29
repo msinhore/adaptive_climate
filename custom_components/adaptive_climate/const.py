@@ -9,9 +9,9 @@ MANIFEST_PATH = os.path.join(os.path.dirname(__file__), "manifest.json")
 try:
     with open(MANIFEST_PATH, "r") as manifest_file:
         _MANIFEST = json.load(manifest_file)
-        VERSION = _MANIFEST.get("version", "1.2.0")
+        VERSION = _MANIFEST.get("version", "1.3.0")
 except (FileNotFoundError, json.JSONDecodeError):
-    VERSION = "1.2.0"
+    VERSION = "1.3.0"
 
 # Default configurable parameters (stored in config_entry.options)
 DEFAULT_COMFORT_CATEGORY = "I"
@@ -21,6 +21,31 @@ DEFAULT_TEMPERATURE_CHANGE_THRESHOLD = 0.5
 DEFAULT_OVERRIDE_TEMPERATURE = 0
 DEFAULT_AGGRESSIVE_COOLING_THRESHOLD = 2.0
 DEFAULT_AGGRESSIVE_HEATING_THRESHOLD = 2.0
+
+# HVAC and Fan Control Options
+DEFAULT_ENABLE_FAN_MODE = True
+DEFAULT_ENABLE_COOL_MODE = True
+DEFAULT_ENABLE_HEAT_MODE = True
+DEFAULT_ENABLE_DRY_MODE = True
+DEFAULT_MAX_FAN_SPEED = "high"  # Options: low, mid, high, highest
+DEFAULT_MIN_FAN_SPEED = "low"
+
+# Available HVAC modes for selection
+HVAC_MODE_OPTIONS = {
+    "cool": "Cooling",
+    "heat": "Heating",
+    "fan_only": "Fan Only",
+    "dry": "Dry/Dehumidify",
+    "off": "Off"
+}
+
+# Available fan speed options
+FAN_SPEED_OPTIONS = {
+    "low": "Low",
+    "mid": "Medium",
+    "high": "High",
+    "highest": "Highest"
+}
 
 # Comfort categories (ASHRAE 55)
 COMFORT_CATEGORIES = {

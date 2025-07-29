@@ -34,6 +34,8 @@ A Home Assistant integration implementing ASHRAE 55 Adaptive Thermal Comfort for
 
 - 🔄 **Persistent State Memory**: Retains last states and control history across Home Assistant restarts.
 
+- ☀️ **Solar Radiation Adjustment**: Optional correction factor applied based on estimated solar radiation levels, useful for compensating solar heat gains through roofs or walls.
+
 - 📝 **Detailed Logging**: Records comfort calculations, HVAC decisions, and control logic for transparency and debugging.
 
 - ⚙️ **Fully UI Configurable**: All configuration via Home Assistant options flow.
@@ -75,7 +77,7 @@ A Home Assistant integration implementing ASHRAE 55 Adaptive Thermal Comfort for
   - Indoor Humidity Sensor
   - Outdoor Humidity Sensor
 
-All other options are configurable via the Home Assistant UI.
+All other options, including solar radiation adjustment, are configurable via the Home Assistant UI.
 
 ### Configuration Options Explained
 
@@ -90,6 +92,7 @@ All other options are configurable via the Home Assistant UI.
 | **Override Temperature (°C)**          | Manual adjustment applied to the calculated comfort temperature (example: -1 for cooler targets). |
 | **Aggressive Cooling Threshold (°C)**  | Defines how strongly the system responds to overheating (default: 2°C). |
 | **Aggressive Heating Threshold (°C)**  | Defines how strongly the system responds to overcooling (default: 2°C). |
+| **Radiation Adjustment Factor**        | Factor applied to adjust the comfort temperature based on estimated solar radiation impact. Useful to compensate for sunlight heating specific areas like roofs or walls. Example: 0.05 to slightly increase target temperature during strong sunlight. |
 
 ---
 

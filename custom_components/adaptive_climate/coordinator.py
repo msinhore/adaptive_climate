@@ -1,25 +1,27 @@
-"""
-Adaptive Climate Coordinator: Home Assistant DataUpdateCoordinator for adaptive climate control.
-"""
-# --- Imports ---
+# --- Future Imports ---
 from __future__ import annotations
+
+# --- Standard Library ---
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any, Optional, Dict, List, Tuple
+import asyncio
 
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.util import dt as dt_util, slugify
-from homeassistant.helpers.event import async_track_state_change_event
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.helpers.storage import Store
-from homeassistant.components.climate.const import DOMAIN as CLIMATE_DOMAIN
-from homeassistant.components.climate import HVACMode
-from homeassistant.components.recorder.history import get_significant_states
+# --- Home Assistant Imports ---
 from homeassistant.components import recorder
-from homeassistant.const import (STATE_UNKNOWN, STATE_UNAVAILABLE)
+from homeassistant.components.climate import HVACMode
+from homeassistant.components.climate.const import DOMAIN as CLIMATE_DOMAIN
+from homeassistant.components.recorder.history import get_significant_states
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.storage import Store
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.util import dt as dt_util, slugify
 
-from .const import DOMAIN, UPDATE_INTERVAL_MEDIUM
-from .calculator import calculate_hvac_and_fan
+# --- Custom Component Imports ---
+from .calculator import ComfortCalculator
+from .const import DOMAIN, UPDATE_INTERVAL_MEDIUM, UPDATE_INTERVAL_SHORT, UPDATE_INTERVAL_LONG
 from .mode_mapper import map_fan_mode, map_hvac_mode
 from .season_detector import get_season
 
@@ -27,191 +29,236 @@ from .season_detector import get_season
 _LOGGER = logging.getLogger(__name__)
 STORAGE_VERSION = 1
 STORAGE_KEY = "adaptive_climate_data"
+GLOBAL_CLIMATE_ENTITIES: set[str] = set()
 
-# --- Main Class ---
+
 class AdaptiveClimateCoordinator(DataUpdateCoordinator):
-    """Coordinator for adaptive climate control."""
+    """Coordinator for adaptive climate control with simplified structure."""
 
-    def __init__(self, hass: HomeAssistant, 
-                 config_entry_data: dict[str, Any], 
-                 config_entry_options: dict[str, Any] = None
-                 ) -> None:
-        """
-        Initialize the coordinator and set up listeners.
-        """
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config_entry_data: Dict[str, Any],
+        config_entry_options: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Initialize the coordinator with simplified setup."""
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(minutes=UPDATE_INTERVAL_MEDIUM),
+            update_interval=timedelta(minutes=UPDATE_INTERVAL_SHORT),  # Start with shorter interval for faster response
         )
-        self.config: dict[str, Any] = dict(config_entry_data)
+
+        # Setup configuration
+        self._setup_config(config_entry_data, config_entry_options)
+        self._setup_entities()
+        self._setup_storage()
+        self._setup_listeners()
+        
+        _LOGGER.debug(f"[{self.device_name}] Coordinator initialized successfully")
+
+    @property
+    def device_name(self) -> str:
+        """Get device name for logging."""
+        return self.config.get("name", "Adaptive Climate")
+
+    def _setup_config(self, config_entry_data: Dict[str, Any], config_entry_options: Optional[Dict[str, Any]]) -> None:
+        """Setup configuration and primary entity ID."""
+        self.config: Dict[str, Any] = dict(config_entry_data)
         if config_entry_options:
             self.config.update(config_entry_options)
-        slug = slugify(self.config.get("name", "Adaptive Climate"))
-        self.primary_entity_id: str = f"binary_sensor.{slug}_ashrae_compliance"
 
-        # Internal state
-        self._outdoor_temp_history: list[tuple[datetime, float]] = []
-        self._indoor_temp_history: list[tuple[datetime, float]] = []
-        self._running_mean_outdoor_temp: Optional[float] = None
-        self._running_mean_indoor_temp: Optional[float] = None
-        self._store: Store = Store(
-            hass,
-            STORAGE_VERSION,
-            f"{STORAGE_KEY}_{self.config.get('name', 'default')}"
+        entity = self.config.get("entity")
+        name_slug = slugify(
+            entity.split(".")[-1] if entity else self.device_name
+        ).replace("-", "_")
+        self.primary_entity_id = (
+            f"{entity}_ashrae_compliance"
+            if entity else f"binary_sensor.{name_slug}_ashrae_compliance"
         )
-        self._last_valid_params: Optional[dict[str, Any]] = None
 
-        # Monitored entities
-        self.climate_entity_id: str = self.config["climate_entity"]
-        self.indoor_temp_sensor_id: str = self.config["indoor_temp_sensor"]
-        self.outdoor_temp_sensor_id: str = self.config["outdoor_temp_sensor"]
-        self.indoor_humidity_sensor_id: Optional[str] = self.config.get("indoor_humidity_sensor")
-        self.outdoor_humidity_sensor_id: Optional[str] = self.config.get("outdoor_humidity_sensor")
+        _LOGGER.debug(f"[{self.device_name}] Configuration setup completed - Primary entity: {self.primary_entity_id}")
 
-        # Sensor fallbacks
+    def _setup_entities(self) -> None:
+        """Setup and validate monitored entities."""
+        self.climate_entity_id = self.config.get("entity") or self.config.get("climate_entity")
+        if not self.climate_entity_id:
+            raise ValueError(
+                f"[{self.device_name}] Missing required "
+                "'entity' or 'climate_entity' definition."
+            )
+        
+        if self.climate_entity_id in GLOBAL_CLIMATE_ENTITIES:
+            raise ValueError(f"Entity {self.climate_entity_id} already linked to another device.")
+        GLOBAL_CLIMATE_ENTITIES.add(self.climate_entity_id)
+
+        # Setup sensor entities
+        self.indoor_temp_sensor_id = self.config.get("indoor_temp_sensor")
+        self.outdoor_temp_sensor_id = self.config.get("outdoor_temp_sensor")
+        self.indoor_humidity_sensor_id = self.config.get("indoor_humidity_sensor")
+        self.outdoor_humidity_sensor_id = self.config.get("outdoor_humidity_sensor")
+
+        # Setup state tracking
         self._last_valid_indoor_temp: Optional[float] = None
         self._last_valid_outdoor_temp: Optional[float] = None
         self._last_valid_indoor_humidity: Optional[float] = None
         self._last_valid_outdoor_humidity: Optional[float] = None
-
-        # Aggressive Cooling / Heating
-        self._last_system_command = {}
+        self._last_system_command: Dict[str, Any] = {}
         self._last_command_timestamp: Optional[datetime] = None
-        self.command_ignore_interval: int = self.config.get("command_ignore_interval", 15)  # seconds
+        self._outdoor_temp_history: List[Tuple[datetime, float]] = []
+        self._running_mean_temp: Optional[float] = None
+        self._last_valid_params: Optional[Dict[str, Any]] = None
+        self._disable_override_detection: bool = False  # Flag to disable override detection during auto mode activation
+        self._startup_completed: bool = False  # Flag to track startup completion
 
-        self._system_turned_off = False  # Tracks if the system turned off the climate device
-        self._user_power_off = False  # Tracks if the user manually turned off the climate device
+        # Setup calculator
+        self._calculator = ComfortCalculator()
 
-        self._setup_listeners()
-        self.hass.async_create_task(self._load_persisted_data())
+        _LOGGER.debug(f"[{self.device_name}] Entities setup completed:")
+        _LOGGER.debug(f"[{self.device_name}]   - Climate entity: {self.climate_entity_id}")
+        _LOGGER.debug(f"[{self.device_name}]   - Indoor temp sensor: {self.indoor_temp_sensor_id}")
+        _LOGGER.debug(f"[{self.device_name}]   - Outdoor temp sensor: {self.outdoor_temp_sensor_id}")
+        _LOGGER.debug(f"[{self.device_name}]   - Indoor humidity sensor: {self.indoor_humidity_sensor_id}")
+        _LOGGER.debug(f"[{self.device_name}]   - Outdoor humidity sensor: {self.outdoor_humidity_sensor_id}")
 
-    async def _async_update_data(self) -> dict[str, Any]:
-        """
-        Update data and execute control actions.
-        """
-        if not self.hass.is_running:
-            return self._last_valid_params or self._default_params("ha_starting")
-        state = self.hass.states.get(self.climate_entity_id)
-        if not state or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-            return self._last_valid_params or self._default_params("entity_disabled")
-
-        # If user powered off, pause automatic control until user turns it back on
-        if self._user_power_off:
-            self.log_event("User powered off the climate entity. Automatic control paused until user turns it back on.")
-            return self._last_valid_params or self._default_params("user_power_off")
-
-        energy_save_mode_active = self.config["energy_save_mode"]
-
-        auto_mode_enable = self.config.get("auto_mode_enable", True)
-
-        if not auto_mode_enable:
-            self.log_event(f"Auto mode disabled. No actions will be taken.")
-            return self._last_valid_params or self._default_params("manual_mode")
-
-        # Comfort calculation and control
-        indoor_temp = self._get_value(self.indoor_temp_sensor_id, "indoor_temp")
-        outdoor_temp = self._get_value(self.outdoor_temp_sensor_id, "outdoor_temp")
-        indoor_humidity = self._get_value(self.indoor_humidity_sensor_id, "indoor_humidity")
-        outdoor_humidity = self._get_value(self.outdoor_humidity_sensor_id, "outdoor_humidity")
-        current_fan_mode = state.attributes.get("fan_mode") if state else None
-
-        if indoor_temp is None or outdoor_temp is None:
-            _LOGGER.warning(f"[{self.config.get('name')}] Indoor or outdoor ",
-                            f"temperature unavailable. Skipping update.")
-            return self._last_valid_params or self._default_params("entities_unavailable")
-
-        season = get_season(self.hass.config.latitude)
-
-        comfort_params = calculate_hvac_and_fan(
-            indoor_temp=indoor_temp,
-            outdoor_temp=outdoor_temp,
-            min_temp=self.config.get("min_comfort_temp", 21),
-            max_temp=self.config.get("max_comfort_temp", 27),
-            season=season,
-            category=self.config.get("comfort_category", "I"),
-            air_velocity=current_fan_mode or "low",
-            indoor_humidity=indoor_humidity,
-            outdoor_humidity=outdoor_humidity,
-            running_mean_outdoor_temp=self._running_mean_outdoor_temp,
-            running_mean_indoor_temp=self._running_mean_indoor_temp,
-            energy_save_mode=energy_save_mode_active,
-            device_name=self.config.get("name", "Adaptive Climate"),
-            override_temperature=self.config.get("override_temperature", 0),
-            aggressive_cooling_threshold=self.config.get("aggressive_cooling_threshold", 2.0),
-            aggressive_heating_threshold=self.config.get("aggressive_heating_threshold", 2.0),
+    def _setup_storage(self) -> None:
+        """Setup storage for persisting data."""
+        self._store = Store(
+            self.hass,
+            STORAGE_VERSION,
+            f"{STORAGE_KEY}_{self.device_name}"
         )
-        _LOGGER.debug(
-            f"[{self.config.get('name')}] Comfort parameters: "
-            f"ashrae_compliant={comfort_params.get('ashrae_compliant')}, "
-            f"season={comfort_params.get('season')}, "
-            f"category={comfort_params.get('category')}, "
-            f"energy_save_mode={self.config.get('energy_save_mode')}, "
-            f"hvac_mode={comfort_params.get('hvac_mode')}, "
-            f"fan_mode={comfort_params.get('fan_mode')}, "
-            f"indoor_temp={int(round(indoor_temp))}°C, "
-            f"outdoor_temp={int(round(outdoor_temp))}°C, "
-            f"comfort_temp={int(round(comfort_params.get('comfort_temp')))}°C, "
-            f"comfort_min_ashrae={int(round(comfort_params.get('comfort_min_ashrae')))}°C, "
-            f"comfort_max_ashrae={int(round(comfort_params.get('comfort_max_ashrae')))}°C, "
-            f"running_mean_indoor_temp={int(round(self._running_mean_indoor_temp))}°C, "
-            f"running_mean_outdoor_temp={int(round(self._running_mean_outdoor_temp))}°C, "
-            f"indoor_humidity={int(round(indoor_humidity))}%, "
-            f"outdoor_humidity={int(round(outdoor_humidity))}%"
-        )
+        _LOGGER.debug(f"[{self.device_name}] Storage setup completed")
 
-        # Determine control actions based on comfort parameters
-        control_actions = self._determine_actions(indoor_temp, comfort_params)
-
-        ac_hvac_mode = str(state.state)
-        ac_fan_mode = str(state.attributes.get("fan_mode"))
-        ac_temperature = round(float(state.attributes.get("temperature")), 2) if state.attributes.get("temperature") else None
-
-        ac_state_dict = {
-            "hvac_mode": ac_hvac_mode,
-            "fan_mode": ac_fan_mode,
-            "temperature": ac_temperature
-        }
-
-        desired_state_dict = {
-            "hvac_mode": control_actions.get("set_hvac_mode"),
-            "fan_mode": control_actions.get("set_fan_mode"),
-            "temperature": control_actions.get("set_temperature")
-        }
-
-        decision = self._evaluate_control_decision(ac_state_dict, desired_state_dict)
+    def _setup_listeners(self) -> None:
+        """Register state change listener and startup tasks."""
+        entities = [self.climate_entity_id]
+        async_track_state_change_event(self.hass, entities, self._handle_state_change)
         
-        if decision == "manual_override":
-            self.config["auto_mode_enable"] = False
-            self.log_event(f"Manual control detected, auto mode disabled.")
-            return self._last_valid_params or self._default_params("manual_override")
+        # Execute startup immediately for faster response
+        self.hass.async_create_task(self._startup())
+        _LOGGER.debug(f"[{self.device_name}] Listeners setup completed - monitoring: {entities}")
 
-        if decision == "no_action_needed":
-            _LOGGER.debug(f"[{self.config.get('name')}] AC already in desired state, no action needed.")
-            return self._last_valid_params or self._default_params("no_action_needed")
+    async def _startup(self) -> None:
+        """Load persisted data and run initial control cycle if needed."""
+        _LOGGER.debug(f"[{self.device_name}] Starting initialization...")
+        
+        # Load persisted data first
+        await self._load_persisted_data()
+        await self._persist_data(params_only=True)
+        
+        # Load outdoor temperature history
+        await self._load_outdoor_temp_history()
+        
+        # Check if auto mode is enabled and execute immediately
+        if self.config.get("auto_mode_enable", False):
+            _LOGGER.debug(f"[{self.device_name}] Auto mode enabled - executing immediate control cycle")
+            
+            # Execute control cycle immediately
+            await self._execute_immediate_control_cycle()
+        else:
+            _LOGGER.debug(f"[{self.device_name}] Auto mode disabled - skipping initial control cycle")
+        
+        self._startup_completed = True
+        _LOGGER.debug(f"[{self.device_name}] Initialization completed")
+        
+        # Adjust update interval to normal after startup
+        if self.config.get("auto_mode_enable", False):
+            self._adjust_update_interval()
 
-        if decision == "waiting_for_state_change":
-            _LOGGER.debug(f"[{self.config.get('name')}] Waiting for AC to reach desired state.")
-            return self._last_valid_params or self._default_params("waiting_for_state_change")
+    def _adjust_update_interval(self) -> None:
+        """Adjust update interval based on auto mode status."""
+        if self.config.get("auto_mode_enable", False):
+            # Use medium interval for normal operation
+            self.update_interval = timedelta(minutes=UPDATE_INTERVAL_MEDIUM)
+            _LOGGER.debug(f"[{self.device_name}] Update interval adjusted to {UPDATE_INTERVAL_MEDIUM} minutes for normal operation")
+        else:
+            # Use longer interval when auto mode is disabled
+            self.update_interval = timedelta(minutes=UPDATE_INTERVAL_LONG)
+            _LOGGER.debug(f"[{self.device_name}] Update interval adjusted to {UPDATE_INTERVAL_LONG} minutes (auto mode disabled)")
 
-        await self._execute_actions(control_actions)
+    async def _execute_immediate_control_cycle(self) -> None:
+        """Execute an immediate control cycle with optimized timing."""
+        _LOGGER.debug(f"[{self.device_name}] Executing immediate control cycle...")
+        
+        try:
+            # Wait a short moment for sensors to be available
+            await asyncio.sleep(2)
+            
+            # Check if climate entity is available
+            state = self.hass.states.get(self.climate_entity_id)
+            if not state or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                _LOGGER.warning(f"[{self.device_name}] Climate entity not available during startup - will retry on next update")
+                return
+            
+            # Get sensor data
+            sensor_data = self._get_sensor_data(state)
+            if not sensor_data:
+                _LOGGER.warning(f"[{self.device_name}] Sensor data unavailable during startup - will retry on next update")
+                return
+            
+            # Calculate comfort parameters
+            comfort_params = self._calculate_comfort(sensor_data)
+            if not comfort_params:
+                _LOGGER.warning(f"[{self.device_name}] Comfort calculation failed during startup - will retry on next update")
+                return
+            
+            # Determine and execute actions
+            actions = self._determine_actions(comfort_params)
+            
+            if self._should_execute_actions(actions):
+                _LOGGER.debug(f"[{self.device_name}] Startup actions will be executed")
+                await self._execute_all_actions(actions)
+            else:
+                _LOGGER.debug(f"[{self.device_name}] No startup actions needed - system already in desired state")
+            
+            _LOGGER.debug(f"[{self.device_name}] Immediate control cycle completed successfully")
+            
+        except Exception as e:
+            _LOGGER.error(f"[{self.device_name}] Failed to execute immediate control cycle: {e}")
+            # Don't fail startup, just log the error
 
-        params = self._build_params(
-            indoor_temp, outdoor_temp, indoor_humidity, outdoor_humidity, comfort_params, control_actions
-        )
-        self._last_valid_params = params.copy()
-        await self._save_persisted_data(params)
-        return params
+    async def _load_persisted_data(self) -> None:
+        """Load persisted data from storage."""
+        try:
+            data = await self._store.async_load()
+            if data:
+                _LOGGER.debug(f"[{self.device_name}] Loading persisted data...")
+                
+                # Load last system command
+                if "last_system_command" in data and data["last_system_command"]:
+                    self._last_system_command = data["last_system_command"]
+                    _LOGGER.debug(f"[{self.device_name}] Loaded last system command: {self._last_system_command}")
+                
+                # Load last command timestamp
+                if "last_command_timestamp" in data and data["last_command_timestamp"]:
+                    try:
+                        self._last_command_timestamp = dt_util.parse_datetime(data["last_command_timestamp"])
+                        _LOGGER.debug(f"[{self.device_name}] Loaded last command timestamp: {self._last_command_timestamp}")
+                    except Exception as e:
+                        _LOGGER.warning(f"[{self.device_name}] Failed to parse last command timestamp: {e}")
+                
+                # Load config parameters
+                if "config_parameters" in data and data["config_parameters"]:
+                    config_params = data["config_parameters"]
+                    for key, value in config_params.items():
+                        if key in self.config:
+                            self.config[key] = value
+                    _LOGGER.debug(f"[{self.device_name}] Loaded config parameters: {config_params}")
+                
+                _LOGGER.debug(f"[{self.device_name}] Persisted data loaded successfully")
+            else:
+                _LOGGER.debug(f"[{self.device_name}] No persisted data found")
+        except Exception as e:
+            _LOGGER.error(f"[{self.device_name}] Failed to load persisted data: {e}")
 
-    # --- Log event ---
     def log_event(self, message: str) -> None:
         """Log message to Home Assistant logbook and system logger."""
-        formatted_message = f"[{self.config.get('name')}] {message}"
+        formatted_message = f"[{self.device_name}] {message}"
         self.hass.async_create_task(
             self.hass.services.async_call(
                 "logbook", "log", {
-                    "name": self.config.get("name"),
+                    "name": self.device_name,
                     "message": message,
                     "entity_id": self.primary_entity_id,
                 }
@@ -219,98 +266,29 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         )
         _LOGGER.info(formatted_message)
 
-    def _evaluate_control_decision(self, ac_state: dict, desired_state: dict) -> str:
-        """
-        Decides whether action is required, pending, or manual override detected.
-        Returns one of:
-        - 'manual_override'
-        - 'no_action_needed'
-        - 'waiting_for_state_change'
-        - 'action_required'
-        """
-        if self._check_manual_override(self.hass.states.get(self.climate_entity_id)):
-            return "manual_override"
+    async def _persist_data(self, data: Optional[Dict[str, Any]] = None, params_only: bool = False) -> None:
+        """Unified method for data persistence."""
+        try:
+            if params_only:
+                data_to_save = {"config_parameters": self._get_config_params()}
+                _LOGGER.debug(f"[{self.device_name}] Persisting configuration parameters only")
+            else:
+                data_to_save = {
+                    "last_system_command": self._last_system_command,
+                    "last_command_timestamp": self._last_command_timestamp.isoformat() if self._last_command_timestamp else None,
+                    "last_sensor_data": data,
+                    "config_parameters": self._get_config_params(),
+                    "last_updated": dt_util.now().isoformat(),
+                }
+                _LOGGER.debug(f"[{self.device_name}] Persisting full data with sensor data")
+            await self._store.async_save(data_to_save)
+            _LOGGER.debug(f"[{self.device_name}] Data persisted successfully")
+        except Exception as e:
+            _LOGGER.error(f"[{self.device_name}] Failed to persist data: {e}")
 
-        if ac_state == desired_state:
-            return "no_action_needed"
-
-        if desired_state == self._last_system_command:
-            return "waiting_for_state_change"
-
-        return "action_required"
-
-    def _update_last_system_command(self, state: dict) -> None:
-        """Updates the last command issued by the system."""
-        self._last_system_command = {
-            "hvac_mode": str(state.get("set_hvac_mode")),
-            "fan_mode": str(state.get("set_fan_mode")),
-            "temperature": int(round(state.get("set_temperature"))),
-        }
-        self._last_command_timestamp = dt_util.utcnow()
-
-    def _check_manual_override(self, state) -> bool:
-        """Detect manual override based on state difference from last system command."""
-        if not self._last_system_command:
-            return False  # No command issued yet
-
-        # If within ignore interval, do not consider manual override
-        if self._last_command_timestamp and (dt_util.utcnow() - self._last_command_timestamp).total_seconds() < self.command_ignore_interval:
-            return False
-
-        # If user manually powered off, set flag and pause auto mode (but do not disable auto mode)
-        if state.state == HVACMode.OFF:
-            if self._last_system_command.get("hvac_mode") != HVACMode.OFF:
-                self._user_power_off = True
-            return False  # Respect power-off without disabling auto mode
-
-        ac_hvac_mode = str(state.state)
-        ac_fan_mode = str(state.attributes.get("fan_mode"))
-        ac_temperature = int(round(float(state.attributes.get("temperature") or 0)))
-
-        expected_temperature = int(self._last_system_command.get("temperature") or 0)
-        if (
-            ac_hvac_mode != self._last_system_command.get("hvac_mode") or
-            ac_fan_mode != self._last_system_command.get("fan_mode") or
-            ac_temperature != expected_temperature
-        ):
-            # Manual override detected (not powering off)
-            self.log_event("Manual control detected. Auto mode disabled.")
-            # Remove disabling auto_mode_enable here (no longer set to False)
-            return True
-
-        return False
-
-    async def _shutdown_climate(self) -> None:
-        """Shutdown climate entity as system action."""
-        self._system_turned_off = True  # Marca que foi o sistema que desligou
-        await self._save_persisted_data(self._last_valid_params or {})
-        await self._call_service(CLIMATE_DOMAIN, "turn_off", {
-            "entity_id": self.climate_entity_id
-        })
-        self.log_event("System turned off the climate entity.")
-
-    # --- Dynamic Configuration ---
-    async def async_update_config_value(self, key: str, value: Any) -> None:
-        """Update a single config value, persist parameters, and refresh."""
-        self.config[key] = value
-        await self._save_persisted_parameters_only()
-
-        if key == "auto_mode_enable" and value is True:
-            self._last_system_command = {}
-            self._last_command_timestamp = None
-            self.log_event("Auto mode re-enabled. System reset to resume automatic control.")
-
-        await self.async_request_refresh()
-
-        _LOGGER.debug(
-            f"[{self.config.get('name')}] Config key '{key}' updated and persisted: {value}, "
-            f"Primary entity: {self.primary_entity_id}"
-        )
-
-    async def _save_persisted_parameters_only(self) -> None:
-        """Persist only configuration parameters."""
-        data = await self._store.async_load() or {}
-        data["config_parameters"] = {
+    def _get_config_params(self) -> Dict[str, Any]:
+        """Get configuration parameters for storage."""
+        return {
             "min_comfort_temp": self.config.get("min_comfort_temp"),
             "max_comfort_temp": self.config.get("max_comfort_temp"),
             "temperature_change_threshold": self.config.get("temperature_change_threshold"),
@@ -318,253 +296,455 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             "aggressive_cooling_threshold": self.config.get("aggressive_cooling_threshold"),
             "aggressive_heating_threshold": self.config.get("aggressive_heating_threshold"),
             "energy_save_mode": self.config.get("energy_save_mode", False),
+            "auto_mode_enable": self.config.get("auto_mode_enable", False),
+            # New HVAC and Fan Control parameters
+            "enable_fan_mode": self.config.get("enable_fan_mode", True),
+            "enable_cool_mode": self.config.get("enable_cool_mode", True),
+            "enable_heat_mode": self.config.get("enable_heat_mode", True),
+            "enable_dry_mode": self.config.get("enable_dry_mode", True),
+            "max_fan_speed": self.config.get("max_fan_speed", "high"),
+            "min_fan_speed": self.config.get("min_fan_speed", "low"),
         }
-        await self._store.async_save(data)
 
-    async def update_config(self, new_config: dict[str, Any]) -> None:
-        """Update the coordinator configuration with new values."""
-        self.config.update(new_config)
-        _LOGGER.debug(f"[{self.config.get('name')}] Coordinator configuration updated: {new_config}")
-        await self.async_request_refresh()
+    async def _async_update_data(self) -> Dict[str, Any]:
+        """Main update method with simplified logic."""
+        _LOGGER.debug(f"[{self.device_name}] Starting data update cycle")
 
-    # --- Outdoor Temperature History ---
-    async def _load_outdoor_temp_history(self, days: int = 7):
-        """Load outdoor temperature history from the recorder."""
-        start_time = dt_util.now() - timedelta(days=days)
-        entity_id = self.outdoor_temp_sensor_id
-        states = await recorder.get_instance(self.hass).async_add_executor_job(
-            get_significant_states, self.hass, start_time, dt_util.now(), [entity_id]
-        )
-        outdoor_history = []
-        for state in states.get(entity_id, []):
-            try:
-                temp = float(state.state)
-                outdoor_history.append((state.last_updated, temp))
-            except Exception:
-                continue
-        self._outdoor_temp_history = outdoor_history
-        self._running_mean_outdoor_temp = self._calculate_exponential_running_mean(self._outdoor_temp_history)
-
-    # --- Indoor Temperature History ---
-    async def _load_indoor_temp_history(self, days: int = 7):
-        """Load indoor temperature history from the recorder."""
-        start_time = dt_util.now() - timedelta(days=days)
-        entity_id = self.indoor_temp_sensor_id
-        states = await recorder.get_instance(self.hass).async_add_executor_job(
-            get_significant_states, self.hass, start_time, dt_util.now(), [entity_id]
-        )
+        if not self.hass.is_running:
+            _LOGGER.debug(f"[{self.device_name}] Home Assistant not running - returning default params")
+            return self._get_default_params("ha_starting")
         
-        indoor_history = []
-        for state in states.get(entity_id, []):
-            try:
-                temp = float(state.state)
-                indoor_history.append((state.last_updated, temp))
-            except Exception:
-                continue
-        self._indoor_temp_history = indoor_history
-        self._running_mean_indoor_temp = self._calculate_exponential_running_mean(self._indoor_temp_history)
+        state = self.hass.states.get(self.climate_entity_id)
+        if not state or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            _LOGGER.debug(f"[{self.device_name}] Climate entity unavailable - returning default params")
+            return self._get_default_params("entity_disabled")
 
-    # --- Time Since State ---
-    async def get_time_since_state(self, entity_id: str, target_state: str) -> float:
-        """Get the time in minutes since the entity was last in a specific state."""
-        now = dt_util.now()
-        states = await recorder.get_instance(self.hass).async_add_executor_job(
-            get_significant_states, self.hass, now - timedelta(hours=24), now, [entity_id]
+        # Check for manual override first
+        _LOGGER.debug(f"[{self.device_name}] Checking for manual override...")
+        _LOGGER.debug(f"[{self.device_name}]   - Last system command exists: {self._last_system_command is not None}")
+        if self._last_system_command:
+            _LOGGER.debug(f"[{self.device_name}]   - Last system command: {self._last_system_command}")
+        
+        if self._last_system_command and self._detect_manual_override(state):
+            _LOGGER.debug(f"[{self.device_name}] Manual override detected - disabling auto mode")
+            self.config["auto_mode_enable"] = False
+            self.log_event("Manual override detected. Auto mode disabled.")
+            await self._persist_data(params_only=True)
+            return self._get_default_params("manual_override")
+        else:
+            _LOGGER.debug(f"[{self.device_name}] No manual override detected")
+
+        if not self.config.get("auto_mode_enable", True):
+            _LOGGER.debug(f"[{self.device_name}] Auto mode disabled - no actions will be taken")
+            return self._get_default_params("manual_mode")
+
+        # Get sensor data
+        _LOGGER.debug(f"[{self.device_name}] Collecting sensor data...")
+        sensor_data = self._get_sensor_data(state)
+        if not sensor_data:
+            _LOGGER.debug(f"[{self.device_name}] Sensor data unavailable - returning default params")
+            return self._get_default_params("entities_unavailable")
+
+        _LOGGER.debug(f"[{self.device_name}] Sensor data collected successfully:")
+        _LOGGER.debug(f"[{self.device_name}]   - Indoor temp: {sensor_data['indoor_temp']:.1f}°C" if sensor_data['indoor_temp'] is not None else f"[{self.device_name}]   - Indoor temp: None")
+        _LOGGER.debug(f"[{self.device_name}]   - Outdoor temp: {sensor_data['outdoor_temp']:.1f}°C" if sensor_data['outdoor_temp'] is not None else f"[{self.device_name}]   - Outdoor temp: None")
+        _LOGGER.debug(f"[{self.device_name}]   - Indoor humidity: {sensor_data['indoor_humidity']:.1f}%" if sensor_data['indoor_humidity'] is not None else f"[{self.device_name}]   - Indoor humidity: None")
+        _LOGGER.debug(f"[{self.device_name}]   - Outdoor humidity: {sensor_data['outdoor_humidity']:.1f}%" if sensor_data['outdoor_humidity'] is not None else f"[{self.device_name}]   - Outdoor humidity: None")
+
+        # Calculate comfort parameters
+        _LOGGER.debug(f"[{self.device_name}] Calculating comfort parameters...")
+        comfort_params = self._calculate_comfort(sensor_data)
+        if not comfort_params:
+            _LOGGER.debug(f"[{self.device_name}] Comfort calculation failed - returning default params")
+            return self._get_default_params("calculation_failed")
+
+        _LOGGER.debug(f"[{self.device_name}] Comfort parameters calculated:")
+        _LOGGER.debug(f"[{self.device_name}]   - ASHRAE compliant: {comfort_params.get('ashrae_compliant')}")
+        _LOGGER.debug(f"[{self.device_name}]   - Season: {comfort_params.get('season')}")
+        _LOGGER.debug(f"[{self.device_name}]   - Category: {comfort_params.get('category')}")
+        
+        # Safe formatting for comfort parameters
+        comfort_temp = comfort_params.get('comfort_temp')
+        comfort_min = comfort_params.get('comfort_min_ashrae')
+        comfort_max = comfort_params.get('comfort_max_ashrae')
+        
+        _LOGGER.debug(f"[{self.device_name}]   - Comfort temp: {comfort_temp:.1f}°C" if comfort_temp is not None else f"[{self.device_name}]   - Comfort temp: None")
+        _LOGGER.debug(f"[{self.device_name}]   - Comfort range: {comfort_min:.1f}°C - {comfort_max:.1f}°C" if comfort_min is not None and comfort_max is not None else f"[{self.device_name}]   - Comfort range: None")
+        _LOGGER.debug(f"[{self.device_name}]   - HVAC mode: {comfort_params.get('hvac_mode')}")
+        _LOGGER.debug(f"[{self.device_name}]   - Fan mode: {comfort_params.get('fan_mode')}")
+
+        # Determine and execute actions
+        _LOGGER.debug(f"[{self.device_name}] Determining control actions...")
+        actions = self._determine_actions(comfort_params)
+        
+        _LOGGER.debug(f"[{self.device_name}] Control actions determined:")
+        _LOGGER.debug(f"[{self.device_name}]   - Set temperature: {actions.get('set_temperature')}°C")
+        _LOGGER.debug(f"[{self.device_name}]   - Set HVAC mode: {actions.get('set_hvac_mode')}")
+        _LOGGER.debug(f"[{self.device_name}]   - Set fan mode: {actions.get('set_fan_mode')}")
+        _LOGGER.debug(f"[{self.device_name}]   - Reason: {actions.get('reason')}")
+
+        if self._should_execute_actions(actions):
+            _LOGGER.debug(f"[{self.device_name}] Actions will be executed")
+            await self._execute_all_actions(actions)
+        else:
+            _LOGGER.debug(f"[{self.device_name}] No actions needed - system already in desired state")
+
+        # Build and save result
+        _LOGGER.debug(f"[{self.device_name}] Building result parameters...")
+        result_params = self._build_result_params(sensor_data, comfort_params, actions)
+        self._last_valid_params = result_params.copy()
+        await self._persist_data(result_params)
+        
+        _LOGGER.debug(f"[{self.device_name}] Data update cycle completed successfully")
+        return result_params
+
+    def _get_sensor_data(self, state) -> Optional[Dict[str, Any]]:
+        """Get all sensor data in one method."""
+        _LOGGER.debug(f"[{self.device_name}] Collecting sensor data from entities...")
+        
+        indoor_temp = self._get_value(self.indoor_temp_sensor_id, "indoor_temp")
+        outdoor_temp = self._get_value(self.outdoor_temp_sensor_id, "outdoor_temp")
+        indoor_humidity = self._get_value(self.indoor_humidity_sensor_id, "indoor_humidity")
+        outdoor_humidity = self._get_value(self.outdoor_humidity_sensor_id, "outdoor_humidity")
+        
+        if indoor_temp is None or outdoor_temp is None:
+            _LOGGER.warning(f"[{self.device_name}] Indoor or outdoor temperature unavailable.")
+            return None
+        
+        sensor_data = {
+            "indoor_temp": indoor_temp,
+            "outdoor_temp": outdoor_temp,
+            "indoor_humidity": indoor_humidity,
+            "outdoor_humidity": outdoor_humidity,
+            "current_fan_mode": state.attributes.get("fan_mode") if state else None,
+        }
+        
+        _LOGGER.debug(f"[{self.device_name}] Sensor data collection completed")
+        return sensor_data
+
+    def _calculate_comfort(self, sensor_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Calculate comfort parameters with error handling."""
+        _LOGGER.debug(f"[{self.device_name}] Starting comfort calculation...")
+        try:
+            season = get_season(self.hass.config.latitude)
+            _LOGGER.debug(f"[{self.device_name}] Detected season: {season}")
+
+            # Log input parameters
+            _LOGGER.debug(f"[{self.device_name}] Comfort calculation inputs:")
+            _LOGGER.debug(f"[{self.device_name}]   - Indoor temp: {sensor_data['indoor_temp']:.1f}°C" if sensor_data['indoor_temp'] is not None else f"[{self.device_name}]   - Indoor temp: None")
+            _LOGGER.debug(f"[{self.device_name}]   - Outdoor temp: {sensor_data['outdoor_temp']:.1f}°C" if sensor_data['outdoor_temp'] is not None else f"[{self.device_name}]   - Outdoor temp: None")
+            _LOGGER.debug(f"[{self.device_name}]   - Indoor humidity: {sensor_data['indoor_humidity']:.1f}%" if sensor_data['indoor_humidity'] is not None else f"[{self.device_name}]   - Indoor humidity: None")
+            _LOGGER.debug(f"[{self.device_name}]   - Outdoor humidity: {sensor_data['outdoor_humidity']:.1f}%" if sensor_data['outdoor_humidity'] is not None else f"[{self.device_name}]   - Outdoor humidity: None")
+            _LOGGER.debug(f"[{self.device_name}]   - Running mean temp: {self._running_mean_temp:.1f}°C" if self._running_mean_temp is not None else f"[{self.device_name}]   - Running mean temp: None")
+            _LOGGER.debug(f"[{self.device_name}]   - Fan mode: {sensor_data['current_fan_mode']}")
+            _LOGGER.debug(f"[{self.device_name}]   - Energy save mode: {self.config.get('energy_save_mode', False)}")
+            _LOGGER.debug(f"[{self.device_name}]   - Comfort category: {self.config.get('comfort_category', 'I')}")
+            _LOGGER.debug(f"[{self.device_name}]   - Min comfort temp: {self.config.get('min_comfort_temp', 21)}°C")
+            _LOGGER.debug(f"[{self.device_name}]   - Max comfort temp: {self.config.get('max_comfort_temp', 27)}°C")
+            _LOGGER.debug(f"[{self.device_name}]   - Aggressive cooling threshold: {self.config.get('aggressive_cooling_threshold', 2.0)}°C")
+            _LOGGER.debug(f"[{self.device_name}]   - Aggressive heating threshold: {self.config.get('aggressive_heating_threshold', 2.0)}°C")
+
+            comfort_params = self._calculator.calculate(
+                indoor_temp=sensor_data["indoor_temp"],
+                outdoor_temp=sensor_data["outdoor_temp"],
+                min_temp=self.config.get("min_comfort_temp", 21),
+                max_temp=self.config.get("max_comfort_temp", 27),
+                season=season,
+                category=self.config.get("comfort_category", "I"),
+                air_velocity=sensor_data["current_fan_mode"] or "low",
+                indoor_humidity=sensor_data["indoor_humidity"],
+                outdoor_humidity=sensor_data["outdoor_humidity"],
+                running_mean_temp=self._running_mean_temp,
+                energy_save_mode=self.config.get("energy_save_mode", False),
+                device_name=self.device_name,
+                aggressive_cooling_threshold=self.config.get("aggressive_cooling_threshold", 2.0),
+                aggressive_heating_threshold=self.config.get("aggressive_heating_threshold", 2.0),
+                # New HVAC and Fan Control parameters
+                enable_fan_mode=self.config.get("enable_fan_mode", True),
+                enable_cool_mode=self.config.get("enable_cool_mode", True),
+                enable_heat_mode=self.config.get("enable_heat_mode", True),
+                enable_dry_mode=self.config.get("enable_dry_mode", True),
+                max_fan_speed=self.config.get("max_fan_speed", "high"),
+                min_fan_speed=self.config.get("min_fan_speed", "low"),
+            )
+
+            # Log calculation results
+            _LOGGER.debug(f"[{self.device_name}] Comfort calculation results:")
+            _LOGGER.debug(f"[{self.device_name}]   - ASHRAE compliant: {comfort_params.get('ashrae_compliant')}")
+            _LOGGER.debug(f"[{self.device_name}]   - Season: {comfort_params.get('season')}")
+            _LOGGER.debug(f"[{self.device_name}]   - Category: {comfort_params.get('category')}")
+            
+            # Safe formatting for numeric values that might be None
+            comfort_temp = comfort_params.get('comfort_temp')
+            comfort_min = comfort_params.get('comfort_min_ashrae')
+            comfort_max = comfort_params.get('comfort_max_ashrae')
+            target_temp = comfort_params.get('target_temp')
+            
+            _LOGGER.debug(f"[{self.device_name}]   - Comfort temp: {comfort_temp:.1f}°C" if comfort_temp is not None else f"[{self.device_name}]   - Comfort temp: None")
+            _LOGGER.debug(f"[{self.device_name}]   - Comfort range: {comfort_min:.1f}°C - {comfort_max:.1f}°C" if comfort_min is not None and comfort_max is not None else f"[{self.device_name}]   - Comfort range: None")
+            _LOGGER.debug(f"[{self.device_name}]   - Target temp: {target_temp:.1f}°C" if target_temp is not None else f"[{self.device_name}]   - Target temp: None")
+            _LOGGER.debug(f"[{self.device_name}]   - HVAC mode: {comfort_params.get('hvac_mode')}")
+            _LOGGER.debug(f"[{self.device_name}]   - Fan mode: {comfort_params.get('fan_mode')}")
+            _LOGGER.debug(f"[{self.device_name}]   - Decision reason: {comfort_params.get('reason', 'No reason provided')}")
+
+            _LOGGER.debug(f"[{self.device_name}] Comfort calculation completed successfully")
+            return comfort_params
+        except Exception as e:
+            _LOGGER.error(f"[{self.device_name}] Failed to calculate comfort parameters: {e}")
+            return None
+
+    def _should_execute_actions(self, actions: Dict[str, Any]) -> bool:
+        """Determine if actions should be executed."""
+        _LOGGER.debug(f"[{self.device_name}] Evaluating if actions should be executed...")
+        
+        state = self.hass.states.get(self.climate_entity_id)
+        if not state:
+            _LOGGER.debug(f"[{self.device_name}] No climate state available - no actions")
+            return False
+
+        current_state = {
+            "hvac_mode": str(state.state),
+            "fan_mode": str(state.attributes.get("fan_mode")),
+            "temperature": (
+                float(state.attributes.get("temperature"))
+                if state.attributes.get("temperature") is not None
+                else None
+            )
+        }
+
+        desired_state = {
+            "hvac_mode": actions.get("set_hvac_mode"),
+            "fan_mode": actions.get("set_fan_mode"),
+            "temperature": actions.get("set_temperature")
+        }
+
+        _LOGGER.debug(f"[{self.device_name}] State comparison:")
+        _LOGGER.debug(f"[{self.device_name}]   - Current HVAC: {current_state['hvac_mode']}")
+        _LOGGER.debug(f"[{self.device_name}]   - Desired HVAC: {desired_state['hvac_mode']}")
+        _LOGGER.debug(f"[{self.device_name}]   - Current fan: {current_state['fan_mode']}")
+        _LOGGER.debug(f"[{self.device_name}]   - Desired fan: {desired_state['fan_mode']}")
+        _LOGGER.debug(f"[{self.device_name}]   - Current temp: {current_state['temperature']}°C")
+        _LOGGER.debug(f"[{self.device_name}]   - Desired temp: {desired_state['temperature']}°C")
+
+        # Check each component individually
+        hvac_changed = current_state["hvac_mode"] != desired_state["hvac_mode"]
+        fan_changed = current_state["fan_mode"] != desired_state["fan_mode"]
+        temp_changed = (
+            current_state["temperature"] is not None and
+            desired_state["temperature"] is not None and
+            abs(current_state["temperature"] - desired_state["temperature"]) >= 0.5
         )
-        history = states.get(entity_id, [])
-        for state in reversed(history):
-            if state.state != target_state:
-                last_change = state.last_changed
-                return (now - last_change).total_seconds() / 60
-        return 24 * 60
 
-    # --- Action Execution ---
-    async def _execute_actions(self, actions: dict[str, Any]) -> None:
-        """Execute climate actions with minimal repeated logic."""
-        # If user powered off, do not execute any actions
-        if self._user_power_off:
-            self.log_event(f"User has manually powered off {self.climate_entity_id}. No actions executed.")
-            return
+        _LOGGER.debug(f"[{self.device_name}] Change detection:")
+        _LOGGER.debug(f"[{self.device_name}]   - HVAC mode changed: {hvac_changed}")
+        _LOGGER.debug(f"[{self.device_name}]   - Fan mode changed: {fan_changed}")
+        _LOGGER.debug(f"[{self.device_name}]   - Temperature changed: {temp_changed}")
 
+        should_execute = current_state != desired_state
+        _LOGGER.debug(f"[{self.device_name}] Actions should be executed: {should_execute}")
+        
+        if should_execute:
+            _LOGGER.debug(f"[{self.device_name}] Changes needed - will execute actions")
+        else:
+            _LOGGER.debug(f"[{self.device_name}] No changes needed - skipping actions")
+            
+        return should_execute
+
+    def _detect_manual_override(self, state) -> bool:
+        """Detect if user has manually overridden the system."""
+        if self._disable_override_detection:
+            _LOGGER.debug(f"[{self.device_name}] Override detection disabled. Skipping manual override check.")
+            return False
+
+        if not self._last_system_command:
+            return False
+            
+        current_temp = state.attributes.get("temperature")
+        current_hvac = state.state
+        current_fan = state.attributes.get("fan_mode")
+        
+        last_hvac = self._last_system_command.get("hvac_mode")
+        last_fan = self._last_system_command.get("fan_mode")
+        last_temp = self._last_system_command.get("temperature")
+
+        _LOGGER.debug(f"[{self.device_name}] Checking for manual override:")
+        _LOGGER.debug(f"[{self.device_name}]   - Current: HVAC={current_hvac}, Fan={current_fan}, Temp={current_temp}")
+        _LOGGER.debug(f"[{self.device_name}]   - Last command: HVAC={last_hvac}, Fan={last_fan}, Temp={last_temp}")
+
+        # Check if any of the current values differ from the last system command
+        hvac_changed = current_hvac != last_hvac
+        fan_changed = current_fan != last_fan
+        
+        # Temperature change detection - check for any significant temperature change
+        temp_changed = False
+        if (current_temp is not None and 
+            last_temp is not None):
+            
+            temp_diff = abs(current_temp - last_temp)
+            temp_changed = temp_diff > 0.5  # Use threshold for temperature changes
+            _LOGGER.debug(f"[{self.device_name}]   - Temperature difference: {temp_diff:.1f}°C (threshold: 0.5°C)")
+            
+            # Additional check: if temperature changed significantly and HVAC is OFF, 
+            # it's likely a manual override (user changed temp while system was off)
+            if temp_changed and current_hvac == HVACMode.OFF and last_hvac == HVACMode.OFF:
+                _LOGGER.debug(f"[{self.device_name}]   - Temperature changed while HVAC was OFF - likely manual override")
+        
+        # Check if this might be a system-initiated change (part of the application process)
+        # If the last command was very recent (within 5 seconds), it might be a system change
+        is_system_change = False
+        if self._last_command_timestamp:
+            time_diff = (dt_util.utcnow() - self._last_command_timestamp).total_seconds()
+            if time_diff < 5.0:  # Within 5 seconds
+                is_system_change = True
+                _LOGGER.debug(f"[{self.device_name}]   - Last command was {time_diff:.1f}s ago - likely system change")
+        
+        is_override = (hvac_changed or fan_changed or temp_changed) and not is_system_change
+        
+        if is_override:
+            _LOGGER.debug(f"[{self.device_name}] Manual override detected:")
+            if hvac_changed:
+                _LOGGER.debug(f"[{self.device_name}]   - HVAC mode changed: {last_hvac} -> {current_hvac}")
+            if fan_changed:
+                _LOGGER.debug(f"[{self.device_name}]   - Fan mode changed: {last_fan} -> {current_fan}")
+            if temp_changed:
+                _LOGGER.debug(f"[{self.device_name}]   - Temperature changed: {last_temp}°C -> {current_temp}°C")
+        elif hvac_changed or fan_changed or temp_changed:
+            _LOGGER.debug(f"[{self.device_name}] Changes detected but likely system-initiated (ignoring)")
+        else:
+            _LOGGER.debug(f"[{self.device_name}] No manual override detected")
+        
+        return is_override
+
+    async def _execute_all_actions(self, actions: Dict[str, Any]) -> None:
+        """Execute all climate actions in one unified method."""
+        _LOGGER.debug(f"[{self.device_name}] Starting action execution...")
+        
         state = self.hass.states.get(self.climate_entity_id)
         if not state or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-            _LOGGER.warning(
-                f"[{self.config.get('name')}] {self.climate_entity_id} "
-                f" unavailable, skipping action execution."
-                )
+            _LOGGER.warning(f"[{self.device_name}] {self.climate_entity_id} unavailable - skipping actions")
             return
 
-        current_temperature = state.attributes.get('temperature')
-        current_hvac_mode = state.state
-        current_fan_mode = state.attributes.get('fan_mode')
-
-        target_temperature = actions.get("set_temperature")
-        target_fan_mode = actions.get("set_fan_mode")
-        target_hvac_mode = actions.get("set_hvac_mode")
-
+        changes = []
+        current_temp = state.attributes.get('temperature')
+        current_hvac = state.state
+        current_fan = state.attributes.get('fan_mode')
         threshold = self.config.get("temperature_change_threshold", 0.5)
-        supported_fan_modes = state.attributes.get("fan_modes", [])
-        supported_hvac_modes = state.attributes.get("hvac_modes", [])
-        auto_mode_enable = self.config.get("auto_mode_enable", True)
 
-        temperature_changed = False
-        fan_changed = False
-        hvac_changed = False
-
-        if not auto_mode_enable:
-            self.log_event(f"Auto mode disabled. No actions will be taken.")
-            return
-
-        if target_hvac_mode != current_hvac_mode:
-            if target_hvac_mode in supported_hvac_modes:
-                if target_hvac_mode == HVACMode.OFF:
-                    self._system_turned_off = True
-                    await self._save_persisted_data(self._last_valid_params or {})
-                elif getattr(self, "_system_turned_off", False) and target_hvac_mode != HVACMode.OFF:
-                    self._system_turned_off = False
-                    await self._save_persisted_data(self._last_valid_params or {})
-                    self.log_event("System turned climate entity ON. Resetting system_turned_off flag.")
-
-        if current_hvac_mode == HVACMode.OFF:
-            self.log_event(f"HVAC is OFF, skipping further actions.")
-            return
-
-        def needs_update(current, target, threshold):
-            return target is not None and (current is None or abs(target - current) >= threshold)
-
-        _LOGGER.debug(f"[{self.config.get('name')}] Climate attributes before execution: "
-                      f"temperature={current_temperature}, "
-                      f"fan_mode={current_fan_mode}, "
-                      f"hvac_mode={current_hvac_mode} "
-                      )
+        _LOGGER.debug(f"[{self.device_name}] Current climate state:")
+        _LOGGER.debug(f"[{self.device_name}]   - Temperature: {current_temp}°C")
+        _LOGGER.debug(f"[{self.device_name}]   - HVAC mode: {current_hvac}")
+        _LOGGER.debug(f"[{self.device_name}]   - Fan mode: {current_fan}")
 
         # Temperature
-        if (needs_update(current_temperature, target_temperature, threshold)
-            and (current_hvac_mode != "fan_only")
-        ):
-            await self._call_service(CLIMATE_DOMAIN, "set_temperature", {
-                "entity_id": self.climate_entity_id,
-                "temperature": target_temperature,
-            })
-            temperature_changed = True
+        target_temp = int(actions.get("set_temperature", 0))
+        _LOGGER.debug(f"[{self.device_name}] Evaluating temperature change: current={current_temp}°C, target={target_temp}°C, threshold={threshold}°C")
+        
+        if (target_temp is not None and 
+            (current_temp is None or abs(target_temp - current_temp) >= threshold) and
+            current_hvac != "fan_only"):
+            
+            override_temp = self.config.get("override_temperature", 0)
+            final_temp = target_temp + override_temp
+            
+            _LOGGER.debug(f"[{self.device_name}] Setting temperature: {target_temp}°C + {override_temp}°C = {final_temp}°C")
+            await self.hass.services.async_call(
+                CLIMATE_DOMAIN, "set_temperature", {
+                    "entity_id": self.climate_entity_id,
+                    "temperature": final_temp,
+                }, blocking=True
+            )
+            changes.append("temperature")
+            _LOGGER.debug(f"[{self.device_name}] Temperature updated successfully")
+        else:
+            _LOGGER.debug(f"[{self.device_name}] Temperature change not needed (difference: {abs(target_temp - current_temp) if current_temp else 'N/A'}°C)")
 
         # Fan mode
-        if target_fan_mode != current_fan_mode:
-            if target_fan_mode in supported_fan_modes:
-                await self._call_service(CLIMATE_DOMAIN, "set_fan_mode", {
-                    "entity_id": self.climate_entity_id,
-                    "fan_mode": target_fan_mode,
-                })
-                fan_changed = True
+        target_fan = actions.get("set_fan_mode")
+        supported_fan_modes = state.attributes.get("fan_modes", [])
+        _LOGGER.debug(f"[{self.device_name}] Evaluating fan mode change: current={current_fan}, target={target_fan}, supported={supported_fan_modes}")
+        
+        if target_fan != current_fan and target_fan in supported_fan_modes:
+            _LOGGER.debug(f"[{self.device_name}] Setting fan mode: {target_fan}")
+            await self._call_service(CLIMATE_DOMAIN, "set_fan_mode", {
+                "entity_id": self.climate_entity_id,
+                "fan_mode": target_fan,
+            })
+            changes.append("fan")
+            _LOGGER.debug(f"[{self.device_name}] Fan mode updated successfully")
+        else:
+            _LOGGER.debug(f"[{self.device_name}] Fan mode change not needed (same mode or not supported)")
 
         # HVAC mode
-        if target_hvac_mode != current_hvac_mode:
-            if target_hvac_mode in supported_hvac_modes:
-                await self._call_service(CLIMATE_DOMAIN, "set_hvac_mode", {
-                    "entity_id": self.climate_entity_id,
-                    "hvac_mode": target_hvac_mode,
-                })
-                hvac_changed = True
+        target_hvac = actions.get("set_hvac_mode")
+        supported_hvac_modes = state.attributes.get("hvac_modes", [])
+        _LOGGER.debug(f"[{self.device_name}] Evaluating HVAC mode change: current={current_hvac}, target={target_hvac}, supported={supported_hvac_modes}")
+        
+        if target_hvac != current_hvac and target_hvac in supported_hvac_modes:
+            _LOGGER.debug(f"[{self.device_name}] Setting HVAC mode: {target_hvac}")
+            await self._call_service(CLIMATE_DOMAIN, "set_hvac_mode", {
+                "entity_id": self.climate_entity_id,
+                "hvac_mode": target_hvac,
+            })
+            changes.append("hvac")
+            _LOGGER.debug(f"[{self.device_name}] HVAC mode updated successfully")
+        else:
+            _LOGGER.debug(f"[{self.device_name}] HVAC mode change not needed (same mode or not supported)")
 
-        if temperature_changed or fan_changed or hvac_changed:
-            self._update_last_system_command(actions)
-            # Reset the system turned off flag after issuing commands, only if previously set
-            if self._system_turned_off:
-                self._system_turned_off = False
-            await self._save_persisted_data(self._last_valid_params or {})
-            self.log_event(f"Set temperature to {target_temperature}, "
-                           f"fan_mode={target_fan_mode}, "
-                           f"hvac_mode={target_hvac_mode}"
-                           f" on {self.climate_entity_id}")
+        if changes:
+            _LOGGER.debug(f"[{self.device_name}] Updating last command and persisting data...")
+            self._update_last_command(actions)
+            await self._persist_data()
+            
+            # Create concise log message for AC changes
+            change_messages = []
+            if "temperature" in changes:
+                change_messages.append(f"temp: {target_temp}°C")
+            if "hvac" in changes:
+                change_messages.append(f"mode: {target_hvac}")
+            if "fan" in changes:
+                change_messages.append(f"fan: {target_fan}")
+            
+            if change_messages:
+                self.log_event(f"AC updated: {', '.join(change_messages)}")
+            
+            _LOGGER.debug(f"[{self.device_name}] Action execution completed successfully - Changes: {changes}")
+        else:
+            _LOGGER.debug(f"[{self.device_name}] No changes were made - system already in desired state")
 
-    async def _call_service(self, domain, service, data):
-        """Helper to call Home Assistant service with delay."""
-        _LOGGER.debug(f"Calling service {domain}.{service} with data: {data}")
-        await self.hass.services.async_call(domain, service, data)
-
-    # --- Persistence ---
-    async def _load_persisted_data(self) -> None:
-        """Load persisted data from storage."""
-        data = await self._store.async_load()
-        if data:
-            self._last_valid_params = data.get("last_sensor_data")
-            self._system_turned_off = data.get("system_turned_off", False)
-            self._last_system_command = data.get("last_system_command", {})
-            timestamp = data.get("last_command_timestamp")
-            self._last_command_timestamp = dt_util.parse_datetime(timestamp) if timestamp else None
-            self._system_turned_off = data.get("system_turned_off", False)
-            self._user_power_off = data.get("user_power_off", False)
-
-        await self._save_persisted_parameters_only()
-        await self._load_outdoor_temp_history()
-        await self._load_indoor_temp_history()
-
-    async def _save_persisted_data(self, data: dict[str, Any]) -> None:
-        data_to_save = {
-            "last_system_command": self._last_system_command,
-            "last_command_timestamp": self._last_command_timestamp.isoformat() if self._last_command_timestamp else None,
-            "last_sensor_data": data,
-            "system_turned_off": getattr(self, "_system_turned_off", False),
-            "user_power_off": self._user_power_off,
-            "config_parameters": {
-                "min_comfort_temp": self.config.get("min_comfort_temp"),
-                "max_comfort_temp": self.config.get("max_comfort_temp"),
-                "temperature_change_threshold": self.config.get("temperature_change_threshold"),
-                "override_temperature": self.config.get("override_temperature"),
-                "aggressive_cooling_threshold": self.config.get("aggressive_cooling_threshold"),
-                "aggressive_heating_threshold": self.config.get("aggressive_heating_threshold"),
-            },
-            "last_updated": dt_util.now().isoformat(),
+    def _update_last_command(self, actions: Dict[str, Any]) -> None:
+        """Update the last system command."""
+        _LOGGER.debug(f"[{self.device_name}] Updating last system command...")
+        self._last_system_command = {
+            "hvac_mode": str(actions.get("set_hvac_mode")),
+            "fan_mode": str(actions.get("set_fan_mode")),
+            "temperature": int(actions.get("set_temperature")),
+            "override_temperature": int(actions.get("override_temperature", actions.get("set_temperature"))),
         }
-        await self._store.async_save(data_to_save)
+        self._last_command_timestamp = dt_util.utcnow()
+        _LOGGER.debug(f"[{self.device_name}] Last command updated: {self._last_system_command}")
 
-    # --- Helpers ---
-    def _get_value(self, entity_id: Optional[str], sensor_type: Optional[str] = None) -> Optional[float]:
-        """Get the value of a sensor entity, with fallback to last valid reading."""
-        if not entity_id:
-            _LOGGER.warning(f"[{self.config.get('name')}] Sensor entity ID is missing ({sensor_type}).")
-            return None
-
-        state = self.hass.states.get(entity_id)
-        if state is None or (state is not None and state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE)):
-            _LOGGER.warning(f"[{self.config.get('name')}] Sensor '{entity_id}' not found or unavailable. Skipping update until available.")
-            return None
-
-        try:
-            value = float(state.state)
-            last_valid_attr_map = {
-                "indoor_temp": "_last_valid_indoor_temp",
-                "outdoor_temp": "_last_valid_outdoor_temp",
-                "indoor_humidity": "_last_valid_indoor_humidity",
-                "outdoor_humidity": "_last_valid_outdoor_humidity"
-            }
-            if sensor_type in last_valid_attr_map:
-                setattr(self, last_valid_attr_map[sensor_type], value)
-            return value
-        except (ValueError, TypeError):
-            _LOGGER.warning(f"[{self.config.get('name')}] Failed to convert state '{state.state}' "
-                            f"of {entity_id} to float.")
-            return None
-
-    def _build_params(self, indoor, outdoor, indoor_hum, outdoor_hum, comfort, actions) -> dict[str, Any]:
-        """Build the parameters dictionary for the coordinator."""
-        return {
+    def _build_result_params(self, sensor_data: Dict[str, Any], comfort: Dict[str, Any], actions: Dict[str, Any]) -> Dict[str, Any]:
+        """Build result parameters."""
+        _LOGGER.debug(f"[{self.device_name}] Building result parameters...")
+        result = {
             "adaptive_comfort_temp": comfort.get("comfort_temp"),
             "comfort_temp_min": comfort.get("comfort_min_ashrae"),
             "comfort_temp_max": comfort.get("comfort_max_ashrae"),
-            "indoor_temperature": indoor,
-            "outdoor_temperature": outdoor,
-            "indoor_humidity": indoor_hum if self.indoor_humidity_sensor_id else None,
-            "outdoor_humidity": outdoor_hum if self.outdoor_humidity_sensor_id else None,
-            "running_mean_outdoor_temp": self._running_mean_outdoor_temp,
-            "running_mean_indoor_temp": self._running_mean_indoor_temp,
+            "indoor_temperature": sensor_data["indoor_temp"],
+            "outdoor_temperature": sensor_data["outdoor_temp"],
+            "indoor_humidity": sensor_data["indoor_humidity"] if self.indoor_humidity_sensor_id else None,
+            "outdoor_humidity": sensor_data["outdoor_humidity"] if self.outdoor_humidity_sensor_id else None,
+            "running_mean_temp": self._running_mean_temp,
             "control_actions": actions,
             "ashrae_compliant": comfort.get("ashrae_compliant"),
             "last_updated": dt_util.now(),
         }
+        _LOGGER.debug(f"[{self.device_name}] Result parameters built successfully")
+        return result
 
-    def _default_params(self, status: str) -> dict[str, Any]:
-        """Return default parameters when no valid data is available."""
+    def _get_default_params(self, status: str) -> Dict[str, Any]:
+        """Get default parameters."""
+        _LOGGER.debug(f"[{self.device_name}] Returning default parameters for status: {status}")
         return {
             "adaptive_comfort_temp": 22.0,
             "comfort_temp_min": 20.0,
@@ -572,48 +752,51 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             "status": status,
         }
 
-    def _update_outdoor_temp_history(self, outdoor_temp: float) -> None:
-        """Update the outdoor temperature history with the latest reading."""
-        now = dt_util.now()
-        self._outdoor_temp_history.append((now, outdoor_temp))
-        self._outdoor_temp_history = [
-            (ts, temp) for ts, temp in self._outdoor_temp_history if ts > now - timedelta(days=7)
-        ]
-        self._running_mean_outdoor_temp = self._calculate_exponential_running_mean(self._outdoor_temp_history)
+    def _get_value(self, entity_id: Optional[str], sensor_type: Optional[str] = None) -> Optional[float]:
+        """Get sensor value with improved error handling."""
+        if not entity_id:
+            _LOGGER.debug(f"[{self.device_name}] No entity ID provided for {sensor_type}")
+            return None
 
-    def _update_indoor_temp_history(self, indoor_temp: float) -> None:
-        """Update the indoor temperature history with the latest reading."""
-        now = dt_util.now()
-        self._indoor_temp_history.append((now, indoor_temp))
-        self._indoor_temp_history = [
-            (ts, temp) for ts, temp in self._indoor_temp_history if ts > now - timedelta(days=7)
-        ]
-        self._running_mean_indoor_temp = self._calculate_exponential_running_mean(self._indoor_temp_history)
+        state = self.hass.states.get(entity_id)
+        if not state:
+            _LOGGER.debug(f"[{self.device_name}] No state available for entity {entity_id}")
+            return None
 
-    def _calculate_exponential_running_mean(self, history: list[tuple[datetime, float]], 
-                                            alpha: float = 0.8) -> Optional[float]:
-        """Calcula a média móvel exponencial para o histórico fornecido."""
-        temps = sorted(history, key=lambda x: x[0])
-        running_mean = None
-        for _, temp in temps:
-            if running_mean is None:
-                running_mean = temp
-            else:
-                running_mean = (1 - alpha) * temp + alpha * running_mean
-        return running_mean
+        try:
+            value = float(state.state)
+            # Update last valid value
+            last_valid_attr_map = {
+                "indoor_temp": "_last_valid_indoor_temp",
+                "outdoor_temp": "_last_valid_outdoor_temp",
+                "indoor_humidity": "_last_valid_indoor_humidity",
+                "outdoor_humidity": "_last_valid_outdoor_humidity",
+            }
+            if sensor_type in last_valid_attr_map:
+                setattr(self, last_valid_attr_map[sensor_type], value)
+            
+            _LOGGER.debug(f"[{self.device_name}] {sensor_type} value: {value} from {entity_id}")
+            return value
+        except (ValueError, TypeError):
+            _LOGGER.warning(f"[{self.device_name}] Failed to convert state '{state.state}' of {entity_id} to float.")
+            return None
 
-    def _determine_actions(self, indoor_temp: float, comfort: dict[str, Any]) -> dict[str, Any]:
-        """Determine control actions based on comfort calculation and supported HVAC modes."""
-        target_temp = comfort.get("comfort_temp")
+    def _determine_actions(self, comfort: Dict[str, Any]) -> Dict[str, Any]:
+        """Determine control actions."""
+        _LOGGER.debug(f"[{self.device_name}] Determining control actions from comfort parameters...")
+        
+        temperature = round(float(comfort.get("target_temp", 25)))
         hvac_mode = comfort.get("hvac_mode")
         fan_mode = comfort.get("fan_mode")
 
+        _LOGGER.debug(f"[{self.device_name}] Initial comfort decisions:")
+        _LOGGER.debug(f"[{self.device_name}]   - Target temperature: {temperature}°C")
+        _LOGGER.debug(f"[{self.device_name}]   - HVAC mode: {hvac_mode}")
+        _LOGGER.debug(f"[{self.device_name}]   - Fan mode: {fan_mode}")
+
         if hvac_mode == "fan_only" and fan_mode in ["highest", "max"]:
             fan_mode = "high"
-
-        _LOGGER.debug(f"[{self.config.get('name')}] Initial determine_actions: "
-                      f"target_temp={int(round(target_temp))}°C, hvac_mode={hvac_mode}, fan_mode={fan_mode}"
-                      )
+            _LOGGER.debug(f"[{self.device_name}] Adjusted fan mode from {comfort.get('fan_mode')} to {fan_mode} (HVAC is fan_only)")
 
         state = self.hass.states.get(self.climate_entity_id)
         supported_hvac_modes = []
@@ -622,48 +805,231 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             supported_hvac_modes = [str(mode) for mode in state.attributes.get("hvac_modes", [])]
             supported_fan_modes = [str(mode) for mode in state.attributes.get("fan_modes", [])]
 
-        hvac_mode = map_hvac_mode(
-            str(hvac_mode),
-            supported_hvac_modes) if supported_hvac_modes else hvac_mode
+        _LOGGER.debug(f"[{self.device_name}] Device capabilities:")
+        _LOGGER.debug(f"[{self.device_name}]   - Supported HVAC modes: {supported_hvac_modes}")
+        _LOGGER.debug(f"[{self.device_name}]   - Supported fan modes: {supported_fan_modes}")
         
-        fan_mode = map_fan_mode(str(fan_mode), supported_fan_modes) if supported_fan_modes else fan_mode
+        # Map modes to supported ones
+        original_hvac = hvac_mode
+        original_fan = fan_mode
         
-        # If fan_mode is "highest" and not supported, swap for "high" if supported
+        hvac_mode = map_hvac_mode(str(hvac_mode), supported_hvac_modes, self.device_name) if supported_hvac_modes else hvac_mode
+        fan_mode = map_fan_mode(str(fan_mode), supported_fan_modes, self.device_name) if supported_fan_modes else fan_mode
+        
+        if original_hvac != hvac_mode:
+            _LOGGER.debug(f"[{self.device_name}] HVAC mode mapped: {original_hvac} -> {hvac_mode}")
+        if original_fan != fan_mode:
+            _LOGGER.debug(f"[{self.device_name}] Fan mode mapped: {original_fan} -> {fan_mode}")
+        
         if fan_mode == "highest" and "highest" not in supported_fan_modes and "high" in supported_fan_modes:
             fan_mode = "high"
+            _LOGGER.debug(f"[{self.device_name}] Mapped fan mode from 'highest' to 'high' (not supported)")
  
-        return {
-            "set_temperature": target_temp,
+        actions = {
+            "set_temperature": temperature,
             "set_hvac_mode": hvac_mode,
             "set_fan_mode": fan_mode,
-            "reason": f"Calculated hvac mode: {hvac_mode}, temperature: {target_temp}, fan mode: {fan_mode}.",
-            }
+            "reason": f"Calculated hvac mode: {hvac_mode}, temperature: {temperature}, fan mode: {fan_mode}.",
+        }
 
-    # --- Listeners ---
-    def _setup_listeners(self) -> None:
-        """Register state change listener for climate entity only."""
-        entities = [self.climate_entity_id]
-        async_track_state_change_event(self.hass, entities, self._handle_state_change)
+        _LOGGER.debug(f"[{self.device_name}] Final control actions:")
+        _LOGGER.debug(f"[{self.device_name}]   - Set temperature: {temperature}°C")
+        _LOGGER.debug(f"[{self.device_name}]   - Set HVAC mode: {hvac_mode}")
+        _LOGGER.debug(f"[{self.device_name}]   - Set fan mode: {fan_mode}")
+        _LOGGER.debug(f"[{self.device_name}]   - Reason: {actions['reason']}")
+
+        _LOGGER.debug(f"[{self.device_name}] Actions determined successfully")
+        return actions
+
+    async def update_config(self, config: Optional[Dict[str, Any]] = None, **kwargs) -> None:
+        """Unified config update method with improved auto_mode handling."""
+        _LOGGER.debug(f"[{self.device_name}] Updating configuration...")
+        
+        # Store previous auto_mode state
+        previous_auto_mode = self.config.get("auto_mode_enable", False)
+        
+        if config:
+            self.config.update(config)
+            _LOGGER.debug(f"[{self.device_name}] Updated config with: {config}")
+        if kwargs:
+            self.config.update(kwargs)
+            _LOGGER.debug(f"[{self.device_name}] Updated config with kwargs: {kwargs}")
+        
+        current_auto_mode = self.config.get("auto_mode_enable", False)
+        
+        # Handle auto_mode_enable changes
+        if "auto_mode_enable" in kwargs:
+            if kwargs["auto_mode_enable"] is True and not previous_auto_mode:
+                # Auto mode enabled - calculate and apply new settings
+                _LOGGER.debug(f"[{self.device_name}] Auto mode enabled - calculating and applying new settings")
+                
+                # Disable override detection during auto mode activation
+                self._disable_override_detection = True
+                _LOGGER.debug(f"[{self.device_name}] Override detection disabled for auto mode activation")
+                
+                # Calculate new comfort parameters and apply them
+                comfort = await self._async_update_data()
+                if isinstance(comfort, dict):
+                    actions = self._determine_actions(comfort)
+                    self._update_last_command(actions)
+                    await self._execute_all_actions(actions)
+                    _LOGGER.debug(f"[{self.device_name}] Auto mode settings applied successfully")
+                
+                # Re-enable override detection
+                self._disable_override_detection = False
+                _LOGGER.debug(f"[{self.device_name}] Override detection re-enabled")
+                
+            elif kwargs["auto_mode_enable"] is False and previous_auto_mode:
+                # Auto mode disabled - just log the change
+                _LOGGER.debug(f"[{self.device_name}] Auto mode disabled by user")
+        
+        # Persist configuration including auto_mode state
+        await self._persist_data(params_only=True)
+        
+        # Adjust update interval based on auto mode status
+        self._adjust_update_interval()
+        
+        await self.async_request_refresh()
+        _LOGGER.debug(f"[{self.device_name}] Configuration update completed - Auto mode: {current_auto_mode}")
+
+    async def _load_outdoor_temp_history(self, days: int = 7) -> None:
+        """Load outdoor temperature history."""
+        _LOGGER.debug(f"[{self.device_name}] Loading outdoor temperature history for {days} days...")
+        try:
+            start_time = dt_util.now() - timedelta(days=days)
+            entity_id = self.outdoor_temp_sensor_id
+            if not entity_id:
+                _LOGGER.debug(f"[{self.device_name}] No outdoor temperature sensor configured")
+                return
+
+            states = await recorder.get_instance(self.hass).async_add_executor_job(
+                get_significant_states, self.hass, start_time, dt_util.now(), [entity_id]
+            )
+            
+            outdoor_history = []
+            for state in states.get(entity_id, []):
+                try:
+                    temp = float(state.state)
+                    outdoor_history.append((state.last_updated, temp))
+                except (ValueError, TypeError):
+                    continue
+                    
+            self._outdoor_temp_history = outdoor_history
+            self._running_mean_temp = self._calculate_exponential_running_mean(self._outdoor_temp_history)
+            
+            _LOGGER.debug(f"[{self.device_name}] Loaded {len(outdoor_history)} temperature records")
+            _LOGGER.debug(f"[{self.device_name}] Running mean temperature: {self._running_mean_temp:.1f}°C" if self._running_mean_temp is not None else f"[{self.device_name}] Running mean temperature: None")
+        except Exception as e:
+            _LOGGER.error(f"[{self.device_name}] Failed to load outdoor temperature history: {e}")
+
+    def _calculate_exponential_running_mean(self, history: List[Tuple[datetime, float]], alpha: float = 0.8) -> Optional[float]:
+        """Calculate exponential running mean for temperature history."""
+        if not history:
+            _LOGGER.debug(f"[{self.device_name}] No temperature history available for running mean calculation")
+            return None
+            
+        temps = sorted(history, key=lambda x: x[0])
+        running_mean = None
+        for _, temp in temps:
+            if running_mean is None:
+                running_mean = temp
+            else:
+                running_mean = (1 - alpha) * temp + alpha * running_mean
+        
+        _LOGGER.debug(f"[{self.device_name}] Calculated exponential running mean: {running_mean:.1f}°C (alpha={alpha})" if running_mean is not None else f"[{self.device_name}] Calculated exponential running mean: None (alpha={alpha})")
+        return running_mean
+
+    async def _call_service(self, domain: str, service: str, data: Dict[str, Any]) -> None:
+        """Call Home Assistant service."""
+        _LOGGER.debug(f"[{self.device_name}] Calling service {domain}.{service} with data: {data}")
+        await self.hass.services.async_call(domain, service, data)
+        _LOGGER.debug(f"[{self.device_name}] Service {domain}.{service} called successfully")
+
+    async def run_control_cycle(self) -> None:
+        """Run a complete control cycle."""
+        _LOGGER.debug(f"[{self.device_name}] Starting control cycle...")
+        comfort = await self._async_update_data()
+        if isinstance(comfort, dict):
+            actions = self._determine_actions(comfort)
+            await self._execute_all_actions(actions)
+        _LOGGER.debug(f"[{self.device_name}] Control cycle completed")
 
     @callback
     def _handle_state_change(self, event) -> None:
-        """
-        Handle state changes of monitored entities.
-        Only disables auto mode if manual control is detected and auto mode is currently enabled.
-        Also handles user power-on to resume automatic control.
-        """
-        # Check if the event is for the monitored climate entity
+        """Handle state changes of monitored entities."""
         entity_id = event.data.get("entity_id")
         if entity_id != self.climate_entity_id:
-            _LOGGER.debug(f"[{self.config.get('name')}] Ignored state change for {entity_id}")
             return
-
-        # If user powers ON after having powered OFF, resume automatic control
-        state = self.hass.states.get(self.climate_entity_id)
-        if state is not None and state.state != HVACMode.OFF and self._user_power_off:
-            self._user_power_off = False
-            self.config["auto_mode_enable"] = True
-            self.log_event("User powered on climate entity. Automatic control resumed.")
-
-        # Continue with normal update/refresh
+        
+        _LOGGER.debug(f"[{self.device_name}] State change detected for {entity_id} - requesting refresh")
         self.hass.async_create_task(self.async_request_refresh())
+
+    async def set_manual_override(self, temperature: float, duration_seconds: Optional[int] = None) -> None:
+        """Set manual override with specific temperature and duration."""
+        _LOGGER.debug(f"[{self.device_name}] Setting manual override: {temperature}°C for {duration_seconds}s")
+        
+        # Disable auto mode
+        self.config["auto_mode_enable"] = False
+        
+        # Set override temperature
+        self.config["override_temperature"] = temperature - 22.0  # Calculate offset from base
+        
+        # Store override end time if duration provided
+        if duration_seconds:
+            override_end = dt_util.now() + timedelta(seconds=duration_seconds)
+            self.config["override_end_time"] = override_end.isoformat()
+            _LOGGER.debug(f"[{self.device_name}] Override will end at: {override_end}")
+        else:
+            self.config.pop("override_end_time", None)
+        
+        # Apply the override immediately
+        await self.hass.services.async_call(
+            CLIMATE_DOMAIN, "set_temperature", {
+                "entity_id": self.climate_entity_id,
+                "temperature": temperature,
+            }, blocking=True
+        )
+        
+        # Persist configuration
+        await self._persist_data(params_only=True)
+        
+        duration_text = f" for {duration_seconds}s" if duration_seconds else ""
+        self.log_event(f"Manual override: {temperature}°C{duration_text}")
+        _LOGGER.debug(f"[{self.device_name}] Manual override applied successfully")
+
+    async def clear_manual_override(self) -> None:
+        """Clear manual override and restore auto mode."""
+        _LOGGER.debug(f"[{self.device_name}] Clearing manual override")
+        
+        # Remove override settings
+        self.config.pop("override_temperature", None)
+        self.config.pop("override_end_time", None)
+        
+        # Re-enable auto mode
+        self.config["auto_mode_enable"] = True
+        
+        # Persist configuration
+        await self._persist_data(params_only=True)
+        
+        # Run control cycle to apply new settings
+        await self.run_control_cycle()
+        
+        self.log_event("Manual override cleared")
+        _LOGGER.debug(f"[{self.device_name}] Manual override cleared successfully")
+
+    async def async_reset_override(self) -> None:
+        """Reset override settings (alias for clear_manual_override)."""
+        await self.clear_manual_override()
+
+    async def update_comfort_category(self, category: str) -> None:
+        """Update comfort category setting."""
+        _LOGGER.debug(f"[{self.device_name}] Updating comfort category to: {category}")
+        
+        if category not in ["I", "II"]:
+            _LOGGER.error(f"[{self.device_name}] Invalid comfort category: {category}")
+            return
+        
+        self.config["comfort_category"] = category
+        await self._persist_data(params_only=True)
+        
+        _LOGGER.debug(f"[{self.device_name}] Comfort category updated successfully")

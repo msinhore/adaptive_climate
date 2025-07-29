@@ -27,7 +27,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Adaptive Climate select entities."""
-    coordinator: AdaptiveClimateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator: AdaptiveClimateCoordinator = hass.data[DOMAIN]["coordinators"][config_entry.entry_id]
     
     entities = [
         AdaptiveClimateSelectEntity(
@@ -117,7 +117,7 @@ class AdaptiveClimateSelectEntity(CoordinatorEntity, SelectEntity):
         )
         
         # Update coordinator configuration
-        await self.coordinator.async_update_config_value(self._entity_key, option)
+        await self.coordinator.update_config(**{self._entity_key: option})
         
         # Update the state immediately
         self.async_write_ha_state()
