@@ -62,6 +62,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
     def device_name(self) -> str:
         """Get device name for logging."""
         return self.config.get("name", "Adaptive Climate")
+    
+    @property
+    def climate_entity_id(self) -> str:
+        """Get first climate entity for backward compatibility."""
+        return self.climate_entities[0] if self.climate_entities else ""
 
     def _setup_config(self, config_entry_data: Dict[str, Any], config_entry_options: Optional[Dict[str, Any]]) -> None:
         """Setup configuration and primary entity ID."""
@@ -69,13 +74,16 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         if config_entry_options:
             self.config.update(config_entry_options)
 
-        entity = self.config.get("entity")
+        # Get first climate entity for primary entity ID
+        climate_entities = self._get_climate_entities()
+        first_entity = climate_entities[0] if climate_entities else ""
+        
         name_slug = slugify(
-            entity.split(".")[-1] if entity else self.device_name
+            first_entity.split(".")[-1] if first_entity else self.device_name
         ).replace("-", "_")
         self.primary_entity_id = (
-            f"{entity}_ashrae_compliance"
-            if entity else f"binary_sensor.{name_slug}_ashrae_compliance"
+            f"{first_entity}_ashrae_compliance"
+            if first_entity else f"binary_sensor.{name_slug}_ashrae_compliance"
         )
 
         _LOGGER.debug(f"[{self.device_name}] Configuration setup completed - Primary entity: {self.primary_entity_id}")
@@ -154,6 +162,16 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
     def _detect_device_capabilities(self) -> Dict[str, bool]:
         """Detect device capabilities automatically from climate entity state."""
         _LOGGER.debug(f"[{self.device_name}] Detecting device capabilities...")
+        
+        # Use first climate entity for backward compatibility
+        if not self.climate_entities:
+            _LOGGER.warning(f"[{self.device_name}] No climate entities available for capability detection")
+            return {
+                "is_cool": self.config.get("enable_cool_mode", True),
+                "is_heat": self.config.get("enable_heat_mode", True),
+                "is_fan": self.config.get("enable_fan_mode", True),
+                "is_dry": self.config.get("enable_dry_mode", True),
+            }
         
         state = self.hass.states.get(self.climate_entity_id)
         if not state:
@@ -264,7 +282,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
     def _setup_listeners(self) -> None:
         """Register state change listener and startup tasks."""
-        entities = [self.climate_entity_id]
+        entities = self.climate_entities
         async_track_state_change_event(self.hass, entities, self._handle_state_change)
         
         # Execute startup immediately for faster response
@@ -1106,6 +1124,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         # Get device capabilities
         capabilities = self.device_manager.device_capabilities.get(device_id, {})
         
+        # Check if device is eligible for the requested operation
+        if not self._is_device_eligible_for_operation(device_id, capabilities, hvac_mode, needs):
+            _LOGGER.debug(f"[{self.device_name}] Device {device_id} is not eligible for {hvac_mode} operation")
+            return None
+        
         # Get device state for validation
         state = self.hass.states.get(device_id)
         if not state:
@@ -1197,6 +1220,46 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             _LOGGER.debug(f"[{self.device_name}] Set fan mode to 'off' for off mode")
         
         return fan_mode
+    
+    def _is_device_eligible_for_operation(self, device_id: str, capabilities: Dict[str, bool], hvac_mode: str, needs: List[str]) -> bool:
+        """Check if device is eligible for the requested operation."""
+        _LOGGER.debug(f"[{self.device_name}] Checking eligibility for {device_id}: hvac={hvac_mode}, needs={needs}")
+        
+        # If calculator requests heat, exclude fan-only devices
+        if hvac_mode == "heat":
+            # Check if device is fan-only (has fan but no heat capability)
+            if capabilities.get("is_fan", False) and not capabilities.get("is_heat", False):
+                _LOGGER.debug(f"[{self.device_name}] Device {device_id} is fan-only and not eligible for heating")
+                return False
+        
+        # If calculator requests cool, exclude heat-only devices
+        elif hvac_mode == "cool":
+            # Check if device is heat-only (has heat but no cool capability)
+            if capabilities.get("is_heat", False) and not capabilities.get("is_cool", False):
+                _LOGGER.debug(f"[{self.device_name}] Device {device_id} is heat-only and not eligible for cooling")
+                return False
+        
+        # If calculator requests dry, exclude devices without dry capability
+        elif hvac_mode == "dry":
+            if not capabilities.get("is_dry", False):
+                _LOGGER.debug(f"[{self.device_name}] Device {device_id} has no dry capability")
+                return False
+        
+        # If calculator requests fan_only, exclude devices without fan capability
+        elif hvac_mode == "fan_only":
+            if not capabilities.get("is_fan", False):
+                _LOGGER.debug(f"[{self.device_name}] Device {device_id} has no fan capability")
+                return False
+        
+        # Check if device has the required capability for the HVAC mode
+        if hvac_mode != "off":
+            required_capability = f"is_{hvac_mode}"
+            if not capabilities.get(required_capability, False):
+                _LOGGER.debug(f"[{self.device_name}] Device {device_id} lacks required capability: {required_capability}")
+                return False
+        
+        _LOGGER.debug(f"[{self.device_name}] Device {device_id} is eligible for {hvac_mode} operation")
+        return True
 
     async def update_config(self, config: Optional[Dict[str, Any]] = None, **kwargs) -> None:
         """Unified config update method with improved auto_mode handling."""
