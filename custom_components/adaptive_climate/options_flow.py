@@ -85,6 +85,27 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 )
             ),
             
+            # === Temperature and Humidity Sensors ===
+            vol.Required(
+                "indoor_temp_sensor",
+                default=get_value("indoor_temp_sensor")
+            ): selector.selector({"entity": {"device_class": "temperature"}}),
+
+            vol.Required(
+                "outdoor_temp_sensor",
+                default=get_value("outdoor_temp_sensor")
+            ): selector.selector({"entity": {"device_class": "temperature"}}),
+
+            vol.Optional(
+                "indoor_humidity_sensor",
+                default=get_value("indoor_humidity_sensor")
+            ): selector.selector({"entity": {"device_class": "humidity"}}),
+
+            vol.Optional(
+                "outdoor_humidity_sensor",
+                default=get_value("outdoor_humidity_sensor")
+            ): selector.selector({"entity": {"device_class": "humidity"}}),
+            
             # === Comfort Category ===
             vol.Optional(
                 "comfort_category",
