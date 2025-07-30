@@ -44,19 +44,39 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Manage the options."""
         if user_input is not None:
+            _LOGGER.debug(f"Options flow user input: {user_input}")
             return self.async_create_entry(title="", data=user_input)
 
         options = self.config_entry.options
         data = self.config_entry.data
 
+        _LOGGER.debug(f"Options flow - options: {options}")
+        _LOGGER.debug(f"Options flow - data: {data}")
+
         def get_value(key):
             return options.get(key) if key in options else data.get(key)
 
+        # Get climate entities from options or data
+        climate_entities = options.get("climate_entities")
+        if climate_entities is None:
+            # Try to get from data (for backward compatibility)
+            climate_entities = data.get("climate_entities")
+            if climate_entities is None:
+                # Try to get from old format
+                if "climate_entity" in data:
+                    climate_entities = [data["climate_entity"]]
+                elif "entity" in data:
+                    climate_entities = [data["entity"]]
+                else:
+                    climate_entities = []
+        
+        _LOGGER.debug(f"Options flow - climate_entities: {climate_entities}")
+        
         schema = vol.Schema({
             # === Climate Entities ===
             vol.Optional(
                 "climate_entities",
-                default=options.get("climate_entities", data.get("climate_entities", []))
+                default=climate_entities
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain="climate",
