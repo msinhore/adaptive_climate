@@ -162,6 +162,43 @@ def map_hvac_mode(
         _LOGGER.warning(f"{device_prefix}No supported HVAC modes provided, returning calculated: '{calculated_hvac}'")
         return calculated_hvac
     
+    # Check if device only supports heating (like radiators)
+    has_heat = any("heat" in mode.lower() for mode in supported_hvac_modes)
+    has_cool = any("cool" in mode.lower() for mode in supported_hvac_modes)
+    has_auto = any("auto" in mode.lower() for mode in supported_hvac_modes)
+    has_off = any("off" in mode.lower() for mode in supported_hvac_modes)
+    
+    # Special handling for heating-only devices (like radiators)
+    if has_heat and not has_cool:
+        _LOGGER.debug(f"{device_prefix}Heating-only device detected")
+        
+        if calculated_hvac.lower() in ["cool", "dry", "fan_only"]:
+            # For cooling requests on heating-only device, turn off
+            if has_off:
+                _LOGGER.debug(f"{device_prefix}Cooling requested on heating-only device, turning off")
+                return next(m for m in supported_hvac_modes if "off" in m.lower())
+            else:
+                # If no off mode, use auto if available
+                if has_auto:
+                    _LOGGER.debug(f"{device_prefix}Cooling requested on heating-only device, using auto")
+                    return next(m for m in supported_hvac_modes if "auto" in m.lower())
+        
+        elif calculated_hvac.lower() == "heat":
+            # Heating requested - use heat mode
+            if has_heat:
+                _LOGGER.debug(f"{device_prefix}Heating requested on heating-only device")
+                return next(m for m in supported_hvac_modes if "heat" in m.lower())
+        
+        elif calculated_hvac.lower() == "off":
+            # Off requested
+            if has_off:
+                return next(m for m in supported_hvac_modes if "off" in m.lower())
+            else:
+                # If no off mode, use auto
+                if has_auto:
+                    _LOGGER.debug(f"{device_prefix}Off requested but not supported, using auto")
+                    return next(m for m in supported_hvac_modes if "auto" in m.lower())
+    
     mapped_mode = map_mode(calculated_hvac, supported_hvac_modes, HVAC_MODE_EQUIVALENTS, device_name)
     
     # Special handling for "auto" mode

@@ -349,6 +349,24 @@ class ComfortCalculator:
     ) -> Tuple[str, str, float]:
         """Determine HVAC mode for summer season."""
         
+        # Check if this is a heating-only device (no cool mode available)
+        heating_only = not enable_cool_mode and not enable_dry_mode
+        
+        if heating_only:
+            _LOGGER.debug(f"Summer mode for heating-only device detected")
+            # For heating-only devices in summer, turn off when too hot
+            if ranges["comfortably_warm"] or ranges["slightly_warm"] or ranges["above_max"]:
+                return "off", "off", comfort_temp
+            elif ranges["comfortably_cool"] or ranges["slightly_cool"] or ranges["below_min"]:
+                # Only heat if it's actually cold
+                if indoor_temp < comfort_temp:
+                    return "heat", "off", self._bounded_temp(comfort_temp + 1, min_temp, max_temp)
+                else:
+                    return "off", "off", comfort_temp
+            else:
+                return "off", "off", comfort_temp
+        
+        # Original logic for devices with cooling capability
         if not energy_save_mode:
             if ranges["below_min"]:
                 return "off", "off", comfort_temp
@@ -449,6 +467,24 @@ class ComfortCalculator:
     ) -> Tuple[str, str, float]:
         """Determine HVAC mode for spring/autumn seasons."""
         
+        # Check if this is a heating-only device
+        heating_only = not enable_cool_mode and not enable_dry_mode
+        
+        if heating_only:
+            _LOGGER.debug(f"Transition mode for heating-only device detected")
+            # For heating-only devices in transition seasons
+            if ranges["comfortably_warm"] or ranges["slightly_warm"] or ranges["above_max"]:
+                return "off", "off", comfort_temp
+            elif ranges["comfortably_cool"] or ranges["slightly_cool"] or ranges["below_min"]:
+                # Only heat if it's actually cold
+                if indoor_temp < comfort_temp:
+                    return "heat", "off", self._bounded_temp(comfort_temp + 1, min_temp, max_temp)
+                else:
+                    return "off", "off", comfort_temp
+            else:
+                return "off", "off", comfort_temp
+        
+        # Original logic for devices with cooling capability
         if energy_save_mode:
             if ranges["comfortably_cool"] or ranges["comfortably_warm"]:
                 return "fan_only" if enable_fan_mode else "off", self._limit_fan_speed("low", max_fan_speed, min_fan_speed), comfort_temp
