@@ -90,7 +90,7 @@ class MultiDeviceManager:
         if has_fan and not has_cool and not has_heat and not has_dry:
             efficiency["fan"] = 0.2   # Fan is very efficient
             efficiency["cool"] = 0.5  # Fan can help with cooling
-            efficiency["heat"] = float('inf')  # Fan can't heat
+            efficiency["heat"] = float('inf')  # Fan can't heat (não elegível no inverno)
             efficiency["dry"] = float('inf')   # Fan can't dehumidify
             _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as Fan-only (capabilities: {capabilities})")
         

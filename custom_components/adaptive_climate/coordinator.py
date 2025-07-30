@@ -1090,9 +1090,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         elif hvac_mode == "fan_only":
             needs.append("fan")
         
-        # Add fan need if fan mode is specified
-        if fan_mode and fan_mode != "off" and "fan" not in needs:
-            needs.append("fan")
+        # Add fan need if fan mode is specified (but only for cooling/dry modes)
+        if fan_mode and fan_mode != "off" and hvac_mode in ["cool", "dry", "fan_only"]:
+            if "fan" not in needs:
+                needs.append("fan")
         
         return needs
     
