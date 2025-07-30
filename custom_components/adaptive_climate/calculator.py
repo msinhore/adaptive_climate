@@ -116,6 +116,15 @@ class ComfortCalculator:
     ) -> Dict[str, Any]:
         """Calculate HVAC and fan mode based on comfort parameters."""
         
+        _LOGGER.debug(f"[{device_name}] Starting comfort calculation with inputs:")
+        _LOGGER.debug(f"[{device_name}]   - Indoor temp: {indoor_temp:.2f}°C")
+        _LOGGER.debug(f"[{device_name}]   - Outdoor temp: {outdoor_temp:.2f}°C")
+        _LOGGER.debug(f"[{device_name}]   - Min temp: {min_temp:.2f}°C")
+        _LOGGER.debug(f"[{device_name}]   - Max temp: {max_temp:.2f}°C")
+        _LOGGER.debug(f"[{device_name}]   - Season: {season}")
+        _LOGGER.debug(f"[{device_name}]   - Category: {category}")
+        _LOGGER.debug(f"[{device_name}]   - Running mean temp: {running_mean_temp:.2f}°C" if running_mean_temp is not None else f"[{device_name}]   - Running mean temp: None")
+        
         # Validate and clamp outdoor temperature
         outdoor_temp = max(ASHRAE_55_TEMP_MIN, min(outdoor_temp, ASHRAE_55_TEMP_MAX))
 
@@ -171,18 +180,26 @@ class ComfortCalculator:
                       f"slightly_warm={ranges['slightly_warm']}, "
                       f"above_max={ranges['above_max']}")
 
+        _LOGGER.debug(f"[{device_name}] Calculated comfort parameters:")
+        _LOGGER.debug(f"[{device_name}]   - Comfort temp: {comfort_temp:.2f}°C")
+        _LOGGER.debug(f"[{device_name}]   - Min comfort temp: {min_comfort_temp:.2f}°C")
+        _LOGGER.debug(f"[{device_name}]   - Max comfort temp: {max_comfort_temp:.2f}°C")
+        _LOGGER.debug(f"[{device_name}]   - Target temperature: {temperature:.2f}°C")
+        _LOGGER.debug(f"[{device_name}]   - HVAC mode: {hvac_mode}")
+        _LOGGER.debug(f"[{device_name}]   - Fan mode: {fan}")
+
         result = {
             "season": season,
             "category": category,
-            "comfort_temp": math.floor(max(min_temp, min(comfort_temp, max_temp))),
+            "comfort_temp": round(max(min_temp, min(comfort_temp, max_temp)), 2),  # 2 decimal places for logs
             "hvac_mode": hvac_mode,
             "fan_mode": fan,
-            "temperature": temperature,
+            "temperature": round(temperature, 2),  # 2 decimal places for logs
             "ashrae_compliant": ashrae_result.acceptability_90 if category == "I" else ashrae_result.acceptability_80,
-            "comfort_min_ashrae": min_comfort_temp,
-            "comfort_max_ashrae": max_comfort_temp,
-            "tr": indoor_temp,
-            "running_mean_temp": running_mean_temp,
+            "comfort_min_ashrae": round(min_comfort_temp, 2),  # 2 decimal places for logs
+            "comfort_max_ashrae": round(max_comfort_temp, 2),  # 2 decimal places for logs
+            "tr": round(indoor_temp, 2),  # 2 decimal places for logs
+            "running_mean_temp": round(running_mean_temp, 2) if running_mean_temp is not None else None,  # 2 decimal places for logs
             "humidity_adjustment": 0.0,
         }
 
