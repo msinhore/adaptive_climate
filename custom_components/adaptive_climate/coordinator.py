@@ -1130,6 +1130,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         mapped_hvac = map_hvac_mode(str(hvac_mode), supported_hvac_modes, device_id) if supported_hvac_modes else hvac_mode
         mapped_fan = map_fan_mode(str(fan_mode), supported_fan_modes, device_id) if supported_fan_modes else fan_mode
         
+        # Adjust fan mode based on HVAC mode and device capabilities
+        mapped_fan = self._adjust_fan_mode_for_hvac(mapped_hvac, mapped_fan, device_id, capabilities, supported_fan_modes)
+        
         # Check if device can handle the mapped mode
         can_handle_hvac = capabilities.get(f"is_{mapped_hvac}", False) if mapped_hvac != "off" else True
         can_handle_fan = capabilities.get("is_fan", True) if mapped_fan != "off" else True
@@ -1148,6 +1151,51 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         
         _LOGGER.debug(f"[{self.device_name}] Action for {device_id}: {action}")
         return action
+    
+    def _adjust_fan_mode_for_hvac(self, hvac_mode: str, fan_mode: str, device_id: str, capabilities: Dict[str, bool], supported_fan_modes: List[str]) -> str:
+        """Adjust fan mode based on HVAC mode and device capabilities."""
+        _LOGGER.debug(f"[{self.device_name}] Adjusting fan mode for {device_id}: hvac={hvac_mode}, fan={fan_mode}")
+        
+        # If HVAC mode is cool, heat, or dry, fan should be on (not off)
+        if hvac_mode in ["cool", "heat", "dry"] and fan_mode == "off":
+            # Find the best available fan mode
+            if "auto" in supported_fan_modes:
+                fan_mode = "auto"
+                _LOGGER.debug(f"[{self.device_name}] Adjusted fan mode to 'auto' for {hvac_mode} mode")
+            elif "low" in supported_fan_modes:
+                fan_mode = "low"
+                _LOGGER.debug(f"[{self.device_name}] Adjusted fan mode to 'low' for {hvac_mode} mode")
+            elif "mid" in supported_fan_modes:
+                fan_mode = "mid"
+                _LOGGER.debug(f"[{self.device_name}] Adjusted fan mode to 'mid' for {hvac_mode} mode")
+            elif "high" in supported_fan_modes:
+                fan_mode = "high"
+                _LOGGER.debug(f"[{self.device_name}] Adjusted fan mode to 'high' for {hvac_mode} mode")
+            elif len(supported_fan_modes) > 0:
+                fan_mode = supported_fan_modes[0]  # Use first available
+                _LOGGER.debug(f"[{self.device_name}] Adjusted fan mode to '{fan_mode}' for {hvac_mode} mode")
+        
+        # If HVAC mode is fan_only, ensure fan is not off
+        elif hvac_mode == "fan_only" and fan_mode == "off":
+            if "low" in supported_fan_modes:
+                fan_mode = "low"
+                _LOGGER.debug(f"[{self.device_name}] Adjusted fan mode to 'low' for fan_only mode")
+            elif "mid" in supported_fan_modes:
+                fan_mode = "mid"
+                _LOGGER.debug(f"[{self.device_name}] Adjusted fan mode to 'mid' for fan_only mode")
+            elif "high" in supported_fan_modes:
+                fan_mode = "high"
+                _LOGGER.debug(f"[{self.device_name}] Adjusted fan mode to 'high' for fan_only mode")
+            elif len(supported_fan_modes) > 0:
+                fan_mode = supported_fan_modes[0]
+                _LOGGER.debug(f"[{self.device_name}] Adjusted fan mode to '{fan_mode}' for fan_only mode")
+        
+        # If HVAC mode is off, fan should be off
+        elif hvac_mode == "off":
+            fan_mode = "off"
+            _LOGGER.debug(f"[{self.device_name}] Set fan mode to 'off' for off mode")
+        
+        return fan_mode
 
     async def update_config(self, config: Optional[Dict[str, Any]] = None, **kwargs) -> None:
         """Unified config update method with improved auto_mode handling."""
