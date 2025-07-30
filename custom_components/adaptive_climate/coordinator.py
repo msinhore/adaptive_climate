@@ -475,6 +475,8 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 enable_dry_mode=self.config.get("enable_dry_mode", True),
                 max_fan_speed=self.config.get("max_fan_speed", "high"),
                 min_fan_speed=self.config.get("min_fan_speed", "low"),
+                # Temperature override parameter
+                override_temperature=self.config.get("override_temperature", 0),
             )
 
             # Log calculation results
@@ -756,19 +758,15 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             (current_temp is None or abs(target_temp - current_temp) >= threshold) and
             current_hvac != "fan_only"):
             
-            # Apply override temperature as an offset
-            override_temp = self.config.get("override_temperature", 0)
-            final_temp = target_temp + override_temp
-            
-            _LOGGER.debug(f"[{self.device_name}] Setting temperature: {target_temp}°C + {override_temp}°C offset = {final_temp}°C (integer for AC)")
+            _LOGGER.debug(f"[{self.device_name}] Setting temperature: {target_temp}°C (integer for AC)")
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN, "set_temperature", {
                     "entity_id": self.climate_entity_id,
-                    "temperature": int(final_temp),  # Ensure integer for AC
+                    "temperature": int(target_temp),  # Ensure integer for AC
                 }, blocking=False
             )
-            changes.append(f"Temperature: {current_temp}°C → {int(final_temp)}°C")
-            _LOGGER.debug(f"[{self.device_name}] Temperature command sent: {int(final_temp)}°C")
+            changes.append(f"Temperature: {current_temp}°C → {int(target_temp)}°C")
+            _LOGGER.debug(f"[{self.device_name}] Temperature command sent: {int(target_temp)}°C")
         else:
             _LOGGER.debug(f"[{self.device_name}] Temperature change not needed (difference: {abs(target_temp - current_temp) if current_temp else 'N/A'}°C)")
 

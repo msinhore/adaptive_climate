@@ -113,6 +113,8 @@ class ComfortCalculator:
         enable_dry_mode: bool = True,
         max_fan_speed: str = "high",
         min_fan_speed: str = "low",
+        # Temperature override parameter
+        override_temperature: float = 0.0,
     ) -> Dict[str, Any]:
         """Calculate HVAC and fan mode based on comfort parameters."""
         
@@ -170,7 +172,16 @@ class ComfortCalculator:
             enable_dry_mode,
             max_fan_speed,
             min_fan_speed,
+            override_temperature,
         )
+
+        # Apply temperature override to the final temperature
+        if override_temperature != 0.0:
+            original_temperature = temperature
+            temperature += override_temperature
+            # Ensure temperature stays within bounds
+            temperature = max(min_temp, min(temperature, max_temp))
+            _LOGGER.debug(f"[{device_name}] Applied temperature override: {original_temperature:.2f}°C + {override_temperature:.2f}°C = {temperature:.2f}°C")
 
         _LOGGER.debug(f"[{device_name}] Temperature ranges: "
                       f"below_min={ranges['below_min']}, "
@@ -194,7 +205,7 @@ class ComfortCalculator:
             "comfort_temp": round(max(min_temp, min(comfort_temp, max_temp)), 2),  # 2 decimal places for logs
             "hvac_mode": hvac_mode,
             "fan_mode": fan,
-            "temperature": round(temperature, 2),  # 2 decimal places for logs
+            "target_temp": round(temperature, 2),  # 2 decimal places for logs
             "ashrae_compliant": ashrae_result.acceptability_90 if category == "I" else ashrae_result.acceptability_80,
             "comfort_min_ashrae": round(min_comfort_temp, 2),  # 2 decimal places for logs
             "comfort_max_ashrae": round(max_comfort_temp, 2),  # 2 decimal places for logs
@@ -255,6 +266,7 @@ class ComfortCalculator:
         enable_dry_mode: bool,
         max_fan_speed: str,
         min_fan_speed: str,
+        override_temperature: float,
     ) -> Tuple[str, str, float]:
         """Determine HVAC mode, fan mode, and target temperature."""
         
@@ -302,18 +314,18 @@ class ComfortCalculator:
             hvac_mode, fan, temperature = self._get_summer_mode(
                 ranges, energy_save_mode, indoor_temp, comfort_temp, min_temp, max_temp,
                 max_comfort_temp, aggressive_cooling_threshold,
-                enable_fan_mode, enable_cool_mode, enable_dry_mode, max_fan_speed, min_fan_speed
+                enable_fan_mode, enable_cool_mode, enable_dry_mode, max_fan_speed, min_fan_speed, override_temperature
             )
         elif season == "winter":
             hvac_mode, fan, temperature = self._get_winter_mode(
                 ranges, energy_save_mode, indoor_temp, comfort_temp, min_temp, max_temp,
                 min_comfort_temp, aggressive_heating_threshold,
-                enable_fan_mode, enable_heat_mode, enable_dry_mode, max_fan_speed, min_fan_speed
+                enable_fan_mode, enable_heat_mode, enable_dry_mode, max_fan_speed, min_fan_speed, override_temperature
             )
         else:  # spring or autumn
             hvac_mode, fan, temperature = self._get_transition_mode(
                 ranges, energy_save_mode, comfort_temp, min_temp, max_temp,
-                enable_fan_mode, enable_cool_mode, enable_heat_mode, enable_dry_mode, max_fan_speed, min_fan_speed
+                enable_fan_mode, enable_cool_mode, enable_heat_mode, enable_dry_mode, max_fan_speed, min_fan_speed, override_temperature
             )
 
         return hvac_mode, fan, temperature
@@ -333,6 +345,7 @@ class ComfortCalculator:
         enable_dry_mode: bool,
         max_fan_speed: str,
         min_fan_speed: str,
+        override_temperature: float,
     ) -> Tuple[str, str, float]:
         """Determine HVAC mode for summer season."""
         
@@ -386,6 +399,7 @@ class ComfortCalculator:
         enable_dry_mode: bool,
         max_fan_speed: str,
         min_fan_speed: str,
+        override_temperature: float,
     ) -> Tuple[str, str, float]:
         """Determine HVAC mode for winter season."""
         
@@ -431,6 +445,7 @@ class ComfortCalculator:
         enable_dry_mode: bool,
         max_fan_speed: str,
         min_fan_speed: str,
+        override_temperature: float,
     ) -> Tuple[str, str, float]:
         """Determine HVAC mode for spring/autumn seasons."""
         
