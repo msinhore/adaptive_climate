@@ -86,8 +86,9 @@ class MultiDeviceManager:
             efficiency["dry"] = 1.0   # AC is good for dehumidification
         elif "trv" in device_lower or "radiator" in device_lower:
             efficiency["heat"] = 0.7  # TRV is very efficient for heating
-            efficiency["cool"] = float('inf')  # TRV can't cool
+            efficiency["cool"] = float('inf')  # TRV can't cool (never)
             efficiency["dry"] = float('inf')   # TRV can't dehumidify
+            efficiency["fan"] = float('inf')   # TRV has no fan
         elif "fan" in device_lower:
             efficiency["fan"] = 0.2   # Fan is very efficient
             efficiency["cool"] = 0.5  # Fan can help with cooling
