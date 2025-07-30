@@ -53,6 +53,17 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
             return options.get(key) if key in options else data.get(key)
 
         schema = vol.Schema({
+            # === Climate Entities ===
+            vol.Optional(
+                "climate_entities",
+                default=options.get("climate_entities", data.get("climate_entities", []))
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain="climate",
+                    multiple=True  # Support multiple devices
+                )
+            ),
+            
             # === Comfort Category ===
             vol.Optional(
                 "comfort_category",
