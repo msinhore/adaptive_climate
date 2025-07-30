@@ -80,24 +80,61 @@ class MultiDeviceManager:
         # Adjust based on device type and capabilities
         device_lower = device_id.lower()
         
-        if "ac" in device_lower or "air" in device_lower:
-            efficiency["cool"] = 0.8  # AC is efficient for cooling
-            efficiency["heat"] = 1.5  # AC is less efficient for heating
-            efficiency["dry"] = 1.0   # AC is good for dehumidification
-        elif "trv" in device_lower or "radiator" in device_lower:
-            efficiency["heat"] = 0.7  # TRV is very efficient for heating
-            efficiency["cool"] = float('inf')  # TRV can't cool (never)
-            efficiency["dry"] = float('inf')   # TRV can't dehumidify
-            efficiency["fan"] = float('inf')   # TRV has no fan
-        elif "fan" in device_lower:
+        # Detect device type based on capabilities
+        has_cool = capabilities.get("is_cool", False)
+        has_heat = capabilities.get("is_heat", False)
+        has_fan = capabilities.get("is_fan", False)
+        
+        # Fan-only devices (ventiladores)
+        if has_fan and not has_cool and not has_heat:
             efficiency["fan"] = 0.2   # Fan is very efficient
             efficiency["cool"] = 0.5  # Fan can help with cooling
             efficiency["heat"] = float('inf')  # Fan can't heat
             efficiency["dry"] = float('inf')   # Fan can't dehumidify
-        elif "heater" in device_lower or "oil" in device_lower:
-            efficiency["heat"] = 0.8  # Heater is efficient for heating
-            efficiency["cool"] = float('inf')  # Heater can't cool
-            efficiency["dry"] = float('inf')   # Heater can't dehumidify
+            _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as Fan-only")
+        
+        # AC devices (cool + heat + fan)
+        elif has_cool and has_heat and has_fan:
+            efficiency["cool"] = 0.8  # AC is efficient for cooling
+            efficiency["heat"] = 1.5  # AC is less efficient for heating
+            efficiency["dry"] = 1.0   # AC is good for dehumidification
+            _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as AC (cool+heat+fan)")
+        
+        # Heat-only devices (TRV, radiators, heaters)
+        elif has_heat and not has_cool:
+            efficiency["heat"] = 0.7  # Heat-only is very efficient for heating
+            efficiency["cool"] = float('inf')  # Can't cool
+            efficiency["dry"] = float('inf')   # Can't dehumidify
+            efficiency["fan"] = float('inf')   # No fan
+            _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as Heat-only (TRV/heater)")
+        
+        # Cool-only devices (AC only cooling)
+        elif has_cool and not has_heat:
+            efficiency["cool"] = 0.8  # AC is efficient for cooling
+            efficiency["heat"] = float('inf')  # Can't heat
+            efficiency["dry"] = 1.0   # AC is good for dehumidification
+            _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as Cool-only")
+        
+        # Legacy detection by device name (fallback)
+        else:
+            if "ac" in device_lower or "air" in device_lower:
+                efficiency["cool"] = 0.8
+                efficiency["heat"] = 1.5
+                efficiency["dry"] = 1.0
+            elif "trv" in device_lower or "radiator" in device_lower:
+                efficiency["heat"] = 0.7
+                efficiency["cool"] = float('inf')
+                efficiency["dry"] = float('inf')
+                efficiency["fan"] = float('inf')
+            elif "fan" in device_lower:
+                efficiency["fan"] = 0.2
+                efficiency["cool"] = 0.5
+                efficiency["heat"] = float('inf')
+                efficiency["dry"] = float('inf')
+            elif "heater" in device_lower or "oil" in device_lower:
+                efficiency["heat"] = 0.8
+                efficiency["cool"] = float('inf')
+                efficiency["dry"] = float('inf')
         
         # Adjust for capabilities
         for capability in ["cool", "heat", "fan", "dry"]:
@@ -124,7 +161,7 @@ class MultiDeviceManager:
         return priority
     
     def get_optimal_devices(self, needs: List[str]) -> Dict[str, List[str]]:
-        """Get optimal devices for current needs."""
+        """Get optimal devices for current needs with fallback logic."""
         primary_devices = []
         auxiliary_devices = []
         
@@ -142,14 +179,35 @@ class MultiDeviceManager:
             available_devices.sort(key=lambda x: x[1], reverse=True)
             
             if available_devices:
-                # First device is primary
-                primary_devices.append(available_devices[0][0])
-                _LOGGER.debug(f"[{self.device_name}] Primary device for {need}: {available_devices[0][0]} (priority: {available_devices[0][1]:.2f})")
+                # Check if we have any high-efficiency devices for this need
+                high_efficiency_devices = []
+                low_efficiency_devices = []
                 
-                # Remaining devices are auxiliary
-                for device_id, priority in available_devices[1:]:
-                    auxiliary_devices.append(device_id)
-                    _LOGGER.debug(f"[{self.device_name}] Auxiliary device for {need}: {device_id} (priority: {priority:.2f})")
+                for device_id, priority in available_devices:
+                    efficiency = self.device_efficiency[device_id][need]
+                    if efficiency < 1.0:  # High efficiency (lower score = more efficient)
+                        high_efficiency_devices.append((device_id, priority))
+                    else:
+                        low_efficiency_devices.append((device_id, priority))
+                
+                # If we have high-efficiency devices, use them as primary
+                if high_efficiency_devices:
+                    primary_devices.extend([device_id for device_id, _ in high_efficiency_devices])
+                    auxiliary_devices.extend([device_id for device_id, _ in low_efficiency_devices])
+                    
+                    _LOGGER.debug(f"[{self.device_name}] High-efficiency primary devices for {need}: {[d for d, _ in high_efficiency_devices]}")
+                    if low_efficiency_devices:
+                        _LOGGER.debug(f"[{self.device_name}] Low-efficiency auxiliary devices for {need}: {[d for d, _ in low_efficiency_devices]}")
+                
+                # If no high-efficiency devices, use the best available as primary
+                else:
+                    primary_devices.append(available_devices[0][0])
+                    _LOGGER.debug(f"[{self.device_name}] No high-efficiency devices for {need}, using best available as primary: {available_devices[0][0]}")
+                    
+                    # Remaining devices are auxiliary
+                    for device_id, priority in available_devices[1:]:
+                        auxiliary_devices.append(device_id)
+                        _LOGGER.debug(f"[{self.device_name}] Auxiliary device for {need}: {device_id} (priority: {priority:.2f})")
         
         return {
             "primary": list(set(primary_devices)),  # Remove duplicates
@@ -193,4 +251,72 @@ class MultiDeviceManager:
             requested_hvac, requested_fan, supported_hvac_modes, supported_fan_modes, device_id
         )
         
-        return validation 
+        return validation
+    
+    def is_device_available(self, device_id: str) -> bool:
+        """Check if a device is available and operational."""
+        if not self.hass:
+            return False
+        
+        state = self.hass.states.get(device_id)
+        if not state:
+            return False
+        
+        # Check if device is available and not in error state
+        return state.state not in ["unavailable", "unknown", "error"]
+    
+    def get_available_devices(self, needs: List[str]) -> Dict[str, List[str]]:
+        """Get available devices for current needs with fallback logic."""
+        primary_devices = []
+        auxiliary_devices = []
+        
+        _LOGGER.debug(f"[{self.device_name}] Getting available devices for needs: {needs}")
+        
+        for need in needs:
+            available_devices = []
+            
+            for device_id in self.device_ids:
+                # Check if device is available and has the required capability
+                if (self.is_device_available(device_id) and 
+                    self.device_capabilities[device_id][f"is_{need}"]):
+                    priority = self.device_priority[device_id][need]
+                    available_devices.append((device_id, priority))
+            
+            # Sort by priority (highest first)
+            available_devices.sort(key=lambda x: x[1], reverse=True)
+            
+            if available_devices:
+                # Check if we have any high-efficiency devices for this need
+                high_efficiency_devices = []
+                low_efficiency_devices = []
+                
+                for device_id, priority in available_devices:
+                    efficiency = self.device_efficiency[device_id][need]
+                    if efficiency < 1.0:  # High efficiency (lower score = more efficient)
+                        high_efficiency_devices.append((device_id, priority))
+                    else:
+                        low_efficiency_devices.append((device_id, priority))
+                
+                # If we have high-efficiency devices, use them as primary
+                if high_efficiency_devices:
+                    primary_devices.extend([device_id for device_id, _ in high_efficiency_devices])
+                    auxiliary_devices.extend([device_id for device_id, _ in low_efficiency_devices])
+                    
+                    _LOGGER.debug(f"[{self.device_name}] Available high-efficiency primary devices for {need}: {[d for d, _ in high_efficiency_devices]}")
+                    if low_efficiency_devices:
+                        _LOGGER.debug(f"[{self.device_name}] Available low-efficiency auxiliary devices for {need}: {[d for d, _ in low_efficiency_devices]}")
+                
+                # If no high-efficiency devices, use the best available as primary (fallback)
+                else:
+                    primary_devices.append(available_devices[0][0])
+                    _LOGGER.debug(f"[{self.device_name}] No high-efficiency devices available for {need}, using best available as primary: {available_devices[0][0]}")
+                    
+                    # Remaining devices are auxiliary
+                    for device_id, priority in available_devices[1:]:
+                        auxiliary_devices.append(device_id)
+                        _LOGGER.debug(f"[{self.device_name}] Available auxiliary device for {need}: {device_id} (priority: {priority:.2f})")
+        
+        return {
+            "primary": list(set(primary_devices)),  # Remove duplicates
+            "auxiliary": list(set(auxiliary_devices))  # Remove duplicates
+        } 

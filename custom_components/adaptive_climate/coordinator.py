@@ -1045,8 +1045,8 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         needs = self._analyze_needs(comfort)
         _LOGGER.debug(f"[{self.device_name}] Analyzed needs: {needs}")
         
-        # Get optimal devices for current needs
-        optimal_devices = self.device_manager.get_optimal_devices(needs)
+        # Get optimal devices for current needs (with availability check)
+        optimal_devices = self.device_manager.get_available_devices(needs)
         
         # Generate actions for all devices
         all_actions = {}
