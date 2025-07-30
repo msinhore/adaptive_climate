@@ -247,3 +247,158 @@ def get_supported_modes_info(
 
 # Log successful import
 _LOGGER.info("mode_mapper loaded successfully")
+
+def detect_device_capabilities(
+    supported_hvac_modes: List[str],
+    supported_fan_modes: List[str],
+    device_name: Optional[str] = None
+) -> Dict[str, bool]:
+    """
+    Detect device capabilities based on supported modes.
+    
+    Args:
+        supported_hvac_modes: List of supported HVAC modes
+        supported_fan_modes: List of supported fan modes
+        device_name: Optional device name for logging
+        
+    Returns:
+        Dictionary with detected capabilities
+    """
+    device_prefix = f"[{device_name}] " if device_name else ""
+    
+    _LOGGER.debug(f"{device_prefix}Detecting device capabilities from modes:")
+    _LOGGER.debug(f"{device_prefix}  - HVAC modes: {supported_hvac_modes}")
+    _LOGGER.debug(f"{device_prefix}  - Fan modes: {supported_fan_modes}")
+    
+    # Convert to lowercase for easier comparison
+    hvac_lower = [mode.lower() for mode in supported_hvac_modes]
+    fan_lower = [mode.lower() for mode in supported_fan_modes]
+    
+    # Detect cooling capability
+    is_cool = any(mode in ["cool", "auto", "heat_cool"] for mode in hvac_lower)
+    
+    # Detect heating capability
+    is_heat = any(mode in ["heat", "auto", "heat_cool"] for mode in hvac_lower)
+    
+    # Detect fan capability
+    is_fan = any(mode in ["fan_only", "fan"] for mode in hvac_lower) or len(supported_fan_modes) > 0
+    
+    # Detect dry capability
+    is_dry = any(mode in ["dry", "dehumidify"] for mode in hvac_lower)
+    
+    # Special handling for devices with "auto" mode
+    if "auto" in hvac_lower:
+        # Auto mode can handle both cooling and heating
+        is_cool = True
+        is_heat = True
+        _LOGGER.debug(f"{device_prefix}Auto mode detected - enabling both cool and heat capabilities")
+    
+    # Special handling for "heat_cool" mode
+    if any("heat_cool" in mode for mode in hvac_lower):
+        is_cool = True
+        is_heat = True
+        _LOGGER.debug(f"{device_prefix}Heat_cool mode detected - enabling both cool and heat capabilities")
+    
+    capabilities = {
+        "is_cool": is_cool,
+        "is_heat": is_heat,
+        "is_fan": is_fan,
+        "is_dry": is_dry,
+    }
+    
+    # Determine device type
+    if is_cool and is_heat:
+        device_type = "Heat/Cool (AC)"
+    elif is_heat:
+        device_type = "Heat Only (TRV/Heater)"
+    elif is_cool:
+        device_type = "Cool Only (AC)"
+    elif is_fan:
+        device_type = "Fan Only"
+    else:
+        device_type = "Unknown"
+    
+    _LOGGER.info(f"{device_prefix}Device capabilities detected:")
+    _LOGGER.info(f"{device_prefix}  - Cooling: {is_cool}")
+    _LOGGER.info(f"{device_prefix}  - Heating: {is_heat}")
+    _LOGGER.info(f"{device_prefix}  - Fan: {is_fan}")
+    _LOGGER.info(f"{device_prefix}  - Dry: {is_dry}")
+    _LOGGER.info(f"{device_prefix}  - Device type: {device_type}")
+    
+    return capabilities
+
+def validate_mode_compatibility(
+    calculated_hvac: str,
+    calculated_fan: str,
+    supported_hvac_modes: List[str],
+    supported_fan_modes: List[str],
+    device_name: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Validate if calculated modes are compatible with device capabilities.
+    
+    Args:
+        calculated_hvac: The calculated HVAC mode
+        calculated_fan: The calculated fan mode
+        supported_hvac_modes: List of supported HVAC modes
+        supported_fan_modes: List of supported fan modes
+        device_name: Optional device name for logging
+        
+    Returns:
+        Dictionary with validation results and suggestions
+    """
+    device_prefix = f"[{device_name}] " if device_name else ""
+    
+    # Detect capabilities
+    capabilities = detect_device_capabilities(supported_hvac_modes, supported_fan_modes, device_name)
+    
+    # Validate HVAC mode
+    hvac_valid = True
+    hvac_suggestion = calculated_hvac
+    
+    if calculated_hvac.lower() == "cool" and not capabilities["is_cool"]:
+        hvac_valid = False
+        if capabilities["is_heat"]:
+            hvac_suggestion = "off"  # Turn off if cooling not supported
+        else:
+            hvac_suggestion = "fan_only" if capabilities["is_fan"] else "off"
+        _LOGGER.warning(f"{device_prefix}Cooling requested but device doesn't support cooling")
+    
+    elif calculated_hvac.lower() == "heat" and not capabilities["is_heat"]:
+        hvac_valid = False
+        if capabilities["is_cool"]:
+            hvac_suggestion = "off"  # Turn off if heating not supported
+        else:
+            hvac_suggestion = "fan_only" if capabilities["is_fan"] else "off"
+        _LOGGER.warning(f"{device_prefix}Heating requested but device doesn't support heating")
+    
+    elif calculated_hvac.lower() == "dry" and not capabilities["is_dry"]:
+        hvac_valid = False
+        hvac_suggestion = "off"
+        _LOGGER.warning(f"{device_prefix}Dry mode requested but device doesn't support dry mode")
+    
+    elif calculated_hvac.lower() == "fan_only" and not capabilities["is_fan"]:
+        hvac_valid = False
+        hvac_suggestion = "off"
+        _LOGGER.warning(f"{device_prefix}Fan mode requested but device doesn't support fan mode")
+    
+    # Validate fan mode
+    fan_valid = True
+    fan_suggestion = calculated_fan
+    
+    if calculated_fan.lower() != "off" and not capabilities["is_fan"]:
+        fan_valid = False
+        fan_suggestion = "off"
+        _LOGGER.warning(f"{device_prefix}Fan mode requested but device doesn't support fan modes")
+    
+    validation_result = {
+        "hvac_valid": hvac_valid,
+        "fan_valid": fan_valid,
+        "hvac_suggestion": hvac_suggestion,
+        "fan_suggestion": fan_suggestion,
+        "capabilities": capabilities,
+        "compatible": hvac_valid and fan_valid,
+    }
+    
+    _LOGGER.debug(f"{device_prefix}Mode validation result: {validation_result}")
+    return validation_result

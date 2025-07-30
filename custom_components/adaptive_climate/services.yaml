@@ -188,5 +188,18 @@ set_temporary_override:
           step: 5
           unit_of_measurement: "minutes"
 
+redetect_capabilities:
+  name: Re-detect Device Capabilities
+  description: Force re-detection of device capabilities (cooling, heating, fan, dry modes)
+  fields:
+    entity_id:
+      name: Entity ID
+      description: Adaptive Climate binary sensor entity ID
+      required: true
+      selector:
+        entity:
+          domain: binary_sensor
+          integration: adaptive_climate
+
 
 

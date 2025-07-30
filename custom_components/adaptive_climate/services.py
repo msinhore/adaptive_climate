@@ -31,6 +31,7 @@ SERVICE_CLEAR_MANUAL_OVERRIDE = "clear_manual_override"
 SERVICE_SET_COMFORT_CATEGORY = "set_comfort_category"
 SERVICE_UPDATE_CALCULATIONS = "update_calculations"
 SERVICE_SET_TEMPORARY_OVERRIDE = "set_temporary_override"
+SERVICE_REDETECT_CAPABILITIES = "redetect_capabilities"
 
 # Parameter definitions with validation
 EDITABLE_PARAMETERS = {
@@ -136,6 +137,12 @@ SET_TEMPORARY_OVERRIDE_SCHEMA = vol.Schema(
         vol.Required("entity_id"): cv.entity_id,
         vol.Required("temperature"): vol.Coerce(float),
         vol.Optional("duration_minutes", default=30): vol.Coerce(int),
+    }
+)
+
+REDETECT_CAPABILITIES_SCHEMA = vol.Schema(
+    {
+        vol.Required("entity_id"): cv.entity_id,
     }
 )
 
@@ -285,6 +292,22 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         
         _LOGGER.info(f"[{device_name}] Temporary override set to {temperature:.1f}°C for {duration_minutes}min")
     
+    async def async_redetect_capabilities(call: ServiceCall) -> None:
+        """Handle redetect capabilities service call."""
+        entity_id = call.data["entity_id"]
+        
+        coordinator = await _get_coordinator_from_entity_id(hass, entity_id)
+        if not coordinator:
+            _LOGGER.error("Could not find coordinator for entity %s", entity_id)
+            return
+        
+        device_name = coordinator.device_name
+        _LOGGER.debug(f"[{device_name}] Re-detecting device capabilities")
+        
+        capabilities = await coordinator.redetect_device_capabilities()
+        
+        _LOGGER.info(f"[{device_name}] Device capabilities re-detected: {capabilities}")
+    
     # Register services
     services_to_register = [
         (SERVICE_SET_PARAMETER, async_set_parameter, SET_PARAMETER_SCHEMA),
@@ -294,6 +317,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         (SERVICE_SET_COMFORT_CATEGORY, async_set_comfort_category, SET_COMFORT_CATEGORY_SCHEMA),
         (SERVICE_UPDATE_CALCULATIONS, async_update_calculations, UPDATE_CALCULATIONS_SCHEMA),
         (SERVICE_SET_TEMPORARY_OVERRIDE, async_set_temporary_override, SET_TEMPORARY_OVERRIDE_SCHEMA),
+        (SERVICE_REDETECT_CAPABILITIES, async_redetect_capabilities, REDETECT_CAPABILITIES_SCHEMA),
     ]
     
     for service_name, service_func, schema in services_to_register:
@@ -396,6 +420,7 @@ def async_unload_services(hass: HomeAssistant) -> None:
         SERVICE_SET_COMFORT_CATEGORY,
         SERVICE_UPDATE_CALCULATIONS,
         SERVICE_SET_TEMPORARY_OVERRIDE,
+        SERVICE_REDETECT_CAPABILITIES,
     ]
     
     for service_name in services_to_unload:

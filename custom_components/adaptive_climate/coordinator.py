@@ -22,7 +22,7 @@ from homeassistant.util import dt as dt_util, slugify
 # --- Custom Component Imports ---
 from .calculator import ComfortCalculator
 from .const import DOMAIN, UPDATE_INTERVAL_MEDIUM, UPDATE_INTERVAL_SHORT, UPDATE_INTERVAL_LONG
-from .mode_mapper import map_fan_mode, map_hvac_mode
+from .mode_mapper import map_fan_mode, map_hvac_mode, detect_device_capabilities, validate_mode_compatibility
 from .season_detector import get_season
 
 # --- Constants ---
@@ -129,6 +129,82 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug(f"[{self.device_name}]   - Indoor humidity sensor: {self.indoor_humidity_sensor_id}")
         _LOGGER.debug(f"[{self.device_name}]   - Outdoor humidity sensor: {self.outdoor_humidity_sensor_id}")
 
+    def _detect_device_capabilities(self) -> Dict[str, bool]:
+        """Detect device capabilities automatically from climate entity state."""
+        _LOGGER.debug(f"[{self.device_name}] Detecting device capabilities...")
+        
+        state = self.hass.states.get(self.climate_entity_id)
+        if not state:
+            _LOGGER.warning(f"[{self.device_name}] Climate entity not available for capability detection")
+            return {
+                "is_cool": self.config.get("enable_cool_mode", True),
+                "is_heat": self.config.get("enable_heat_mode", True),
+                "is_fan": self.config.get("enable_fan_mode", True),
+                "is_dry": self.config.get("enable_dry_mode", True),
+            }
+        
+        # Get supported HVAC modes
+        supported_hvac_modes = state.attributes.get("hvac_modes", [])
+        supported_fan_modes = state.attributes.get("fan_modes", [])
+        
+        _LOGGER.debug(f"[{self.device_name}] Device capabilities detected:")
+        _LOGGER.debug(f"[{self.device_name}]   - Supported HVAC modes: {supported_hvac_modes}")
+        _LOGGER.debug(f"[{self.device_name}]   - Supported fan modes: {supported_fan_modes}")
+        
+        # Use mode_mapper to detect capabilities
+        capabilities = detect_device_capabilities(
+            supported_hvac_modes, 
+            supported_fan_modes, 
+            self.device_name
+        )
+        
+        return capabilities
+
+    def _update_config_with_capabilities(self, capabilities: Dict[str, bool]) -> None:
+        """Update configuration with detected capabilities."""
+        _LOGGER.debug(f"[{self.device_name}] Updating configuration with detected capabilities...")
+        
+        # Update config with detected capabilities
+        self.config["enable_cool_mode"] = capabilities["is_cool"]
+        self.config["enable_heat_mode"] = capabilities["is_heat"]
+        self.config["enable_fan_mode"] = capabilities["is_fan"]
+        self.config["enable_dry_mode"] = capabilities["is_dry"]
+        
+        _LOGGER.debug(f"[{self.device_name}] Configuration updated with capabilities:")
+        _LOGGER.debug(f"[{self.device_name}]   - enable_cool_mode: {self.config['enable_cool_mode']}")
+        _LOGGER.debug(f"[{self.device_name}]   - enable_heat_mode: {self.config['enable_heat_mode']}")
+        _LOGGER.debug(f"[{self.device_name}]   - enable_fan_mode: {self.config['enable_fan_mode']}")
+        _LOGGER.debug(f"[{self.device_name}]   - enable_dry_mode: {self.config['enable_dry_mode']}")
+        
+        # Log device type detection
+        if capabilities["is_cool"] and capabilities["is_heat"]:
+            device_type = "Heat/Cool (AC)"
+        elif capabilities["is_heat"]:
+            device_type = "Heat Only (TRV/Heater)"
+        elif capabilities["is_cool"]:
+            device_type = "Cool Only (AC)"
+        elif capabilities["is_fan"]:
+            device_type = "Fan Only"
+        else:
+            device_type = "Unknown"
+        
+        _LOGGER.info(f"[{self.device_name}] Device type detected: {device_type}")
+
+    async def _setup_device_capabilities(self) -> None:
+        """Setup device capabilities detection."""
+        _LOGGER.debug(f"[{self.device_name}] Setting up device capabilities detection...")
+        
+        # Wait a moment for entities to be available
+        await asyncio.sleep(1)
+        
+        # Detect capabilities
+        capabilities = self._detect_device_capabilities()
+        
+        # Update configuration with detected capabilities
+        self._update_config_with_capabilities(capabilities)
+        
+        _LOGGER.debug(f"[{self.device_name}] Device capabilities setup completed")
+
     def _normalize_device_name(self, device_name: str) -> str:
         """Normalize device name for use as system identifier."""
         import unicodedata
@@ -172,6 +248,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
     async def _startup(self) -> None:
         """Load persisted data and run initial control cycle if needed."""
         _LOGGER.debug(f"[{self.device_name}] Starting initialization...")
+        
+        # Setup device capabilities detection first
+        await self._setup_device_capabilities()
         
         # Load persisted data first
         await self._load_persisted_data()
@@ -961,6 +1040,20 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug(f"[{self.device_name}]   - Supported HVAC modes: {supported_hvac_modes}")
         _LOGGER.debug(f"[{self.device_name}]   - Supported fan modes: {supported_fan_modes}")
         
+        # Validate mode compatibility with device capabilities
+        validation = validate_mode_compatibility(
+            hvac_mode, fan_mode, supported_hvac_modes, supported_fan_modes, self.device_name
+        )
+        
+        if not validation["compatible"]:
+            _LOGGER.warning(f"[{self.device_name}] Mode compatibility issues detected:")
+            if not validation["hvac_valid"]:
+                _LOGGER.warning(f"[{self.device_name}]   - HVAC mode '{hvac_mode}' not compatible, suggesting '{validation['hvac_suggestion']}'")
+                hvac_mode = validation["hvac_suggestion"]
+            if not validation["fan_valid"]:
+                _LOGGER.warning(f"[{self.device_name}]   - Fan mode '{fan_mode}' not compatible, suggesting '{validation['fan_suggestion']}'")
+                fan_mode = validation["fan_suggestion"]
+        
         # Map modes to supported ones
         original_hvac = hvac_mode
         original_fan = fan_mode
@@ -1221,3 +1314,28 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         await self._persist_data(params_only=True)
         
         _LOGGER.debug(f"[{self.device_name}] Comfort category updated successfully")
+
+    async def redetect_device_capabilities(self) -> Dict[str, bool]:
+        """Force re-detection of device capabilities."""
+        _LOGGER.info(f"[{self.device_name}] Forcing re-detection of device capabilities...")
+        
+        # Detect capabilities
+        capabilities = self._detect_device_capabilities()
+        
+        # Update configuration with detected capabilities
+        self._update_config_with_capabilities(capabilities)
+        
+        # Persist the updated configuration
+        await self._persist_data(params_only=True)
+        
+        _LOGGER.info(f"[{self.device_name}] Device capabilities re-detection completed")
+        return capabilities
+
+    def get_device_capabilities(self) -> Dict[str, bool]:
+        """Get current device capabilities."""
+        return {
+            "is_cool": self.config.get("enable_cool_mode", True),
+            "is_heat": self.config.get("enable_heat_mode", True),
+            "is_fan": self.config.get("enable_fan_mode", True),
+            "is_dry": self.config.get("enable_dry_mode", True),
+        }
