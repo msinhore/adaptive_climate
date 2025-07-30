@@ -80,61 +80,62 @@ class MultiDeviceManager:
         # Adjust based on device type and capabilities
         device_lower = device_id.lower()
         
-        # Detect device type based on capabilities
+        # Detect device type based on capabilities only
         has_cool = capabilities.get("is_cool", False)
         has_heat = capabilities.get("is_heat", False)
         has_fan = capabilities.get("is_fan", False)
+        has_dry = capabilities.get("is_dry", False)
         
-        # Fan-only devices (ventiladores)
-        if has_fan and not has_cool and not has_heat:
+        # Fan-only devices (apenas ventilação)
+        if has_fan and not has_cool and not has_heat and not has_dry:
             efficiency["fan"] = 0.2   # Fan is very efficient
             efficiency["cool"] = 0.5  # Fan can help with cooling
             efficiency["heat"] = float('inf')  # Fan can't heat
             efficiency["dry"] = float('inf')   # Fan can't dehumidify
-            _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as Fan-only")
+            _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as Fan-only (capabilities: {capabilities})")
         
-        # AC devices (cool + heat + fan)
+        # AC devices (resfriamento + aquecimento + ventilação)
         elif has_cool and has_heat and has_fan:
             efficiency["cool"] = 0.8  # AC is efficient for cooling
             efficiency["heat"] = 1.5  # AC is less efficient for heating
             efficiency["dry"] = 1.0   # AC is good for dehumidification
-            _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as AC (cool+heat+fan)")
+            _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as AC (capabilities: {capabilities})")
         
-        # Heat-only devices (TRV, radiators, heaters)
-        elif has_heat and not has_cool:
+        # Heat-only devices (apenas aquecimento - TRV, radiadores, aquecedores)
+        elif has_heat and not has_cool and not has_dry:
             efficiency["heat"] = 0.7  # Heat-only is very efficient for heating
             efficiency["cool"] = float('inf')  # Can't cool
             efficiency["dry"] = float('inf')   # Can't dehumidify
             efficiency["fan"] = float('inf')   # No fan
-            _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as Heat-only (TRV/heater)")
+            _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as Heat-only (capabilities: {capabilities})")
         
-        # Cool-only devices (AC only cooling)
+        # Cool-only devices (apenas resfriamento)
         elif has_cool and not has_heat:
             efficiency["cool"] = 0.8  # AC is efficient for cooling
             efficiency["heat"] = float('inf')  # Can't heat
             efficiency["dry"] = 1.0   # AC is good for dehumidification
-            _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as Cool-only")
+            _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as Cool-only (capabilities: {capabilities})")
         
-        # Legacy detection by device name (fallback)
+        # Dry-only devices (apenas desumidificação)
+        elif has_dry and not has_cool and not has_heat:
+            efficiency["dry"] = 0.9   # Dry is efficient for dehumidification
+            efficiency["cool"] = float('inf')  # Can't cool
+            efficiency["heat"] = float('inf')  # Can't heat
+            efficiency["fan"] = float('inf')   # No fan
+            _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as Dry-only (capabilities: {capabilities})")
+        
+        # Mixed capabilities (dispositivos com capacidades mistas)
         else:
-            if "ac" in device_lower or "air" in device_lower:
+            # Base efficiency for mixed devices
+            if has_cool:
                 efficiency["cool"] = 0.8
-                efficiency["heat"] = 1.5
+            if has_heat:
+                efficiency["heat"] = 1.0  # Default heat efficiency
+            if has_fan:
+                efficiency["fan"] = 0.3
+            if has_dry:
                 efficiency["dry"] = 1.0
-            elif "trv" in device_lower or "radiator" in device_lower:
-                efficiency["heat"] = 0.7
-                efficiency["cool"] = float('inf')
-                efficiency["dry"] = float('inf')
-                efficiency["fan"] = float('inf')
-            elif "fan" in device_lower:
-                efficiency["fan"] = 0.2
-                efficiency["cool"] = 0.5
-                efficiency["heat"] = float('inf')
-                efficiency["dry"] = float('inf')
-            elif "heater" in device_lower or "oil" in device_lower:
-                efficiency["heat"] = 0.8
-                efficiency["cool"] = float('inf')
-                efficiency["dry"] = float('inf')
+            _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as Mixed capabilities (capabilities: {capabilities})")
         
         # Adjust for capabilities
         for capability in ["cool", "heat", "fan", "dry"]:

@@ -299,12 +299,8 @@ def detect_device_capabilities(
         is_heat = True
         _LOGGER.debug(f"{device_prefix}Heat_cool mode detected - enabling both cool and heat capabilities")
     
-    # Special handling for TRV/radiator devices - they can NEVER cool
-    if device_name and any(keyword in device_name.lower() for keyword in ["trv", "radiator", "thermostat"]):
-        is_cool = False
-        is_fan = False
-        is_dry = False
-        _LOGGER.debug(f"{device_prefix}TRV/radiator device detected - disabling cooling, fan, and dry capabilities")
+    # Note: We don't detect device types by name anymore as it's unreliable
+    # Device capabilities are determined purely by supported HVAC and fan modes
     
     capabilities = {
         "is_cool": is_cool,
