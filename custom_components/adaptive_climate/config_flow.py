@@ -34,8 +34,11 @@ _LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME, default="Adaptive Climate"): str,
-        vol.Required("climate_entity"): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="climate")
+        vol.Required("climate_entities"): selector.EntitySelector(
+            selector.EntitySelectorConfig(
+                domain="climate",
+                multiple=True  # Support multiple devices
+            )
         ),
         vol.Required("indoor_temp_sensor"): selector.EntitySelector(
             selector.EntitySelectorConfig(
@@ -177,10 +180,20 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         # Validate that entities exist
-        for field in ["climate_entity", "indoor_temp_sensor", "outdoor_temp_sensor"]:
+        for field in ["indoor_temp_sensor", "outdoor_temp_sensor"]:
             entity_id = user_input[field]
             if entity_id not in self.hass.states.async_entity_ids():
                 errors[field] = "entity_not_found"
+        
+        # Validate climate entities
+        climate_entities = user_input.get("climate_entities", [])
+        if not climate_entities:
+            errors["climate_entities"] = "no_climate_entities"
+        else:
+            for entity_id in climate_entities:
+                if entity_id not in self.hass.states.async_entity_ids():
+                    errors["climate_entities"] = "entity_not_found"
+                    break
 
         if errors:
             return self.async_show_form(
@@ -204,24 +217,31 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Update config data with optional sensors
         self.config_data.update(user_input)
 
-        # Create unique ID based on climate entity to prevent duplicates
-        unique_id = f"adaptive_climate_{self.config_data['climate_entity'].replace('.', '_')}"
+        # Create unique ID based on first climate entity to prevent duplicates
+        climate_entities = self.config_data["climate_entities"]
+        first_entity = climate_entities[0] if climate_entities else "unknown"
+        unique_id = f"adaptive_climate_{first_entity.replace('.', '_')}"
         await self.async_set_unique_id(unique_id)
         self._abort_if_unique_id_configured(
             updates={CONF_NAME: self.config_data[CONF_NAME]}
         )
 
-        # Create dynamic title based on climate entity
-        climate_entity = self.config_data["climate_entity"]
-        climate_state = self.hass.states.get(climate_entity)
-        
-        if climate_state and hasattr(climate_state, 'attributes'):
-            friendly_name = climate_state.attributes.get("friendly_name", "")
-            if friendly_name:
-                title = f"Adaptive Climate - {friendly_name}"
+        # Create dynamic title based on climate entities
+        if len(climate_entities) == 1:
+            # Single device - use its name
+            climate_entity = climate_entities[0]
+            climate_state = self.hass.states.get(climate_entity)
+            
+            if climate_state and hasattr(climate_state, 'attributes'):
+                friendly_name = climate_state.attributes.get("friendly_name", "")
+                if friendly_name:
+                    title = f"Adaptive Climate - {friendly_name}"
+                else:
+                    title = f"Adaptive Climate - {climate_entity.split('.')[-1].replace('_', ' ').title()}"
             else:
-                title = f"Adaptive Climate - {climate_entity.split('.')[-1].replace('_', ' ').title()}"
+                title = self.config_data[CONF_NAME]
         else:
-            title = self.config_data[CONF_NAME]
+            # Multiple devices - use area name
+            title = f"Adaptive Climate - {self.config_data[CONF_NAME]} ({len(climate_entities)} devices)"
 
         return self.async_create_entry(title=title, data=self.config_data)

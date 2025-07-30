@@ -23,6 +23,7 @@ from homeassistant.util import dt as dt_util, slugify
 from .calculator import ComfortCalculator
 from .const import DOMAIN, UPDATE_INTERVAL_MEDIUM, UPDATE_INTERVAL_SHORT, UPDATE_INTERVAL_LONG
 from .mode_mapper import map_fan_mode, map_hvac_mode, detect_device_capabilities, validate_mode_compatibility
+from .multi_device_manager import MultiDeviceManager
 from .season_detector import get_season
 
 # --- Constants ---
@@ -81,16 +82,22 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
     def _setup_entities(self) -> None:
         """Setup and validate monitored entities."""
-        self.climate_entity_id = self.config.get("entity") or self.config.get("climate_entity")
-        if not self.climate_entity_id:
+        # Support both v1.x (single device) and v2.x (multiple devices)
+        self.climate_entities = self._get_climate_entities()
+        if not self.climate_entities:
             raise ValueError(
-                f"[{self.device_name}] Missing required "
-                "'entity' or 'climate_entity' definition."
+                f"[{self.device_name}] Missing required climate entities definition."
             )
         
-        if self.climate_entity_id in GLOBAL_CLIMATE_ENTITIES:
-            raise ValueError(f"Entity {self.climate_entity_id} already linked to another device.")
-        GLOBAL_CLIMATE_ENTITIES.add(self.climate_entity_id)
+        # Validate all climate entities
+        for entity_id in self.climate_entities:
+            if entity_id in GLOBAL_CLIMATE_ENTITIES:
+                raise ValueError(f"Entity {entity_id} already linked to another device.")
+            GLOBAL_CLIMATE_ENTITIES.add(entity_id)
+
+        # Setup multi-device manager
+        self.device_manager = MultiDeviceManager(self.climate_entities, self.device_name)
+        self.device_manager.set_hass(self.hass)
 
         # Setup sensor entities
         self.indoor_temp_sensor_id = self.config.get("indoor_temp_sensor")
@@ -123,11 +130,26 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         self._calculator = ComfortCalculator()
 
         _LOGGER.debug(f"[{self.device_name}] Entities setup completed:")
-        _LOGGER.debug(f"[{self.device_name}]   - Climate entity: {self.climate_entity_id}")
+        _LOGGER.debug(f"[{self.device_name}]   - Climate entities: {self.climate_entities}")
         _LOGGER.debug(f"[{self.device_name}]   - Indoor temp sensor: {self.indoor_temp_sensor_id}")
         _LOGGER.debug(f"[{self.device_name}]   - Outdoor temp sensor: {self.outdoor_temp_sensor_id}")
         _LOGGER.debug(f"[{self.device_name}]   - Indoor humidity sensor: {self.indoor_humidity_sensor_id}")
         _LOGGER.debug(f"[{self.device_name}]   - Outdoor humidity sensor: {self.outdoor_humidity_sensor_id}")
+
+    def _get_climate_entities(self) -> List[str]:
+        """Get climate entities - support both v1.x and v2.x formats."""
+        # v2.x format: multiple entities
+        if "climate_entities" in self.config:
+            return self.config["climate_entities"]
+        
+        # v1.x format: single entity (backward compatibility)
+        elif "climate_entity" in self.config:
+            return [self.config["climate_entity"]]
+        
+        elif "entity" in self.config:
+            return [self.config["entity"]]
+        
+        return []
 
     def _detect_device_capabilities(self) -> Dict[str, bool]:
         """Detect device capabilities automatically from climate entity state."""
@@ -197,11 +219,15 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         # Wait a moment for entities to be available
         await asyncio.sleep(1)
         
-        # Detect capabilities
-        capabilities = self._detect_device_capabilities()
+        # Analyze all devices
+        self.device_manager.analyze_all_devices()
         
-        # Update configuration with detected capabilities
-        self._update_config_with_capabilities(capabilities)
+        # Update configuration with detected capabilities (for backward compatibility)
+        if len(self.climate_entities) == 1:
+            # Single device - use first device capabilities
+            device_id = self.climate_entities[0]
+            capabilities = self.device_manager.device_capabilities.get(device_id, {})
+            self._update_config_with_capabilities(capabilities)
         
         _LOGGER.debug(f"[{self.device_name}] Device capabilities setup completed")
 
@@ -816,100 +842,86 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         return False
 
     async def _execute_all_actions(self, actions: Dict[str, Any]) -> None:
-        """Execute all climate actions in one unified method."""
-        _LOGGER.debug(f"[{self.device_name}] Starting action execution...")
+        """Execute all climate actions for multiple devices."""
+        _LOGGER.debug(f"[{self.device_name}] Starting action execution for {len(actions)} devices...")
         
-        state = self.hass.states.get(self.climate_entity_id)
-        if not state or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-            _LOGGER.warning(f"[{self.device_name}] {self.climate_entity_id} unavailable - skipping actions")
-            return
-
-        changes = []
-        current_temp = state.attributes.get('temperature')
-        current_hvac = state.state
-        current_fan = state.attributes.get('fan_mode')
-        threshold = self.config.get("temperature_change_threshold", 0.5)
-
-        _LOGGER.debug(f"[{self.device_name}] Current climate state:")
-        _LOGGER.debug(f"[{self.device_name}]   - Temperature: {current_temp}°C")
-        _LOGGER.debug(f"[{self.device_name}]   - HVAC mode: {current_hvac}")
-        _LOGGER.debug(f"[{self.device_name}]   - Fan mode: {current_fan}")
-
-        # Create context for this command chain (always, not just when there are changes)
+        # Create context for this command chain
         context = Context(parent_id=f"adaptive_climate_{self.device_name}_{int(dt_util.utcnow().timestamp())}")
         
-        # Temperature
-        target_temp = int(actions.get("set_temperature", 0))
-        _LOGGER.debug(f"[{self.device_name}] Evaluating temperature change: current={current_temp}°C, target={target_temp}°C (integer), threshold={threshold}°C")
+        all_changes = []
+        threshold = self.config.get("temperature_change_threshold", 0.5)
         
-        if (target_temp is not None and 
-            (current_temp is None or abs(target_temp - current_temp) >= threshold) and
-            current_hvac != "fan_only"):
+        for device_id, action in actions.items():
+            _LOGGER.debug(f"[{self.device_name}] Executing action for device {device_id}: {action}")
             
-            _LOGGER.debug(f"[{self.device_name}] Setting temperature: {target_temp}°C (integer for AC)")
-            await self.hass.services.async_call(
-                CLIMATE_DOMAIN, "set_temperature", {
-                    "entity_id": self.climate_entity_id,
-                    "temperature": int(target_temp),  # Ensure integer for AC
-                }, blocking=False, context=context
-            )
-            changes.append(f"Temperature: {current_temp}°C → {int(target_temp)}°C")
-            _LOGGER.debug(f"[{self.device_name}] Temperature command sent: {int(target_temp)}°C")
-        else:
-            _LOGGER.debug(f"[{self.device_name}] Temperature change not needed (difference: {abs(target_temp - current_temp) if current_temp else 'N/A'}°C)")
-
-        # Fan mode
-        target_fan = actions.get("set_fan_mode")
-        supported_fan_modes = state.attributes.get("fan_modes", [])
-        _LOGGER.debug(f"[{self.device_name}] Evaluating fan mode change: current={current_fan}, target={target_fan}, supported={supported_fan_modes}")
+            # Check if device is available
+            state = self.hass.states.get(device_id)
+            if not state or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+                _LOGGER.warning(f"[{self.device_name}] Device {device_id} unavailable - skipping action")
+                continue
+            
+            device_changes = []
+            current_temp = state.attributes.get('temperature')
+            current_hvac = state.state
+            current_fan = state.attributes.get('fan_mode')
+            
+            _LOGGER.debug(f"[{self.device_name}] Device {device_id} current state:")
+            _LOGGER.debug(f"[{self.device_name}]   - Temperature: {current_temp}°C")
+            _LOGGER.debug(f"[{self.device_name}]   - HVAC mode: {current_hvac}")
+            _LOGGER.debug(f"[{self.device_name}]   - Fan mode: {current_fan}")
+            
+            # Temperature
+            target_temp = int(action.get("set_temperature", 0))
+            if (target_temp is not None and 
+                (current_temp is None or abs(target_temp - current_temp) >= threshold) and
+                action.get("set_hvac_mode") != "fan_only"):
+                
+                _LOGGER.debug(f"[{self.device_name}] Setting temperature for {device_id}: {target_temp}°C")
+                await self.hass.services.async_call(
+                    CLIMATE_DOMAIN, "set_temperature", {
+                        "entity_id": device_id,
+                        "temperature": int(target_temp),
+                    }, blocking=False, context=context
+                )
+                device_changes.append(f"temp: {target_temp}°C")
+            
+            # Fan mode
+            target_fan = action.get("set_fan_mode")
+            supported_fan_modes = state.attributes.get("fan_modes", [])
+            if target_fan != current_fan and target_fan in supported_fan_modes:
+                _LOGGER.debug(f"[{self.device_name}] Setting fan mode for {device_id}: {target_fan}")
+                await self._call_service(CLIMATE_DOMAIN, "set_fan_mode", {
+                    "entity_id": device_id,
+                    "fan_mode": target_fan,
+                }, context=context)
+                device_changes.append(f"fan: {target_fan}")
+            
+            # HVAC mode
+            target_hvac = action.get("set_hvac_mode")
+            supported_hvac_modes = state.attributes.get("hvac_modes", [])
+            if target_hvac != current_hvac and target_hvac in supported_hvac_modes:
+                _LOGGER.debug(f"[{self.device_name}] Setting HVAC mode for {device_id}: {target_hvac}")
+                await self._call_service(CLIMATE_DOMAIN, "set_hvac_mode", {
+                    "entity_id": device_id,
+                    "hvac_mode": target_hvac,
+                }, context=context)
+                device_changes.append(f"mode: {target_hvac}")
+            
+            if device_changes:
+                all_changes.append(f"{device_id} ({action.get('priority', 'unknown')}): {', '.join(device_changes)}")
+                _LOGGER.debug(f"[{self.device_name}] Device {device_id} changes: {device_changes}")
         
-        if target_fan != current_fan and target_fan in supported_fan_modes:
-            _LOGGER.debug(f"[{self.device_name}] Setting fan mode: {target_fan}")
-            await self._call_service(CLIMATE_DOMAIN, "set_fan_mode", {
-                "entity_id": self.climate_entity_id,
-                "fan_mode": target_fan,
-            }, context=context)
-            changes.append("fan")
-            _LOGGER.debug(f"[{self.device_name}] Fan mode updated successfully")
-        else:
-            _LOGGER.debug(f"[{self.device_name}] Fan mode change not needed (same mode or not supported)")
-
-        # HVAC mode
-        target_hvac = actions.get("set_hvac_mode")
-        supported_hvac_modes = state.attributes.get("hvac_modes", [])
-        _LOGGER.debug(f"[{self.device_name}] Evaluating HVAC mode change: current={current_hvac}, target={target_hvac}, supported={supported_hvac_modes}")
-        
-        if target_hvac != current_hvac and target_hvac in supported_hvac_modes:
-            _LOGGER.debug(f"[{self.device_name}] Setting HVAC mode: {target_hvac}")
-            await self._call_service(CLIMATE_DOMAIN, "set_hvac_mode", {
-                "entity_id": self.climate_entity_id,
-                "hvac_mode": target_hvac,
-            }, context=context)
-            changes.append("hvac")
-            _LOGGER.debug(f"[{self.device_name}] HVAC mode updated successfully")
-        else:
-            _LOGGER.debug(f"[{self.device_name}] HVAC mode change not needed (same mode or not supported)")
-
-        if changes:
+        if all_changes:
             _LOGGER.debug(f"[{self.device_name}] Updating last command and persisting data...")
             self._update_last_command(actions, context)
             await self._persist_data()
             
-            # Create concise log message for AC changes
-            change_messages = []
-            if "temperature" in changes:
-                change_messages.append(f"temp: {target_temp}°C")
-            if "hvac" in changes:
-                change_messages.append(f"mode: {target_hvac}")
-            if "fan" in changes:
-                change_messages.append(f"fan: {target_fan}")
+            # Create concise log message for all changes
+            self.log_event(f"Multi-device adjustment: {'; '.join(all_changes)}")
             
-            if change_messages:
-                self.log_event(f"Automatic adjustment: {', '.join(change_messages)}")
-            
-            _LOGGER.debug(f"[{self.device_name}] Action execution completed successfully - Changes: {changes}")
+            _LOGGER.debug(f"[{self.device_name}] Action execution completed successfully - Changes: {all_changes}")
         else:
-            _LOGGER.debug(f"[{self.device_name}] No changes were made - system already in desired state")
+            _LOGGER.debug(f"[{self.device_name}] No changes were made - all devices already in desired state")
             # Still update the last command with context for consistency
             self._update_last_command(actions, context)
 
@@ -1013,7 +1025,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             return None
 
     def _determine_actions(self, comfort: Dict[str, Any]) -> Dict[str, Any]:
-        """Determine control actions."""
+        """Determine control actions for multiple devices."""
         _LOGGER.debug(f"[{self.device_name}] Determining control actions from comfort parameters...")
         
         temperature = round(float(comfort.get("target_temp", 25)))
@@ -1029,63 +1041,113 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             fan_mode = "high"
             _LOGGER.debug(f"[{self.device_name}] Adjusted fan mode from {comfort.get('fan_mode')} to {fan_mode} (HVAC is fan_only)")
 
-        state = self.hass.states.get(self.climate_entity_id)
-        supported_hvac_modes = []
-        supported_fan_modes = []
-        if state:
-            supported_hvac_modes = [str(mode) for mode in state.attributes.get("hvac_modes", [])]
-            supported_fan_modes = [str(mode) for mode in state.attributes.get("fan_modes", [])]
-
-        _LOGGER.debug(f"[{self.device_name}] Device capabilities:")
-        _LOGGER.debug(f"[{self.device_name}]   - Supported HVAC modes: {supported_hvac_modes}")
-        _LOGGER.debug(f"[{self.device_name}]   - Supported fan modes: {supported_fan_modes}")
+        # Analyze needs based on comfort parameters
+        needs = self._analyze_needs(comfort)
+        _LOGGER.debug(f"[{self.device_name}] Analyzed needs: {needs}")
         
-        # Validate mode compatibility with device capabilities
+        # Get optimal devices for current needs
+        optimal_devices = self.device_manager.get_optimal_devices(needs)
+        
+        # Generate actions for all devices
+        all_actions = {}
+        
+        # Primary devices (most efficient for the need)
+        for device_id in optimal_devices["primary"]:
+            action = self._get_device_action(comfort, device_id, needs, "primary")
+            if action:
+                all_actions[device_id] = action
+        
+        # Auxiliary devices (for fine-tuning)
+        for device_id in optimal_devices["auxiliary"]:
+            action = self._get_device_action(comfort, device_id, needs, "auxiliary")
+            if action:
+                all_actions[device_id] = action
+        
+        # If no devices were selected, use the first device (backward compatibility)
+        if not all_actions and len(self.climate_entities) == 1:
+            device_id = self.climate_entities[0]
+            action = self._get_device_action(comfort, device_id, needs, "primary")
+            if action:
+                all_actions[device_id] = action
+        
+        _LOGGER.debug(f"[{self.device_name}] Final control actions: {all_actions}")
+        return all_actions
+    
+    def _analyze_needs(self, comfort: Dict[str, Any]) -> List[str]:
+        """Analyze what capabilities are needed based on comfort parameters."""
+        needs = []
+        
+        hvac_mode = comfort.get("hvac_mode", "")
+        fan_mode = comfort.get("fan_mode", "")
+        
+        # Determine needs based on HVAC mode
+        if hvac_mode == "cool":
+            needs.append("cool")
+        elif hvac_mode == "heat":
+            needs.append("heat")
+        elif hvac_mode == "dry":
+            needs.append("dry")
+        elif hvac_mode == "fan_only":
+            needs.append("fan")
+        
+        # Add fan need if fan mode is specified
+        if fan_mode and fan_mode != "off" and "fan" not in needs:
+            needs.append("fan")
+        
+        return needs
+    
+    def _get_device_action(self, comfort: Dict[str, Any], device_id: str, needs: List[str], priority: str) -> Optional[Dict[str, Any]]:
+        """Get action for a specific device."""
+        temperature = round(float(comfort.get("target_temp", 25)))
+        hvac_mode = comfort.get("hvac_mode")
+        fan_mode = comfort.get("fan_mode")
+        
+        # Get device capabilities
+        capabilities = self.device_manager.device_capabilities.get(device_id, {})
+        
+        # Get device state for validation
+        state = self.hass.states.get(device_id)
+        if not state:
+            _LOGGER.warning(f"[{self.device_name}] Device {device_id} not available")
+            return None
+        
+        supported_hvac_modes = [str(mode) for mode in state.attributes.get("hvac_modes", [])]
+        supported_fan_modes = [str(mode) for mode in state.attributes.get("fan_modes", [])]
+        
+        # Validate mode compatibility
         validation = validate_mode_compatibility(
-            hvac_mode, fan_mode, supported_hvac_modes, supported_fan_modes, self.device_name
+            hvac_mode, fan_mode, supported_hvac_modes, supported_fan_modes, device_id
         )
         
         if not validation["compatible"]:
-            _LOGGER.warning(f"[{self.device_name}] Mode compatibility issues detected:")
+            _LOGGER.warning(f"[{self.device_name}] Device {device_id} mode compatibility issues:")
             if not validation["hvac_valid"]:
-                _LOGGER.warning(f"[{self.device_name}]   - HVAC mode '{hvac_mode}' not compatible, suggesting '{validation['hvac_suggestion']}'")
                 hvac_mode = validation["hvac_suggestion"]
             if not validation["fan_valid"]:
-                _LOGGER.warning(f"[{self.device_name}]   - Fan mode '{fan_mode}' not compatible, suggesting '{validation['fan_suggestion']}'")
                 fan_mode = validation["fan_suggestion"]
         
         # Map modes to supported ones
-        original_hvac = hvac_mode
-        original_fan = fan_mode
+        mapped_hvac = map_hvac_mode(str(hvac_mode), supported_hvac_modes, device_id) if supported_hvac_modes else hvac_mode
+        mapped_fan = map_fan_mode(str(fan_mode), supported_fan_modes, device_id) if supported_fan_modes else fan_mode
         
-        hvac_mode = map_hvac_mode(str(hvac_mode), supported_hvac_modes, self.device_name) if supported_hvac_modes else hvac_mode
-        fan_mode = map_fan_mode(str(fan_mode), supported_fan_modes, self.device_name) if supported_fan_modes else fan_mode
+        # Check if device can handle the mapped mode
+        can_handle_hvac = capabilities.get(f"is_{mapped_hvac}", False) if mapped_hvac != "off" else True
+        can_handle_fan = capabilities.get("is_fan", True) if mapped_fan != "off" else True
         
-        if original_hvac != hvac_mode:
-            _LOGGER.debug(f"[{self.device_name}] HVAC mode mapped: {original_hvac} -> {hvac_mode}")
-        if original_fan != fan_mode:
-            _LOGGER.debug(f"[{self.device_name}] Fan mode mapped: {original_fan} -> {fan_mode}")
+        if not can_handle_hvac and not can_handle_fan:
+            _LOGGER.debug(f"[{self.device_name}] Device {device_id} cannot handle requested modes")
+            return None
         
-        if fan_mode == "highest" and "highest" not in supported_fan_modes and "high" in supported_fan_modes:
-            fan_mode = "high"
-            _LOGGER.debug(f"[{self.device_name}] Mapped fan mode from 'highest' to 'high' (not supported)")
- 
-        actions = {
+        action = {
             "set_temperature": temperature,
-            "set_hvac_mode": hvac_mode,
-            "set_fan_mode": fan_mode,
-            "override_temperature": self.config.get("override_temperature", 0),
-            "reason": f"Calculated hvac mode: {hvac_mode}, temperature: {temperature}, fan mode: {fan_mode}.",
+            "set_hvac_mode": mapped_hvac,
+            "set_fan_mode": mapped_fan,
+            "priority": priority,
+            "reason": f"Device {device_id} ({priority}): {mapped_hvac}, {temperature}°C, {mapped_fan}",
         }
-
-        _LOGGER.debug(f"[{self.device_name}] Final control actions:")
-        _LOGGER.debug(f"[{self.device_name}]   - Set temperature: {temperature}°C")
-        _LOGGER.debug(f"[{self.device_name}]   - Set HVAC mode: {hvac_mode}")
-        _LOGGER.debug(f"[{self.device_name}]   - Set fan mode: {fan_mode}")
-        _LOGGER.debug(f"[{self.device_name}]   - Reason: {actions['reason']}")
-
-        _LOGGER.debug(f"[{self.device_name}] Actions determined successfully")
-        return actions
+        
+        _LOGGER.debug(f"[{self.device_name}] Action for {device_id}: {action}")
+        return action
 
     async def update_config(self, config: Optional[Dict[str, Any]] = None, **kwargs) -> None:
         """Unified config update method with improved auto_mode handling."""
