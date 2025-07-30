@@ -45,7 +45,7 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
         """Manage the options."""
         if user_input is not None:
             _LOGGER.debug(f"Options flow user input: {user_input}")
-            return self.async_create_entry(title="", data=user_input)
+            return self.async_create_entry(data=user_input)
 
         options = self.config_entry.options
         data = self.config_entry.data
@@ -72,7 +72,8 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
         
         _LOGGER.debug(f"Options flow - climate_entities: {climate_entities}")
         
-        schema = vol.Schema({
+        # Create base schema
+        base_schema = vol.Schema({
             # === Climate Entities ===
             vol.Optional(
                 "climate_entities",
@@ -160,32 +161,10 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 default=options.get("min_fan_speed", DEFAULT_MIN_FAN_SPEED)
             ): vol.In(list(FAN_SPEED_OPTIONS.keys())),
 
-            # === Entity Configuration ===
-            vol.Required(
-                "climate_entity",
-                default=get_value("climate_entity")
-            ): selector.selector({"entity": {"domain": "climate"}}),
-
-            vol.Required(
-                "indoor_temp_sensor",
-                default=get_value("indoor_temp_sensor")
-            ): selector.selector({"entity": {"device_class": "temperature"}}),
-
-            vol.Required(
-                "outdoor_temp_sensor",
-                default=get_value("outdoor_temp_sensor")
-            ): selector.selector({"entity": {"device_class": "temperature"}}),
-
-            vol.Optional(
-                "indoor_humidity_sensor",
-                default=get_value("indoor_humidity_sensor")
-            ): selector.selector({"entity": {"device_class": "humidity"}}),
-
-            vol.Optional(
-                "outdoor_humidity_sensor",
-                default=get_value("outdoor_humidity_sensor")
-            ): selector.selector({"entity": {"device_class": "humidity"}}),
         })
+
+        # Use add_suggested_values_to_schema as recommended in documentation
+        schema = self.add_suggested_values_to_schema(base_schema, self.config_entry.options)
 
         return self.async_show_form(
             step_id="init",
