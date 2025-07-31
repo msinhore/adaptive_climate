@@ -470,9 +470,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             _LOGGER.debug(f"[{self.device_name}] Home Assistant not running - returning default params")
             return self._get_default_params("ha_starting")
         
-        state = self.hass.states.get(self.climate_entity_id)
-        if not state or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-            _LOGGER.debug(f"[{self.device_name}] Climate entity unavailable - returning default params")
+        # Check if primary climate entity is available
+        primary_entity_id = self.climate_entity_id  # First entity in the list
+        primary_state = self.hass.states.get(primary_entity_id)
+        if not primary_state or primary_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            _LOGGER.debug(f"[{self.device_name}] Primary climate entity unavailable - returning default params")
             return self._get_default_params("entity_disabled")
 
         # Check for manual override first (unless skipped for auto mode activation)
@@ -483,7 +485,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             # If this is a regular update cycle, we can't detect manual override
             if hasattr(self, '_last_state_change_context'):
                 _LOGGER.debug(f"[{self.device_name}]   - State change context available: {self._last_state_change_context}")
-                if self._detect_manual_override(state):
+                if self._detect_manual_override(primary_state):
                     _LOGGER.debug(f"[{self.device_name}] Manual override detected - disabling auto mode")
                     self.config["auto_mode_enable"] = False
                     
@@ -512,7 +514,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
         # Get sensor data
         _LOGGER.debug(f"[{self.device_name}] Collecting sensor data...")
-        sensor_data = self._get_sensor_data(state)
+        sensor_data = self._get_sensor_data(primary_state)
         if not sensor_data:
             _LOGGER.debug(f"[{self.device_name}] Sensor data unavailable - returning default params")
             return self._get_default_params("entities_unavailable")
@@ -1337,20 +1339,27 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
     def _handle_state_change(self, event) -> None:
         """Handle state changes of monitored entities."""
         entity_id = event.data.get("entity_id")
-        if entity_id != self.climate_entity_id:
+        if entity_id not in self.climate_entities:
             return
         
-        # Store the context for manual override detection
+        # Store the context for manual override detection (only for primary entity)
         context = event.context
-        self._last_state_change_context = context
         
-        # Check if this state change came from a manual user action
-        if context and not str(context.id).startswith("adaptive_climate"):
-            _LOGGER.debug(f"[{self.device_name}] Manual state change detected for {entity_id} - context: {context.id}")
-            # This is likely a manual override - trigger immediate refresh
-            self.hass.async_create_task(self.async_request_refresh())
+        # Only detect manual override for the primary entity
+        if entity_id == self.climate_entity_id:
+            self._last_state_change_context = context
+            
+            # Check if this state change came from a manual user action
+            if context and not str(context.id).startswith("adaptive_climate"):
+                _LOGGER.debug(f"[{self.device_name}] Manual state change detected for primary entity {entity_id} - context: {context.id}")
+                # This is likely a manual override - trigger immediate refresh
+                self.hass.async_create_task(self.async_request_refresh())
+            else:
+                _LOGGER.debug(f"[{self.device_name}] System state change detected for primary entity {entity_id} - requesting refresh")
+                self.hass.async_create_task(self.async_request_refresh())
         else:
-            _LOGGER.debug(f"[{self.device_name}] System state change detected for {entity_id} - requesting refresh")
+            # For secondary entities, just log the change but don't trigger manual override detection
+            _LOGGER.debug(f"[{self.device_name}] State change detected for secondary entity {entity_id} - requesting refresh")
             self.hass.async_create_task(self.async_request_refresh())
 
     async def set_manual_override(self, temperature: float, duration_seconds: Optional[int] = None) -> None:
