@@ -906,7 +906,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         
         # If no parent_id is provided, create one that follows our pattern
         if not parent_id:
-            parent_id = f"adaptive_climate_{self.device_name}_{int(dt_util.utcnow().timestamp())}"
+            parent_id = f"{self._system_id}_{int(dt_util.utcnow().timestamp())}"
             _LOGGER.debug(f"[{self.device_name}] Created parent_id: {parent_id}")
         
         self._last_system_command = {
