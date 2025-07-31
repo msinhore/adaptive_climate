@@ -816,7 +816,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug(f"[{self.device_name}] Starting action execution for {len(actions)} devices...")
         
         # Create context for this command chain
-        context = Context(parent_id=f"adaptive_climate_{self.device_name}_{int(dt_util.utcnow().timestamp())}")
+        context = Context(parent_id=f"adaptive_climate_{self._system_id}_{int(dt_util.utcnow().timestamp())}")
         
         all_changes = []
         threshold = self.config.get("temperature_change_threshold", 0.5)
@@ -1397,7 +1397,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             self.config.pop("override_end_time", None)
         
         # Apply the override immediately
-        context = Context(parent_id=f"adaptive_climate_manual_override_{self.device_name}_{int(dt_util.utcnow().timestamp())}")
+        context = Context(parent_id=f"adaptive_climate_manual_override_{self._system_id}_{int(dt_util.utcnow().timestamp())}")
         await self.hass.services.async_call(
             CLIMATE_DOMAIN, "set_temperature", {
                 "entity_id": self.climate_entity_id,
