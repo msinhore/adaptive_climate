@@ -478,23 +478,26 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         # Check for manual override first (unless skipped for auto mode activation)
         if not skip_override_check:
             _LOGGER.debug(f"[{self.device_name}] Checking for manual override...")
-            _LOGGER.debug(f"[{self.device_name}]   - Last system command exists: {self._last_system_command is not None}")
-            if self._last_system_command:
-                _LOGGER.debug(f"[{self.device_name}]   - Last system command: {self._last_system_command}")
             
-            if self._last_system_command and self._detect_manual_override(state):
-                _LOGGER.debug(f"[{self.device_name}] Manual override detected - disabling auto mode")
-                self.config["auto_mode_enable"] = False
-                
-                # Log first manual override detection
-                if not self._override_logged:
-                    self.log_event("Manual override detected - auto mode disabled")
-                    self._override_logged = True
-                
-                await self._persist_data(params_only=True)
-                return self._get_default_params("manual_override")
+            # For manual override detection, we need to check if this is triggered by a state change event
+            # If this is a regular update cycle, we can't detect manual override
+            if hasattr(self, '_last_state_change_context'):
+                _LOGGER.debug(f"[{self.device_name}]   - State change context available: {self._last_state_change_context}")
+                if self._detect_manual_override(state):
+                    _LOGGER.debug(f"[{self.device_name}] Manual override detected - disabling auto mode")
+                    self.config["auto_mode_enable"] = False
+                    
+                    # Log first manual override detection
+                    if not self._override_logged:
+                        self.log_event("Manual override detected - auto mode disabled")
+                        self._override_logged = True
+                    
+                    await self._persist_data(params_only=True)
+                    return self._get_default_params("manual_override")
+                else:
+                    _LOGGER.debug(f"[{self.device_name}] No manual override detected")
             else:
-                _LOGGER.debug(f"[{self.device_name}] No manual override detected")
+                _LOGGER.debug(f"[{self.device_name}] No state change context available - skipping manual override check")
         else:
             _LOGGER.debug(f"[{self.device_name}] Skipping manual override check for auto mode activation")
 
@@ -757,107 +760,54 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         return False
 
     def _detect_manual_override(self, state) -> bool:
-        """Detect if user has manually overridden the system using context-based detection."""
-
-        if not self._last_system_command:
+        """Detect if user has manually overridden the system using Home Assistant Context."""
+        
+        # Get the context from the stored state change event
+        context = getattr(self, '_last_state_change_context', None)
+        if not context:
+            _LOGGER.debug(f"[{self.device_name}] No context available for manual override detection")
             return False
             
-        current_temp = state.attributes.get("temperature")
-        current_hvac = state.state
-        current_fan = state.attributes.get("fan_mode")
+        _LOGGER.debug(f"[{self.device_name}] Checking for manual override using HA Context:")
+        _LOGGER.debug(f"[{self.device_name}]   - Context ID: {context.id}")
+        _LOGGER.debug(f"[{self.device_name}]   - Parent ID: {context.parent_id}")
+        _LOGGER.debug(f"[{self.device_name}]   - User ID: {context.user_id}")
         
-        last_hvac = self._last_system_command.get("hvac_mode")
-        last_fan = self._last_system_command.get("fan_mode")
-        last_temp = self._last_system_command.get("temperature")
-        context_id = self._last_system_command.get("context_id")
-        parent_id = self._last_system_command.get("parent_id")
-        command_source = self._last_system_command.get("source")
-
-        _LOGGER.debug(f"[{self.device_name}] Checking for manual override:")
-        _LOGGER.debug(f"[{self.device_name}]   - Current: HVAC={current_hvac}, Fan={current_fan}, Temp={current_temp}°C")
-        _LOGGER.debug(f"[{self.device_name}]   - Last command: HVAC={last_hvac}, Fan={last_fan}, Temp={last_temp}°C")
-        _LOGGER.debug(f"[{self.device_name}]   - Context ID: {context_id}")
-        _LOGGER.debug(f"[{self.device_name}]   - Parent ID: {parent_id}")
-        _LOGGER.debug(f"[{self.device_name}]   - Command source: {command_source}")
-        _LOGGER.debug(f"[{self.device_name}]   - System ID: {self._system_id}")
-        _LOGGER.debug(f"[{self.device_name}]   - Our System ID: {self._system_id}")
-
-        # NEW: Check if this is a recent system command (within last 10 seconds)
+        # Check if this is a recent system command (within last 10 seconds)
         # If so, don't detect override yet - wait for state to settle
         if hasattr(self, '_last_command_timestamp') and self._last_command_timestamp:
             time_since_command = (dt_util.utcnow() - self._last_command_timestamp).total_seconds()
             if time_since_command < 10.0:  # 10 second grace period
                 _LOGGER.debug(f"[{self.device_name}]   - Recent system command ({time_since_command:.1f}s ago) - waiting for state to settle")
                 return False
-
-        # Check if any of the current values differ from the last system command
-        hvac_changed = current_hvac != last_hvac
-        fan_changed = current_fan != last_fan
         
-        # Temperature change detection - check for any significant temperature change
-        temp_changed = False
-        temp_diff = 0.0  # Initialize temp_diff
-        if (current_temp is not None and 
-            last_temp is not None):
-            
-            temp_diff = abs(current_temp - last_temp)
-            temp_changed = temp_diff > 0.5  # Use threshold for temperature changes
-            _LOGGER.debug(f"[{self.device_name}]   - Temperature difference: {temp_diff:.2f}°C (threshold: 0.5°C)")
+        # Rule 1: Check if context indicates this is from our system
+        # Our system commands have specific context patterns
+        is_system_command = False
         
-        # Check if this is a system-initiated change by verifying context
-        # Only consider it a system change if the context indicates it came from our system
-        is_system_change = False
-        if self._is_system_command(self._last_system_command):
-            # If the context indicates this is our system command, trust it
-            # Don't compare state immediately after command - wait for it to settle
-            is_system_change = True
-            _LOGGER.debug(f"[{self.device_name}]   - Context indicates system command (trusting)")
+        # Check if context ID starts with our pattern
+        if context.id and str(context.id).startswith("adaptive_climate"):
+            is_system_command = True
+            _LOGGER.debug(f"[{self.device_name}]   - Context ID indicates system command")
+        
+        # Check if parent ID starts with our pattern
+        elif context.parent_id and str(context.parent_id).startswith("adaptive_climate"):
+            is_system_command = True
+            _LOGGER.debug(f"[{self.device_name}]   - Parent ID indicates system command")
+        
+        # Check if this is a service call from our system
+        elif context.id and "service" in str(context.id).lower():
+            # Check if it's our service call
+            if self._system_id in str(context.id):
+                is_system_command = True
+                _LOGGER.debug(f"[{self.device_name}]   - Service call indicates system command")
+        
+        if is_system_command:
+            _LOGGER.debug(f"[{self.device_name}]   - This is a system command - no manual override")
+            return False
         else:
-            # Context indicates this is not from our system - likely manual
-            _LOGGER.debug(f"[{self.device_name}]   - Context indicates manual user action")
-        
-        # Special case: Fan mode changes are often automatic and not manual overrides
-        # Only consider fan mode changes as manual override if they're significant
-        is_fan_override = False
-        if fan_changed and not hvac_changed and not temp_changed:
-            # Fan mode changed but nothing else - this is likely automatic
-            # Common automatic fan mode changes: quiet <-> medium <-> high
-            automatic_fan_changes = [
-                ("quiet", "medium"), ("medium", "quiet"),
-                ("medium", "high"), ("high", "medium"),
-                ("quiet", "high"), ("high", "quiet")
-            ]
-            
-            if (last_fan, current_fan) in automatic_fan_changes:
-                _LOGGER.debug(f"[{self.device_name}]   - Fan mode change {last_fan} -> {current_fan} likely automatic")
-                is_fan_override = False
-            else:
-                # Unusual fan mode change - might be manual
-                is_fan_override = True
-                _LOGGER.debug(f"[{self.device_name}]   - Unusual fan mode change {last_fan} -> {current_fan} - possible manual override")
-        
-        # Rule 1: Context-based detection (primary method)
-        # If context indicates this is not from our system, it's manual override
-        if not self._is_system_command(self._last_system_command):
-            _LOGGER.debug(f"[{self.device_name}]   - Context indicates manual user action")
-            return True  # This is a definite manual override, return immediately
-        
-        # Rule 2: Explicit manual OFF command
-        # If system turned on AC but user turned it off, that's manual override
-        if (hvac_changed and current_hvac == "off" and 
-            last_hvac in ["cool", "heat", "fan_only", "dry"]):
-            _LOGGER.debug(f"[{self.device_name}]   - AC turned off by user - manual override detected")
-            return True # This is a definite manual override, return immediately
-        
-        # Rule 3: Significant temperature change (>= 1°C) after delay period
-        # Only consider significant changes as manual override if they're not from our system
-        if temp_changed and temp_diff >= 1.0:
-            _LOGGER.debug(f"[{self.device_name}]   - Significant temperature change ({temp_diff:.1f}°C) - likely manual override")
-            return True # This is a definite manual override, return immediately
-        
-        # If we reached here, no manual override was detected
-        _LOGGER.debug(f"[{self.device_name}] No manual override detected")
-        return False
+            _LOGGER.debug(f"[{self.device_name}]   - This appears to be a manual user action")
+            return True
 
     async def _execute_all_actions(self, actions: Dict[str, Any]) -> None:
         """Execute all climate actions for multiple devices."""
@@ -1390,8 +1340,11 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         if entity_id != self.climate_entity_id:
             return
         
-        # Check if this state change came from a manual user action
+        # Store the context for manual override detection
         context = event.context
+        self._last_state_change_context = context
+        
+        # Check if this state change came from a manual user action
         if context and not str(context.id).startswith("adaptive_climate"):
             _LOGGER.debug(f"[{self.device_name}] Manual state change detected for {entity_id} - context: {context.id}")
             # This is likely a manual override - trigger immediate refresh
