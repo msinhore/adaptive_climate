@@ -763,11 +763,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         
         return False
 
-    def _detect_manual_override(self, state) -> bool:
-        """Detect if user has manually overridden the system using Home Assistant Context."""
+    def _is_manual_override(self, context, event_data) -> bool:
+        """Improved manual override detection with better logic."""
         
-        # Get the context from the stored state change event
-        context = getattr(self, '_last_state_change_context', None)
         if not context:
             _LOGGER.debug(f"[{self.device_name}] No context available for manual override detection")
             return False
@@ -783,6 +781,14 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             time_since_command = (dt_util.utcnow() - self._last_command_timestamp).total_seconds()
             if time_since_command < 10.0:  # 10 second grace period
                 _LOGGER.debug(f"[{self.device_name}]   - Recent system command ({time_since_command:.1f}s ago) - waiting for state to settle")
+                return False
+        
+        # Check if this is a recent auto mode enable (within last 30 seconds)
+        # If so, don't detect override yet - wait for state to settle
+        if hasattr(self, '_auto_mode_enabled_timestamp') and self._auto_mode_enabled_timestamp:
+            time_since_auto_enable = (dt_util.utcnow() - self._auto_mode_enabled_timestamp).total_seconds()
+            if time_since_auto_enable < 30.0:  # 30 second grace period
+                _LOGGER.debug(f"[{self.device_name}]   - Recent auto mode enable ({time_since_auto_enable:.1f}s ago) - waiting for state to settle")
                 return False
         
         # Rule 1: Check if context indicates this is from our system
@@ -806,12 +812,38 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 is_system_command = True
                 _LOGGER.debug(f"[{self.device_name}]   - Service call indicates system command")
         
-        if is_system_command:
-            _LOGGER.debug(f"[{self.device_name}]   - This is a system command - no manual override")
+        # Rule 2: Check if this is a configuration update (not a manual override)
+        # Configuration updates often have specific patterns
+        is_config_update = False
+        if context.id and any(pattern in str(context.id).lower() for pattern in ["config", "options", "settings"]):
+            is_config_update = True
+            _LOGGER.debug(f"[{self.device_name}]   - Context indicates configuration update")
+        
+        # Rule 3: Check if this is a service call from our own services
+        # Our services should not trigger manual override detection
+        is_our_service = False
+        if context.id and any(pattern in str(context.id).lower() for pattern in ["adaptive_climate", "set_parameter", "clear_override"]):
+            is_our_service = True
+            _LOGGER.debug(f"[{self.device_name}]   - Context indicates our service call")
+        
+        if is_system_command or is_config_update or is_our_service:
+            _LOGGER.debug(f"[{self.device_name}]   - This is a system/configuration action - no manual override")
             return False
         else:
             _LOGGER.debug(f"[{self.device_name}]   - This appears to be a manual user action")
             return True
+
+    def _detect_manual_override(self, state) -> bool:
+        """Detect if user has manually overridden the system using Home Assistant Context."""
+        
+        # Get the context from the stored state change event
+        context = getattr(self, '_last_state_change_context', None)
+        if not context:
+            _LOGGER.debug(f"[{self.device_name}] No context available for manual override detection")
+            return False
+        
+        # Use the improved manual override detection logic
+        return self._is_manual_override(context, {})
 
     async def _execute_all_actions(self, actions: Dict[str, Any]) -> None:
         """Execute all climate actions for multiple devices."""
@@ -1061,6 +1093,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             needs.append("dry")
         elif hvac_mode == "fan_only":
             needs.append("fan")
+        elif hvac_mode == "off":
+            # When turning off, we still need to control the device
+            needs.append("off")
         
         # Add fan need if fan mode is specified (but only for cooling/dry modes)
         if fan_mode and fan_mode != "off" and hvac_mode in ["cool", "dry", "fan_only"]:
@@ -1237,6 +1272,9 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
                 # Auto mode enabled - calculate and apply new settings
                 _LOGGER.debug(f"[{self.device_name}] Auto mode enabled - calculating and applying new settings")
                 
+                # Set timestamp for auto mode enable to help with override detection
+                self._auto_mode_enabled_timestamp = dt_util.utcnow()
+                
                 # Reset flags when auto mode is enabled
                 self._override_logged = False
                 self._auto_mode_logged = False
@@ -1351,8 +1389,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         if entity_id == self.climate_entity_id:
             self._last_state_change_context = context
             
-            # Check if this state change came from a manual user action
-            if context and not str(context.id).startswith("adaptive_climate"):
+            # Improved manual override detection
+            is_manual_override = self._is_manual_override(context, event.data)
+            
+            if is_manual_override:
                 _LOGGER.debug(f"[{self.device_name}] Manual state change detected for primary entity {entity_id} - context: {context.id}")
                 # This is likely a manual override - trigger immediate refresh
                 self.hass.async_create_task(self.async_request_refresh())

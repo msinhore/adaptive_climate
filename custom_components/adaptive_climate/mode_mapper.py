@@ -307,6 +307,7 @@ def detect_device_capabilities(
         "is_heat": is_heat,
         "is_fan": is_fan,
         "is_dry": is_dry,
+        "is_off": True,  # All devices can be turned off
     }
     
     # Determine device type

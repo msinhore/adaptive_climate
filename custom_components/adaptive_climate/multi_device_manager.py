@@ -75,6 +75,7 @@ class MultiDeviceManager:
             "heat": 1.0,  # Base score
             "fan": 0.3,   # Very efficient
             "dry": 1.2,   # Less efficient than cool
+            "off": 0.1,   # Very efficient (no energy consumption)
         }
         
         # Adjust based on device type and capabilities
@@ -138,7 +139,7 @@ class MultiDeviceManager:
             _LOGGER.debug(f"[{self.device_name}] Device {device_id} classified as Mixed capabilities (capabilities: {capabilities})")
         
         # Adjust for capabilities
-        for capability in ["cool", "heat", "fan", "dry"]:
+        for capability in ["cool", "heat", "fan", "dry", "off"]:
             if not capabilities[f"is_{capability}"]:
                 efficiency[capability] = float('inf')
         
@@ -151,10 +152,11 @@ class MultiDeviceManager:
             "heat": 0.0,
             "fan": 0.0,
             "dry": 0.0,
+            "off": 0.0,
         }
         
         # Higher priority for more capable and efficient devices
-        for capability in ["cool", "heat", "fan", "dry"]:
+        for capability in ["cool", "heat", "fan", "dry", "off"]:
             if capabilities[f"is_{capability}"] and efficiency[capability] != float('inf'):
                 # Lower efficiency score = higher priority
                 priority[capability] = 1.0 / efficiency[capability]
