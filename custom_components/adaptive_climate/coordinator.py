@@ -131,8 +131,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         
         # Use normalized device name as system identifier (simple and persistent)
         normalized_name = self._normalize_device_name(self.device_name)
-        self._system_id = f"adaptive_climate_{normalized_name}"
+        self._system_id = normalized_name
+        self._context_prefix = f"adaptive_climate_{self._system_id}"
         _LOGGER.debug(f"[{self.device_name}] Using normalized device name as system ID: {self._system_id}")
+        _LOGGER.debug(f"[{self.device_name}] Context prefix: {self._context_prefix}")
 
         # Setup calculator
         self._calculator = ComfortCalculator()
@@ -816,7 +818,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug(f"[{self.device_name}] Starting action execution for {len(actions)} devices...")
         
         # Create context for this command chain
-        context = Context(parent_id=f"{self._system_id}_{int(dt_util.utcnow().timestamp())}")
+        context = Context(parent_id=f"{self._context_prefix}_{int(dt_util.utcnow().timestamp())}")
         
         all_changes = []
         threshold = self.config.get("temperature_change_threshold", 0.5)
@@ -906,7 +908,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         
         # If no parent_id is provided, create one that follows our pattern
         if not parent_id:
-            parent_id = f"{self._system_id}_{int(dt_util.utcnow().timestamp())}"
+            parent_id = f"{self._context_prefix}_{int(dt_util.utcnow().timestamp())}"
             _LOGGER.debug(f"[{self.device_name}] Created parent_id: {parent_id}")
         
         self._last_system_command = {
@@ -1397,7 +1399,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             self.config.pop("override_end_time", None)
         
         # Apply the override immediately
-        context = Context(parent_id=f"{self._system_id}_manual_override_{int(dt_util.utcnow().timestamp())}")
+        context = Context(parent_id=f"{self._context_prefix}_manual_override_{int(dt_util.utcnow().timestamp())}")
         await self.hass.services.async_call(
             CLIMATE_DOMAIN, "set_temperature", {
                 "entity_id": self.climate_entity_id,
