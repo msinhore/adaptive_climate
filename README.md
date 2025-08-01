@@ -8,7 +8,7 @@
 [![Last commit](https://img.shields.io/github/last-commit/msinhore/adaptive_climate.svg)](https://github.com/msinhore/adaptive_climate)
 ![Project Status](https://img.shields.io/badge/status-active-brightgreen.svg)
 
-[<img width="170" height="37" alt="Buy me a coffee" src="https://github.com/user-attachments/assets/0ce08a2b-1bc6-4f16-91f0-70c273cf4d47" />](https://buymeacoffee.com/msinhore)
+[<img width="170" height="37" alt="Buy me a coffee" src="https://github.com/user-attachments/assets/0ce08a2b-1c6-4f16-91f0-70c273cf4d47" />](https://buymeacoffee.com/msinhore)
 
 A Home Assistant integration implementing ASHRAE 55 Adaptive Thermal Comfort for intelligent climate control with advanced HVAC and fan mode management.
 
@@ -39,6 +39,7 @@ A Home Assistant integration implementing ASHRAE 55 Adaptive Thermal Comfort for
 - 📊 **Comfort Category Control**: Dynamically change comfort settings via services.
 - ⏱️ **Temporary Override**: Time-limited temperature changes for specific periods.
 - 🔄 **Calculation Updates**: Force recalculation and control updates via services.
+- 🔧 **Device Capability Re-detection**: Force re-detection of device capabilities.
 
 ### **Enhanced Debugging**
 - 📝 **Device Identification**: All logs include device name for better identification.
@@ -196,6 +197,12 @@ Force recalculation and control updates.
 **Parameters:**
 - `entity_id`: Adaptive Climate binary sensor entity ID
 
+#### `adaptive_climate.redetect_capabilities`
+Force re-detection of device capabilities (cooling, heating, fan, dry modes).
+
+**Parameters:**
+- `entity_id`: Adaptive Climate binary sensor entity ID
+
 ---
 
 ## 📈 How It Works
@@ -238,7 +245,7 @@ Force recalculation and control updates.
 
 ## ℹ️ Notes
 
-- **Single Device Support**: Currently supports one climate entity (multi-device support planned for v2.x)
+- **Multi-Device Support**: Supports multiple climate entities with intelligent device management
 - **User Control Priority**: Never powers on devices after user shutdown
 - **Dynamic Adaptation**: Adapts to external and internal conditions, not fixed setpoints
 - **Backward Compatibility**: All existing configurations continue to work without changes
