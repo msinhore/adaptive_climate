@@ -5,6 +5,7 @@
         "@msinhore"
     ],
     "config_flow": true,
+    "config": true,
     "dependencies": [
         "logbook",
         "recorder"

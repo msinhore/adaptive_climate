@@ -34,11 +34,28 @@
       "already_configured": "Dispositivo già configurato"
     }
   },
+  "options_descriptions": {
+    "min_comfort_temp": "Limite inferiore del tuo intervallo di comfort. Regolazioni e decisioni lo rispetteranno.",
+    "max_comfort_temp": "Limite superiore del tuo intervallo di comfort. Regolazioni e decisioni lo rispetteranno.",
+    "temperature_change_threshold": "Differenza minima tra temperatura attuale e obiettivo per attivare un cambiamento.",
+    "override_temperature": "Offset (±°C) aggiunto al target calcolato prima dei limiti.",
+    "energy_save_mode": "Se abilitato e già confortevole, preferisce Spento invece di Ventilatore per risparmiare energia.",
+    "auto_mode_enable": "Esegue regolazioni automatiche a intervalli programmati. Disabilita per mettere in pausa mantenendo l'entità disponibile.",
+    "aggressive_cooling_threshold": "Ben sopra il comfort (≥ questo valore), usare raffreddamento/ventilazione più forti.",
+    "aggressive_heating_threshold": "Ben sotto il comfort (≥ questo valore), usare riscaldamento/ventilazione più forti.",
+    "hvac_mode_for_cooling": "Scegli la modalità HVAC esatta del dispositivo per raffreddare. Seleziona Disabilita per non raffreddare mai.",
+    "hvac_mode_for_heating": "Scegli la modalità HVAC esatta del dispositivo per riscaldare. Seleziona Disabilita per non riscaldare mai.",
+    "hvac_mode_for_drying": "Scegli la modalità HVAC esatta del dispositivo per asciugatura. Seleziona Disabilita per non asciugare mai.",
+    "hvac_mode_for_fan_only": "Scegli la modalità HVAC esatta del dispositivo per solo ventilatore. Seleziona Disabilita per non usarla mai.",
+    "max_fan_speed": "Limite superiore della velocità del ventilatore impostabile dall'integrazione.",
+    "min_fan_speed": "Limite inferiore della velocità del ventilatore impostabile dall'integrazione.",
+    "comfort_category": "Categoria di Comfort ASHRAE 55: I = banda di comfort più stretta (≈ ±2,5°C, ~90% soddisfazione). II = banda più ampia (≈ ±3,5°C, ~80% soddisfazione). Scegli I per più comfort, II per più flessibilità energetica."
+  },
   "options": {
     "step": {
       "init": {
         "title": "Opzioni Clima Adattivo",
-        "description": "Configura impostazioni avanzate per il tuo controllo climatico adattivo.",
+        "description": "Configura impostazioni avanzate per il controllo climatico adattivo. Queste opzioni rispecchiano i campi YAML e includono spiegazioni utili.",
         "data": {
           "climate_entity": "Entità Climatica",
           "indoor_temp_sensor": "Sensore Temperatura Interna",
@@ -57,15 +74,32 @@
           "mean_radiant_temp_sensor": "Sensore Temperatura Radiante Media",
           "occupancy_sensor": "Sensore di Presenza",
           "command_ignore_interval": "Intervallo Ignora Comando (secondi)",
-          "enable_fan_mode": "Abilita Modalità Ventilatore",
-          "enable_cool_mode": "Abilita Modalità Raffreddamento",
-          "enable_heat_mode": "Abilita Modalità Riscaldamento",
-          "enable_dry_mode": "Abilita Modalità Asciugatura",
+          "enable_fan_mode": "Abilita Ventilatore: consente azioni fan_only quando opportuno.",
+          "enable_cool_mode": "Abilita Intenzione di Raffreddare: consente raffreddamento sopra l'intervallo di comfort.",
+          "enable_heat_mode": "Abilita Intenzione di Riscaldare: consente riscaldamento sotto l'intervallo di comfort.",
+          "enable_dry_mode": "Abilita Intenzione di Asciugatura: consente deumidificazione quando supportata.",
+          "enable_off_mode": "Consenti Spegnimento: permette di spegnere l'HVAC quando stabile con risparmio energetico attivo.",
           "max_fan_speed": "Velocità Massima Ventilatore",
           "min_fan_speed": "Velocità Minima Ventilatore"
         }
       }
     }
+  },
+  "options_descriptions": {
+    "min_comfort_temp": "Limite inferiore del tuo intervallo di comfort. Regolazioni e decisioni lo rispetteranno.",
+    "max_comfort_temp": "Limite superiore del tuo intervallo di comfort. Regolazioni e decisioni lo rispetteranno.",
+    "temperature_change_threshold": "Differenza minima tra temperatura attuale e obiettivo per attivare un cambiamento.",
+    "override_temperature": "Offset (±°C) aggiunto al target calcolato prima dei limiti.",
+    "energy_save_mode": "Se abilitato e già confortevole, preferisce Spento invece di Ventilatore per risparmiare energia.",
+    "auto_mode_enable": "Esegue regolazioni automatiche a intervalli programmati. Disabilita per mettere in pausa mantenendo l'entità disponibile.",
+    "aggressive_cooling_threshold": "Ben sopra il comfort (≥ questo valore), usare raffreddamento/ventilazione più forti.",
+    "aggressive_heating_threshold": "Ben sotto il comfort (≥ questo valore), usare riscaldamento/ventilazione più forti.",
+    "hvac_mode_for_cooling": "Scegli la modalità HVAC esatta del dispositivo per raffreddare. Seleziona Disabilita per non raffreddare mai.",
+    "hvac_mode_for_heating": "Scegli la modalità HVAC esatta del dispositivo per riscaldare. Seleziona Disabilita per non riscaldare mai.",
+    "hvac_mode_for_drying": "Scegli la modalità HVAC esatta del dispositivo per asciugatura. Seleziona Disabilita per non asciugare mai.",
+    "hvac_mode_for_fan_only": "Scegli la modalità HVAC esatta del dispositivo per solo ventilatore. Seleziona Disabilita per non usarla mai.",
+    "max_fan_speed": "Limite superiore della velocità del ventilatore impostabile dall'integrazione.",
+    "min_fan_speed": "Limite inferiore della velocità del ventilatore impostabile dall'integrazione."
   },
   "entity": {
     "sensor": {

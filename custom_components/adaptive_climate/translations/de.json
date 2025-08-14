@@ -38,7 +38,7 @@
     "step": {
       "init": {
         "title": "Optionen für Adaptives Klima",
-        "description": "Konfigurieren Sie erweiterte Einstellungen für Ihre adaptive Klimasteuerung.",
+        "description": "Konfigurieren Sie erweiterte Einstellungen für Ihre adaptive Klimasteuerung. Diese Optionen entsprechen den YAML-Feldern und enthalten hilfreiche Erklärungen.",
         "data": {
           "climate_entity": "Klima-Entität",
           "indoor_temp_sensor": "Innen-Temperatursensor",
@@ -57,15 +57,40 @@
           "mean_radiant_temp_sensor": "Sensor für mittlere Strahlungstemperatur",
           "occupancy_sensor": "Belegungssensor",
           "command_ignore_interval": "Befehl-Ignorierintervall (Sekunden)",
-          "enable_fan_mode": "Ventilatormodus aktivieren",
-          "enable_cool_mode": "Kühlmodus aktivieren",
-          "enable_heat_mode": "Heizmodus aktivieren",
-          "enable_dry_mode": "Trocknungsmodus aktivieren",
-          "max_fan_speed": "Maximale Ventilatorgeschwindigkeit",
-          "min_fan_speed": "Minimale Ventilatorgeschwindigkeit"
+          "enable_fan_mode": "Ventilator aktivieren: erlaubt fan_only-Aktionen, wenn passend.",
+          "enable_cool_mode": "Kühl-Intention aktivieren: erlaubt Kühlen oberhalb des Komfortbereichs.",
+          "enable_heat_mode": "Heiz-Intention aktivieren: erlaubt Heizen unterhalb des Komfortbereichs.",
+          "enable_dry_mode": "Trocken-Intention aktivieren: erlaubt Entfeuchten, wenn unterstützt.",
+          "enable_off_mode": "Ausschalten erlauben: HVAC kann bei stabilen Bedingungen mit Energiesparen deaktiviert werden.",
+          "max_fan_speed": "Maximale Lüftergeschwindigkeit",
+          "min_fan_speed": "Minimale Ventilatorgeschwindigkeit",
+          "hvac_mode_for_cooling": "HVAC-Modus für Kühl-Intention",
+          "hvac_mode_for_heating": "HVAC-Modus für Heiz-Intention",
+          "hvac_mode_for_drying": "HVAC-Modus für Trocken-Intention",
+          "hvac_mode_for_fan_only": "HVAC-Modus für nur-Ventilator-Intention",
+          "primary_climates": "Primäre Klima-Entitäten (Bereichsorchestrierung)",
+          "secondary_climates": "Sekundäre Klima-Entitäten (Bereichsorchestrierung)",
+          "secondary_fans": "Sekundäre Ventilatoren (zusätzliche Belüftung)"
         }
       }
     }
+  },
+  "options_descriptions": {
+    "min_comfort_temp": "Untere Grenze Ihres Komfortbereichs. Ziele und Entscheidungen respektieren diese Grenze.",
+    "max_comfort_temp": "Obere Grenze Ihres Komfortbereichs. Ziele und Entscheidungen respektieren diese Grenze.",
+    "temperature_change_threshold": "Minimale Differenz zwischen Ist- und Solltemperatur, um eine Änderung auszulösen.",
+    "override_temperature": "Offset (±°C), das vor dem Begrenzen auf die Solltemperatur angewendet wird.",
+    "energy_save_mode": "Wenn aktiviert, wird bei Komfortzustand ‘Aus’ gegenüber ‘Ventilator’ bevorzugt.",
+    "auto_mode_enable": "Führt automatische Anpassungen im Zeitplan aus. Deaktivieren, um zu pausieren.",
+    "aggressive_cooling_threshold": "Weit oberhalb des Komforts (≥ dieser Wert) stärkeres Kühlen/Lüften verwenden.",
+    "aggressive_heating_threshold": "Weit unterhalb des Komforts (≥ dieser Wert) stärkeres Heizen/Lüften verwenden.",
+    "hvac_mode_for_cooling": "Wählen Sie den konkreten Gerätemodus für Kühl-Intention. ‘Disable’ um nie zu kühlen.",
+    "hvac_mode_for_heating": "Wählen Sie den konkreten Gerätemodus für Heiz-Intention. ‘Disable’ um nie zu heizen.",
+    "hvac_mode_for_drying": "Wählen Sie den konkreten Gerätemodus für Trocken-Intention. ‘Disable’ um nie zu trocknen.",
+    "hvac_mode_for_fan_only": "Wählen Sie den konkreten Gerätemodus für Ventilator-Intention. ‘Disable’ um nie nur den Ventilator zu verwenden.",
+    "max_fan_speed": "Oberes Limit für die vom Integrationsdienst gesetzte Lüftergeschwindigkeit.",
+    "min_fan_speed": "Unteres Limit für die vom Integrationsdienst gesetzte Lüftergeschwindigkeit.",
+    "comfort_category": "ASHRAE 55 Komfort-Kategorie: I = engerer Komfortbereich (≈ ±2,5°C, ~90% Zufriedenheit). II = breiterer Bereich (≈ ±3,5°C, ~80% Zufriedenheit). Wählen Sie I für strengeren Komfort, II für mehr Energie-Flexibilität."
   },
   "entity": {
     "sensor": {

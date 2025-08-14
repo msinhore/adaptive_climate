@@ -11,6 +11,29 @@
           "indoor_temp_sensor": "Indoor Temperature Sensor",
           "outdoor_temp_sensor": "Outdoor Temperature Sensor",
           "comfort_category": "Comfort Category"
+        },
+        "data_description": {
+          "climate_entity": "Select the climate device to control.",
+          "indoor_temp_sensor": "Sensor used for indoor air temperature (°C).",
+          "outdoor_temp_sensor": "Sensor used for outdoor air temperature (°C).",
+          "indoor_humidity_sensor": "Optional. Indoor relative humidity (%).",
+          "outdoor_humidity_sensor": "Optional. Outdoor relative humidity (%).",
+          "comfort_category": "ASHRAE 55 Comfort Category: I = narrower comfort band (≈ ±2.5°C, ~90% satisfaction). II = wider band (≈ ±3.5°C, ~80% satisfaction).",
+          "min_comfort_temp": "Lower bound for your preferred comfort range (°C).",
+          "max_comfort_temp": "Upper bound for your preferred comfort range (°C).",
+          "temperature_change_threshold": "Minimum delta (°C) required to change the set temperature.",
+          "override_temperature": "Offset (±°C) added to the computed target before bounds.",
+          "energy_save_mode": "If enabled and conditions are comfortable, prefer Off over Fan to save energy.",
+          "auto_mode_enable": "Run automatic adjustments on schedule. Disable to pause automation while keeping the entity available.",
+          "aggressive_cooling_threshold": "When well above comfort (≥ this value), use stronger cooling and higher fan.",
+          "aggressive_heating_threshold": "When well below comfort (≥ this value), use stronger heating and higher fan.",
+          "enable_fan_mode": "Allow the integration to use fan_only mode when appropriate.",
+          "enable_cool_mode": "Allow cooling actions when above comfort.",
+          "enable_heat_mode": "Allow heating actions when below comfort.",
+          "enable_dry_mode": "Allow drying (dehumidify) actions when supported.",
+          "enable_off_mode": "Allow turning HVAC fully off when stable and energy saving is enabled.",
+          "max_fan_speed": "Upper limit for fan speed the integration can set.",
+          "min_fan_speed": "Lower limit for fan speed the integration can set."
         }
       },
       "optional_sensors": {
@@ -28,17 +51,20 @@
       "cannot_connect": "Failed to connect",
       "invalid_entity": "Invalid entity selected",
       "unknown": "Unexpected error occurred",
-      "entity_not_found": "Entity not found or not available"
+      "entity_not_found": "Entity not found or not available",
+      "area_not_found": "Selected area could not be resolved.",
+      "no_climates_in_area": "No climate entities were found in the selected area."
     },
     "abort": {
-      "already_configured": "Device is already configured"
+      "already_configured": "Device is already configured",
+      "created_multiple_entries": "Created one or more entries for each climate device found in the selected area."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Adaptive Climate Options",
-        "description": "Configure advanced settings for your adaptive climate control.",
+        "description": "Configure advanced settings for your adaptive climate control. These options mirror the YAML fields and include helpful explanations.",
         "data": {
           "climate_entity": "Climate Entity",
           "indoor_temp_sensor": "Indoor Temperature Sensor",
@@ -52,19 +78,94 @@
           "override_temperature": "Override Temperature (°C)",
           "energy_save_mode": "Enable Energy Saving Mode",
           "auto_mode_enable": "Enable Auto Mode",
+          "control_secondary_fans": "Control Secondary Fans",
+          "manual_pause_duration": "Manual Pause Duration (minutes)",
+          "participate_area_orchestration": "Participate in Area Orchestration",
           "aggressive_cooling_threshold": "Aggressive Cooling Threshold (°C)",
           "aggressive_heating_threshold": "Aggressive Heating Threshold (°C)",
           "mean_radiant_temp_sensor": "Mean Radiant Temperature Sensor",
           "occupancy_sensor": "Occupancy Sensor",
           "command_ignore_interval": "Command Ignore Interval (seconds)",
           "enable_fan_mode": "Enable Fan Mode",
-          "enable_cool_mode": "Enable Cool Mode",
-          "enable_heat_mode": "Enable Heat Mode",
-          "enable_dry_mode": "Enable Dry Mode",
+          "enable_cool_mode": "Enable Cool Intent",
+          "enable_heat_mode": "Enable Heat Intent",
+          "enable_dry_mode": "Enable Dry Intent",
+          "enable_off_mode": "Enable Off",
           "max_fan_speed": "Maximum Fan Speed",
-          "min_fan_speed": "Minimum Fan Speed"
+          "min_fan_speed": "Minimum Fan Speed",
+          "hvac_mode_for_cooling": "HVAC Mode for Cooling Intent",
+          "hvac_mode_for_heating": "HVAC Mode for Heating Intent",
+          "hvac_mode_for_drying": "HVAC Mode for Drying Intent",
+          "hvac_mode_for_fan_only": "HVAC Mode for Fan-only Intent",
+          "primary_climates": "Primary Climate Entities (area orchestration)",
+          "secondary_climates": "Secondary Climate Entities (area orchestration)",
+          "secondary_fans": "Secondary Fan Entities (aux ventilation)"
+        },
+        "data_description": {
+          "indoor_temp_sensor": "Sensor used for indoor air temperature (°C).",
+          "outdoor_temp_sensor": "Sensor used for outdoor air temperature (°C).",
+          "indoor_humidity_sensor": "Optional. Indoor relative humidity (%).",
+          "outdoor_humidity_sensor": "Optional. Outdoor relative humidity (%).",
+          "comfort_category": "ASHRAE 55 Comfort Category: I = narrower comfort band (≈ ±2.5°C, ~90% satisfaction). II = wider band (≈ ±3.5°C, ~80% satisfaction).",
+          "energy_save_mode": "If enabled and conditions are comfortable, prefer Off over Fan to save energy.",
+          "auto_mode_enable": "Run automatic adjustments on schedule. Disable to pause automation while keeping the entity available.",
+          "manual_pause_duration": "Minutes to ignore automatic changes after a manual user change.",
+          "min_comfort_temp": "Lower bound for your preferred comfort range (°C).",
+          "max_comfort_temp": "Upper bound for your preferred comfort range (°C).",
+          "temperature_change_threshold": "Minimum delta (°C) required to change the set temperature.",
+          "override_temperature": "Offset (±°C) added to the computed target before bounds.",
+          "aggressive_cooling_threshold": "When well above comfort (≥ this value), use stronger cooling and higher fan.",
+          "aggressive_heating_threshold": "When well below comfort (≥ this value), use stronger heating and higher fan.",
+          "enable_fan_mode": "Allow the integration to use fan_only mode when appropriate.",
+          "enable_cool_mode": "Allow cooling actions when above comfort.",
+          "enable_heat_mode": "Allow heating actions when below comfort.",
+          "enable_dry_mode": "Allow drying (dehumidify) actions when supported.",
+          "enable_off_mode": "Allow turning HVAC fully off when stable and energy saving is enabled.",
+          "max_fan_speed": "Upper limit for fan speed the integration can set.",
+          "min_fan_speed": "Lower limit for fan speed the integration can set.",
+          "control_secondary_fans": "When enabled, the integration may turn on/off selected secondary fans for auxiliary ventilation in cooling/ventilation scenarios.",
+          "hvac_mode_for_cooling": "Exact device HVAC mode to use when the intent is cooling. Choose Disable to never cool.",
+          "hvac_mode_for_heating": "Exact device HVAC mode to use when the intent is heating. Choose Disable to never heat.",
+          "hvac_mode_for_drying": "Exact device HVAC mode to use when the intent is drying. Choose Disable to never dry.",
+          "hvac_mode_for_fan_only": "Exact device HVAC mode to use when the intent is fan only. Choose Disable to never use fan only.",
+          "primary_climates": "Climates that should act as primary controllers in this area.",
+          "secondary_climates": "Climates that should act as secondary controllers in this area.",
+          "secondary_fans": "Auxiliary fans that may be used during cooling/ventilation."
         }
       }
+    }
+  },
+  "options_descriptions": {
+    "min_comfort_temp": "Lower bound for your preferred comfort range. Target temperatures and cooling/heating decisions will respect this bound.",
+    "max_comfort_temp": "Upper bound for your preferred comfort range. Target temperatures and cooling/heating decisions will respect this bound.",
+    "temperature_change_threshold": "Minimum difference between current and target temperature to trigger a change.",
+    "override_temperature": "Offset (±°C) added to the computed target before clamping to device and user bounds.",
+    "energy_save_mode": "When enabled, if the temperature is already comfortable, the integration prefers Off over Fan to save energy.",
+    "auto_mode_enable": "Runs automatic adjustments on schedule. Disable to pause automation but keep the entity available.",
+    "aggressive_cooling_threshold": "When far above comfort (≥ this value), use stronger cooling and fan speed.",
+    "aggressive_heating_threshold": "When far below comfort (≥ this value), use stronger heating and fan speed.",
+    "hvac_mode_for_cooling": "Choose the exact device HVAC mode to use when the intent is cooling. Select Disable to never cool.",
+    "hvac_mode_for_heating": "Choose the exact device HVAC mode to use when the intent is heating. Select Disable to never heat.",
+    "hvac_mode_for_drying": "Choose the exact device HVAC mode to use when the intent is drying. Select Disable to never dry.",
+    "hvac_mode_for_fan_only": "Choose the exact device HVAC mode to use when the intent is fan only. Select Disable to never use fan only.",
+    "max_fan_speed": "Upper limit for fan speed that the integration is allowed to set.",
+    "min_fan_speed": "Lower limit for fan speed that the integration is allowed to set.",
+    "comfort_category": "ASHRAE 55 Comfort Category: I = narrower comfort band (about ±2.5°C, ~90% satisfaction). II = wider comfort band (about ±3.5°C, ~80% satisfaction). Choose I for stricter comfort, II for more energy flexibility."
+  },
+  "options_extra": {
+    "data_labels": {
+      "hvac_mode_for_cooling": "HVAC Mode for Cooling Intent",
+      "hvac_mode_for_heating": "HVAC Mode for Heating Intent",
+      "hvac_mode_for_drying": "HVAC Mode for Drying Intent",
+      "hvac_mode_for_fan_only": "HVAC Mode for Fan-only Intent",
+      "primary_climates": "Primary Climate Entities (area orchestration)",
+      "secondary_climates": "Secondary Climate Entities (area orchestration)",
+      "secondary_fans": "Secondary Fan Entities (aux ventilation)"
+    },
+    "descriptions": {
+      "primary_climates": "Select climates that should act as primary controllers in this area.",
+      "secondary_climates": "Select climates that should act as secondary controllers in this area.",
+      "secondary_fans": "Select auxiliary fans that may be used when cooling or ventilation is preferred."
     }
   },
   "entity": {

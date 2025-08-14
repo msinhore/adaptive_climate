@@ -1,20 +1,19 @@
 """Binary sensor platform for Adaptive Climate."""
 
 from __future__ import annotations
+
 import logging
 from typing import Any
 
-from homeassistant.components.binary_sensor import (
-    BinarySensorEntity,
-)
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, VERSION
-from .coordinator import AdaptiveClimateCoordinator
+from custom_components.adaptive_climate.const import DOMAIN, VERSION
+from custom_components.adaptive_climate.coordinator import AdaptiveClimateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,17 +32,23 @@ async def async_setup_entry(
 class ASHRAEComplianceSensor(CoordinatorEntity, BinarySensorEntity):
     """Binary sensor for ASHRAE 55 compliance."""
 
-    def __init__(self, coordinator: AdaptiveClimateCoordinator, config_entry: ConfigEntry) -> None:
+    def __init__(
+        self,
+        coordinator: AdaptiveClimateCoordinator,
+        config_entry: ConfigEntry,
+    ) -> None:
         super().__init__(coordinator)
         self.config_entry = config_entry
         entry_id = config_entry.entry_id.replace("-", "_")
-        area = coordinator.config.get('name', 'Adaptive Climate')
+        area = coordinator.config.get("name", "Adaptive Climate")
 
         self._attr_unique_id = f"{entry_id}_ashrae_compliance"
         self._attr_name = f"{area} ASHRAE Compliance"
         self._attr_icon = "mdi:check-circle-outline"
-        self._attr_entity_id = f"binary_sensor.{area.lower().replace(' ', '_')}_ashrae_compliance"
-        
+        self._attr_entity_id = (
+            f"binary_sensor.{area.lower().replace(' ', '_')}_ashrae_compliance"
+        )
+
         _LOGGER.debug(f"[{area}] Binary sensor initialized: {self._attr_name}")
 
     @property
@@ -64,9 +69,11 @@ class ASHRAEComplianceSensor(CoordinatorEntity, BinarySensorEntity):
         data = self.coordinator.data
         if not data:
             return None
-        
+
         ashrae_compliant = data.get("ashrae_compliant")
-        _LOGGER.debug(f"[{self.coordinator.device_name}] ASHRAE compliance: {ashrae_compliant}")
+        _LOGGER.debug(
+            f"[{self.coordinator.device_name}] ASHRAE compliance: {ashrae_compliant}"
+        )
         return ashrae_compliant
 
     @property
@@ -74,11 +81,13 @@ class ASHRAEComplianceSensor(CoordinatorEntity, BinarySensorEntity):
         """Return if entity is available."""
         data = self.coordinator.data
         is_available = (
-            self.coordinator.last_update_success and 
-            data and 
-            data.get("status") != "entities_unavailable"
+            self.coordinator.last_update_success
+            and data
+            and data.get("status") != "entities_unavailable"
         )
-        _LOGGER.debug(f"[{self.coordinator.device_name}] Binary sensor available: {is_available}")
+        _LOGGER.debug(
+            f"[{self.coordinator.device_name}] Binary sensor available: {is_available}"
+        )
         return is_available
 
     @property
@@ -91,7 +100,9 @@ class ASHRAEComplianceSensor(CoordinatorEntity, BinarySensorEntity):
         attrs = {
             "indoor_temperature": data.get("indoor_temperature"),
             "outdoor_temperature": data.get("outdoor_temperature"),
-            "adaptive_comfort_temp": round(data.get("adaptive_comfort_temp", 0), 1),
+            "adaptive_comfort_temp": round(
+                data.get("adaptive_comfort_temp", 0), 1
+            ),
             "comfort_temp_min": round(data.get("comfort_temp_min", 0), 1),
             "comfort_temp_max": round(data.get("comfort_temp_max", 0), 1),
             "ashrae_compliant": data.get("ashrae_compliant"),
@@ -103,14 +114,20 @@ class ASHRAEComplianceSensor(CoordinatorEntity, BinarySensorEntity):
         # Add control actions if available
         control_actions = data.get("control_actions")
         if control_actions:
-            attrs.update({
-                "target_temperature": control_actions.get("set_temperature"),
-                "target_hvac_mode": control_actions.get("set_hvac_mode"),
-                "target_fan_mode": control_actions.get("set_fan_mode"),
-                "action_reason": control_actions.get("reason"),
-            })
+            attrs.update(
+                {
+                    "target_temperature": control_actions.get(
+                        "set_temperature"
+                    ),
+                    "target_hvac_mode": control_actions.get("set_hvac_mode"),
+                    "target_fan_mode": control_actions.get("set_fan_mode"),
+                    "action_reason": control_actions.get("reason"),
+                }
+            )
 
-        _LOGGER.debug(f"[{self.coordinator.device_name}] Binary sensor attributes: {attrs}")
+        _LOGGER.debug(
+            f"[{self.coordinator.device_name}] Binary sensor attributes: {attrs}"
+        )
         return attrs
 
     @property

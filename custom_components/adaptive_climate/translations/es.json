@@ -38,7 +38,7 @@
     "step": {
       "init": {
         "title": "Opciones de Clima Adaptativo",
-        "description": "Configure ajustes avanzados para su control climático adaptativo.",
+        "description": "Configure ajustes avanzados para su control climático adaptativo. Estas opciones reflejan los campos YAML e incluyen explicaciones útiles.",
         "data": {
           "climate_entity": "Entidad Climática",
           "indoor_temp_sensor": "Sensor de Temperatura Interior",
@@ -57,15 +57,40 @@
           "mean_radiant_temp_sensor": "Sensor de Temperatura Radiante Media",
           "occupancy_sensor": "Sensor de Ocupación",
           "command_ignore_interval": "Intervalo de Ignorar Comandos (segundos)",
-          "enable_fan_mode": "Activar Modo Ventilador",
-          "enable_cool_mode": "Activar Modo Refrigeración",
-          "enable_heat_mode": "Activar Modo Calefacción",
-          "enable_dry_mode": "Activar Modo Secado",
+          "enable_fan_mode": "Activar Ventilador: permite enviar acciones fan_only cuando corresponda.",
+          "enable_cool_mode": "Activar Intención de Enfriar: permite enfriar cuando está por encima del rango de confort.",
+          "enable_heat_mode": "Activar Intención de Calentar: permite calentar cuando está por debajo del rango de confort.",
+          "enable_dry_mode": "Activar Intención de Secado: permite deshumidificación cuando esté soportado.",
+          "enable_off_mode": "Permitir Apagar: autoriza apagar el HVAC cuando está estable y el ahorro de energía está habilitado.",
           "max_fan_speed": "Velocidad Máxima del Ventilador",
-          "min_fan_speed": "Velocidad Mínima del Ventilador"
+          "min_fan_speed": "Velocidad Mínima del Ventilador",
+          "hvac_mode_for_cooling": "Modo HVAC para intención de Enfriar",
+          "hvac_mode_for_heating": "Modo HVAC para intención de Calentar",
+          "hvac_mode_for_drying": "Modo HVAC para intención de Secado",
+          "hvac_mode_for_fan_only": "Modo HVAC para intención Solo Ventilador",
+          "primary_climates": "Climas Primarios (orquestación por área)",
+          "secondary_climates": "Climas Secundarios (orquestación por área)",
+          "secondary_fans": "Ventiladores Secundarios (ventilación auxiliar)"
         }
       }
     }
+  },
+  "options_descriptions": {
+    "min_comfort_temp": "Límite inferior de su rango de confort. Los ajustes y decisiones respetarán este límite.",
+    "max_comfort_temp": "Límite superior de su rango de confort. Los ajustes y decisiones respetarán este límite.",
+    "temperature_change_threshold": "Diferencia mínima entre la temperatura actual y el objetivo para activar un cambio.",
+    "override_temperature": "Desplazamiento (±°C) sumado al objetivo calculado antes de aplicar límites.",
+    "energy_save_mode": "Si está habilitado y ya está cómodo, se prefiere Apagado sobre Ventilador para ahorrar energía.",
+    "auto_mode_enable": "Ejecuta ajustes automáticos en horario. Desactive para pausar la automatización manteniendo la entidad disponible.",
+    "aggressive_cooling_threshold": "Muy por encima del confort (≥ este valor), usar enfriamiento/ventilación más fuertes.",
+    "aggressive_heating_threshold": "Muy por debajo del confort (≥ este valor), usar calefacción/ventilación más fuertes.",
+    "hvac_mode_for_cooling": "Elija el modo HVAC exacto del dispositivo para enfriar. Seleccione Deshabilitar para no enfriar nunca.",
+    "hvac_mode_for_heating": "Elija el modo HVAC exacto del dispositivo para calentar. Seleccione Deshabilitar para no calentar nunca.",
+    "hvac_mode_for_drying": "Elija el modo HVAC exacto del dispositivo para secado. Seleccione Deshabilitar para no secar nunca.",
+    "hvac_mode_for_fan_only": "Elija el modo HVAC exacto del dispositivo para solo ventilador. Seleccione Deshabilitar para no usarlo nunca.",
+    "max_fan_speed": "Límite superior de la velocidad del ventilador que puede establecer la integración.",
+    "min_fan_speed": "Límite inferior de la velocidad del ventilador que puede establecer la integración.",
+    "comfort_category": "Categoría de Confort ASHRAE 55: I = banda más estrecha (≈ ±2,5°C, ~90% satisfacción). II = banda más amplia (≈ ±3,5°C, ~80% satisfacción). Elija I para confort estricto, II para mayor eficiencia energética."
   },
   "entity": {
     "sensor": {

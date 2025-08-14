@@ -1,4 +1,5 @@
 """Constants for the Adaptive Climate integration."""
+
 import json
 import os
 
@@ -27,8 +28,15 @@ DEFAULT_ENABLE_FAN_MODE = True
 DEFAULT_ENABLE_COOL_MODE = True
 DEFAULT_ENABLE_HEAT_MODE = True
 DEFAULT_ENABLE_DRY_MODE = True
+DEFAULT_ENABLE_OFF_MODE = True
 DEFAULT_MAX_FAN_SPEED = "high"  # Options: low, mid, high, highest
 DEFAULT_MIN_FAN_SPEED = "low"
+
+# Auto-pause settings
+DEFAULT_MANUAL_PAUSE_DURATION = (
+    30  # minutes - pause duration for manual changes (not power-off)
+)
+# Deprecated: area orchestration is implicit in area-based setup
 
 # Available HVAC modes for selection
 HVAC_MODE_OPTIONS = {
@@ -36,7 +44,7 @@ HVAC_MODE_OPTIONS = {
     "heat": "Heating",
     "fan_only": "Fan Only",
     "dry": "Dry/Dehumidify",
-    "off": "Off"
+    "off": "Off",
 }
 
 # Available fan speed options
@@ -44,7 +52,7 @@ FAN_SPEED_OPTIONS = {
     "low": "Low",
     "mid": "Medium",
     "high": "High",
-    "highest": "Highest"
+    "highest": "Highest",
 }
 
 # Comfort categories (ASHRAE 55)
@@ -66,5 +74,5 @@ EVENT_ADAPTIVE_CLIMATE_TARGET_TEMP = f"{DOMAIN}_target_temp"
 
 # Update intervals (minutes)
 UPDATE_INTERVAL_SHORT = 0.5  # 30 seconds
-UPDATE_INTERVAL_MEDIUM = 1   # 1 minute
-UPDATE_INTERVAL_LONG = 5     # 5 minutes
+UPDATE_INTERVAL_MEDIUM = 1  # 1 minute
+UPDATE_INTERVAL_LONG = 5  # 5 minutes

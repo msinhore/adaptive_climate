@@ -3,6 +3,7 @@
 This module contains SwitchEntity implementations for essential
 configuration parameters only, following Home Assistant and HACS best practices.
 """
+
 from __future__ import annotations
 
 import logging
@@ -15,8 +16,8 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, VERSION
-from .coordinator import AdaptiveClimateCoordinator
+from custom_components.adaptive_climate.const import DOMAIN, VERSION
+from custom_components.adaptive_climate.coordinator import AdaptiveClimateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,8 +28,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Adaptive Climate switch entities."""
-    coordinator: AdaptiveClimateCoordinator = hass.data[DOMAIN]["coordinators"][config_entry.entry_id]
-    
+    coordinator: AdaptiveClimateCoordinator = hass.data[DOMAIN][
+        "coordinators"
+    ][config_entry.entry_id]
+
     entities = [
         AdaptiveClimateSwitchEntity(
             coordinator=coordinator,
@@ -45,9 +48,11 @@ async def async_setup_entry(
             icon="mdi:robot",
         ),
     ]
-    
+
     async_add_entities(entities)
-    _LOGGER.info("Added %d switch entities for Adaptive Climate", len(entities))
+    _LOGGER.info(
+        "Added %d switch entities for Adaptive Climate", len(entities)
+    )
 
 
 class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
@@ -89,7 +94,9 @@ class AdaptiveClimateSwitchEntity(CoordinatorEntity, SwitchEntity):
     @property
     def is_on(self) -> bool:
         """Return true if the switch is on."""
-        return self.coordinator.config.get(self._entity_key, self._default_value)
+        return self.coordinator.config.get(
+            self._entity_key, self._default_value
+        )
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""

@@ -3,6 +3,7 @@
 This module contains real SelectEntity implementations that replace
 the bridge architecture, following Home Assistant and HACS best practices.
 """
+
 from __future__ import annotations
 
 import logging
@@ -15,8 +16,8 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, VERSION
-from .coordinator import AdaptiveClimateCoordinator
+from custom_components.adaptive_climate.const import DOMAIN, VERSION
+from custom_components.adaptive_climate.coordinator import AdaptiveClimateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,8 +28,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Adaptive Climate select entities."""
-    coordinator: AdaptiveClimateCoordinator = hass.data[DOMAIN]["coordinators"][config_entry.entry_id]
-    
+    coordinator: AdaptiveClimateCoordinator = hass.data[DOMAIN][
+        "coordinators"
+    ][config_entry.entry_id]
+
     entities = [
         AdaptiveClimateSelectEntity(
             coordinator=coordinator,
@@ -39,9 +42,11 @@ async def async_setup_entry(
             options=["I", "II"],
         ),
     ]
-    
+
     async_add_entities(entities)
-    _LOGGER.info("Added %d select entities for Adaptive Climate", len(entities))
+    _LOGGER.info(
+        "Added %d select entities for Adaptive Climate", len(entities)
+    )
 
 
 class AdaptiveClimateSelectEntity(CoordinatorEntity, SelectEntity):
@@ -64,13 +69,15 @@ class AdaptiveClimateSelectEntity(CoordinatorEntity, SelectEntity):
         self._attr_name = f"{name} ({area})"
         self._attr_icon = icon
         self._attr_options = options
-        
+
         # Generate stable unique ID
         self._attr_unique_id = f"{config_entry.entry_id}_{entity_key}"
-        
+
         _LOGGER.debug(
             "Initialized select entity: %s (key: %s, unique_id: %s)",
-            self._attr_name, entity_key, self._attr_unique_id
+            self._attr_name,
+            entity_key,
+            self._attr_unique_id,
         )
 
     @property
@@ -95,34 +102,48 @@ class AdaptiveClimateSelectEntity(CoordinatorEntity, SelectEntity):
 
         if value is None:
             value = self.coordinator.config.get(self._entity_key, "I")
-        
+
         _LOGGER.debug(
             "Select entity %s current_option: %s (source: %s)",
             self._entity_key,
             value,
-            "coordinator_data" if self.coordinator.data and self.coordinator.data.get(self._entity_key) else "config_default",
+            (
+                "coordinator_data"
+                if self.coordinator.data
+                and self.coordinator.data.get(self._entity_key)
+                else "config_default"
+            ),
         )
-        
+
         return value
 
     async def async_select_option(self, option: str) -> None:
         """Select an option."""
         if option not in self._attr_options:
-            _LOGGER.error("Invalid option %s for %s. Valid options: %s", option, self._entity_key, self._attr_options)
+            _LOGGER.error(
+                "Invalid option %s for %s. Valid options: %s",
+                option,
+                self._entity_key,
+                self._attr_options,
+            )
             return
-            
+
         _LOGGER.info(
             "Setting %s from %s to %s",
-            self._entity_key, self.current_option, option
+            self._entity_key,
+            self.current_option,
+            option,
         )
-        
+
         # Update coordinator configuration
         await self.coordinator.update_config(**{self._entity_key: option})
-        
+
         # Update the state immediately
         self.async_write_ha_state()
-        
-        _LOGGER.debug("Successfully updated %s to %s", self._entity_key, option)
+
+        _LOGGER.debug(
+            "Successfully updated %s to %s", self._entity_key, option
+        )
 
     @property
     def available(self) -> bool:

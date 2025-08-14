@@ -72,52 +72,6 @@ reset_parameter:
             - value: "auto_mode_enable"
               label: "Auto Mode Enable"
 
-set_manual_override:
-  name: Set Manual Override
-  description: Set manual temperature override with optional duration
-  fields:
-    entity_id:
-      name: Entity ID
-      description: Adaptive Climate binary sensor entity ID
-      required: true
-      selector:
-        entity:
-          domain: binary_sensor
-          integration: adaptive_climate
-    temperature:
-      name: Temperature
-      description: Target temperature for override
-      required: true
-      selector:
-        number:
-          min: 10
-          max: 40
-          step: 0.5
-          unit_of_measurement: "°C"
-    duration_hours:
-      name: Duration (hours)
-      description: Override duration in hours (0 = permanent until cleared)
-      default: 1
-      selector:
-        number:
-          min: 0
-          max: 24
-          step: 1
-          unit_of_measurement: "hours"
-
-clear_manual_override:
-  name: Clear Manual Override
-  description: Clear manual override and restore automatic mode
-  fields:
-    entity_id:
-      name: Entity ID
-      description: Adaptive Climate binary sensor entity ID
-      required: true
-      selector:
-        entity:
-          domain: binary_sensor
-          integration: adaptive_climate
-
 set_comfort_category:
   name: Set Comfort Category
   description: Set ASHRAE 55 comfort category (I = ±2.5°C, II = ±3.5°C)

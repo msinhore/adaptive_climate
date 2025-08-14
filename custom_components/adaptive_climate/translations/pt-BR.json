@@ -28,17 +28,20 @@
       "cannot_connect": "Falha ao conectar",
       "invalid_entity": "Entidade selecionada inválida",
       "unknown": "Erro inesperado",
-      "entity_not_found": "Entidade não encontrada ou não disponível"
+      "entity_not_found": "Entidade não encontrada ou não disponível",
+      "area_not_found": "A área selecionada não pôde ser resolvida.",
+      "no_climates_in_area": "Nenhuma entidade de clima foi encontrada na área selecionada."
     },
     "abort": {
-      "already_configured": "O dispositivo já está configurado"
+      "already_configured": "O dispositivo já está configurado",
+      "created_multiple_entries": "Criadas uma ou mais entradas para cada dispositivo de clima encontrado na área selecionada."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Opções do Clima Adaptativo",
-        "description": "Configure ajustes avançados para seu controle de clima adaptativo.",
+        "description": "Configure ajustes avançados para seu controle de clima adaptativo. Estas opções refletem os campos YAML e incluem explicações úteis.",
         "data": {
           "climate_entity": "Entidade de Clima",
           "indoor_temp_sensor": "Sensor de Temperatura Interna",
@@ -52,20 +55,47 @@
           "override_temperature": "Sobrescrever Temperatura (°C)",
           "energy_save_mode": "Ativar Modo de Economia de Energia",
           "auto_mode_enable": "Ativar Modo Automático",
+          "manual_pause_duration": "Duração da Pausa Manual (minutos)",
+          "participate_area_orchestration": "Participar da Orquestração por Área",
           "aggressive_cooling_threshold": "Limiar de Resfriamento Agressivo (°C)",
           "aggressive_heating_threshold": "Limiar de Aquecimento Agressivo (°C)",
           "mean_radiant_temp_sensor": "Sensor de Temperatura Radiante Média",
           "occupancy_sensor": "Sensor de Ocupação",
           "command_ignore_interval": "Intervalo para Ignorar Comandos (segundos)",
-          "enable_fan_mode": "Ativar Modo Ventilador",
-          "enable_cool_mode": "Ativar Modo Resfriamento",
-          "enable_heat_mode": "Ativar Modo Aquecimento",
-          "enable_dry_mode": "Ativar Modo Secagem",
+          "enable_fan_mode": "Ativar Ventilação: permite enviar ações fan_only quando apropriado.",
+          "enable_cool_mode": "Ativar Intenção de Resfriar: permite resfriamento quando acima da faixa de conforto.",
+          "enable_heat_mode": "Ativar Intenção de Aquecer: permite aquecimento quando abaixo da faixa de conforto.",
+          "enable_dry_mode": "Ativar Intenção de Secagem: permite desumidificação quando suportado.",
+          "enable_off_mode": "Permitir Desligar: autoriza desligar o HVAC quando estável e com economia de energia ativada.",
           "max_fan_speed": "Velocidade Máxima do Ventilador",
-          "min_fan_speed": "Velocidade Mínima do Ventilador"
+          "min_fan_speed": "Velocidade Mínima do Ventilador",
+          "hvac_mode_for_cooling": "Modo HVAC para intenção de Resfriar",
+          "hvac_mode_for_heating": "Modo HVAC para intenção de Aquecer",
+          "hvac_mode_for_drying": "Modo HVAC para intenção de Secagem",
+          "hvac_mode_for_fan_only": "Modo HVAC para intenção Apenas Ventilação",
+          "primary_climates": "Climas Primários (orquestração por área)",
+          "secondary_climates": "Climas Secundários (orquestração por área)",
+          "secondary_fans": "Ventiladores Secundários (ventilação auxiliar)"
         }
       }
     }
+  },
+  "options_descriptions": {
+    "min_comfort_temp": "Limite inferior da sua faixa de conforto. Ajustes e decisões respeitarão este limite.",
+    "max_comfort_temp": "Limite superior da sua faixa de conforto. Ajustes e decisões respeitarão este limite.",
+    "temperature_change_threshold": "Diferença mínima entre a temperatura atual e o alvo para acionar mudanças.",
+    "override_temperature": "Offset (±°C) somado ao alvo calculado antes do ajuste aos limites.",
+    "energy_save_mode": "Quando ativado, se o ambiente já está confortável, prefere Desligado em vez de Ventilação para economizar energia.",
+    "auto_mode_enable": "Executa ajustes automáticos conforme o agendamento. Desative para pausar a automação mantendo a entidade disponível.",
+    "aggressive_cooling_threshold": "Quando muito acima do conforto (≥ este valor), usar resfriamento/ventilação mais fortes.",
+    "aggressive_heating_threshold": "Quando muito abaixo do conforto (≥ este valor), usar aquecimento/ventilação mais fortes.",
+    "hvac_mode_for_cooling": "Escolha o modo HVAC do aparelho para intenções de resfriar. Selecione Desativar para nunca resfriar.",
+    "hvac_mode_for_heating": "Escolha o modo HVAC do aparelho para intenções de aquecer. Selecione Desativar para nunca aquecer.",
+    "hvac_mode_for_drying": "Escolha o modo HVAC do aparelho para intenções de secagem. Selecione Desativar para nunca secar.",
+    "hvac_mode_for_fan_only": "Escolha o modo HVAC do aparelho para intenções de ventilação. Selecione Desativar para nunca usar apenas ventilação.",
+    "max_fan_speed": "Limite superior da velocidade do ventilador que a integração pode definir.",
+    "min_fan_speed": "Limite inferior da velocidade do ventilador que a integração pode definir.",
+    "comfort_category": "Categoria de Conforto ASHRAE 55: I = faixa mais estreita (≈ ±2,5°C, ~90% de satisfação). II = faixa mais ampla (≈ ±3,5°C, ~80% de satisfação). Escolha I para maior conforto, II para mais flexibilidade energética."
   },
   "entity": {
     "sensor": {
