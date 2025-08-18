@@ -1512,7 +1512,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
     def _get_value(
         self, entity_id: Optional[str], sensor_type: Optional[str] = None
     ) -> Optional[float]:
-        """Get sensor value with improved error handling."""
+        """Get sensor value with improved error handling and weather entity support."""
         if not entity_id:
             _LOGGER.debug(
                 f"[{self.device_name}] No entity ID provided for {sensor_type}"
@@ -1526,6 +1526,32 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             )
             return None
 
+        # Check if this is a weather entity and handle accordingly
+        if state.domain == "weather" and sensor_type:
+            from custom_components.adaptive_climate.utils.sensors import get_weather_entity_value
+            value = get_weather_entity_value(self.hass, entity_id, sensor_type)
+            if value is not None:
+                # Update last valid value
+                last_valid_attr_map = {
+                    "indoor_temp": "_last_valid_indoor_temp",
+                    "outdoor_temp": "_last_valid_outdoor_temp",
+                    "indoor_humidity": "_last_valid_indoor_humidity",
+                    "outdoor_humidity": "_last_valid_outdoor_humidity",
+                }
+                if sensor_type in last_valid_attr_map:
+                    setattr(self, last_valid_attr_map[sensor_type], value)
+
+                _LOGGER.debug(
+                    f"[{self.device_name}] {sensor_type} value from weather entity: {value} from {entity_id}"
+                )
+                return value
+            else:
+                _LOGGER.debug(
+                    f"[{self.device_name}] Could not extract {sensor_type} value from weather entity {entity_id}"
+                )
+                return None
+
+        # Handle regular sensor entities
         try:
             # Treat common non-numeric states gracefully
             if str(state.state).lower() in (

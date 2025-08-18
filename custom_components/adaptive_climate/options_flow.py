@@ -60,6 +60,15 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 cfg["multiple"] = True
             return selector.selector({"entity": cfg})
 
+        # Helper to build entity selector that supports both sensor and weather entities
+        def temp_humidity_entity_selector(device_class: str, multiple: bool = False):
+            cfg: dict[str, Any] = {"domain": ["sensor", "weather"]}
+            if device_class:
+                cfg["device_class"] = device_class
+            if multiple:
+                cfg["multiple"] = True
+            return selector.selector({"entity": cfg})
+
         # Discover supported HVAC modes from the configured climate entity (if available)
         climate_entity_id = options.get("climate_entity") or data.get("climate_entity") or data.get("entity")
         supported_hvac_modes: list[str] = []
@@ -89,19 +98,19 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(
                     "indoor_temp_sensor",
                     default=get_value("indoor_temp_sensor"),
-                ): entity_selector("sensor", device_class="temperature"),
+                ): temp_humidity_entity_selector("temperature"),
                 vol.Required(
                     "outdoor_temp_sensor",
                     default=get_value("outdoor_temp_sensor"),
-                ): entity_selector("sensor", device_class="temperature"),
+                ): temp_humidity_entity_selector("temperature"),
                 vol.Optional(
                     "indoor_humidity_sensor",
                     default=get_value("indoor_humidity_sensor"),
-                ): entity_selector("sensor", device_class="humidity"),
+                ): temp_humidity_entity_selector("humidity"),
                 vol.Optional(
                     "outdoor_humidity_sensor",
                     default=get_value("outdoor_humidity_sensor"),
-                ): entity_selector("sensor", device_class="humidity"),
+                ): temp_humidity_entity_selector("humidity"),
                 # === Comfort Category ===
                 vol.Optional(
                     "comfort_category",
