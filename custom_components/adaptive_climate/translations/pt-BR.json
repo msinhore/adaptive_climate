@@ -82,29 +82,7 @@
       "options": {
         "title": "Configurações Avançadas",
         "description": "Configure as opções detalhadas de acordo com o modo de seleção de dispositivos.",
-        "sections": {
-          "comfort": {
-            "title": "Parâmetros ASHRAE55"
-          },
-          "temperature": {
-            "title": "Preferências de Temperatura do Usuário"
-          },
-          "temperature_sensors": {
-            "title": "Sensores de Temperatura"
-          },
-          "humidity_sensors": {
-            "title": "Sensores de Umidade"
-          },
-          "devices": {
-            "title": "Entidades de Clima e Ventiladores"
-          },
-          "hvac": {
-            "title": "Preferências de HVAC"
-          },
-          "advanced": {
-            "title": "Avançado"
-          }
-        },
+
         "data": {
           "climate_entity": "Entidade Climática",
           "indoor_temp_sensor": "Sensor de Temperatura Interna",

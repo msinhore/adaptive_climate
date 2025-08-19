@@ -57,29 +57,7 @@
       "options": {
         "title": "Advanced Settings",
         "description": "Configure detailed settings for your adaptive climate control based on your device selection mode.",
-        "sections": {
-          "comfort": {
-            "title": "ASHRAE55 Parameters"
-          },
-          "temperature": {
-            "title": "User Temperature Preferences"
-          },
-          "temperature_sensors": {
-            "title": "Temperature Sensors"
-          },
-          "humidity_sensors": {
-            "title": "Humidity Sensors"
-          },
-          "devices": {
-            "title": "Climates and Fan Entities"
-          },
-          "hvac": {
-            "title": "HVAC Preferences"
-          },
-          "advanced": {
-            "title": "Advanced"
-          }
-        },
+
         "data": {
           "climate_entity": "Climate Entity",
           "indoor_temp_sensor": "Indoor Temperature Sensor",

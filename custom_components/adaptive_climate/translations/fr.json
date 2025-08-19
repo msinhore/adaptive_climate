@@ -49,29 +49,7 @@
       "options": {
         "title": "Configuration Avancée",
         "description": "Configurez les paramètres détaillés pour votre contrôle climatique adaptatif basé sur votre mode de sélection d'appareils.",
-        "sections": {
-          "comfort": {
-            "title": "Paramètres ASHRAE55"
-          },
-          "temperature": {
-            "title": "Préférences de Température Utilisateur"
-          },
-          "temperature_sensors": {
-            "title": "Capteurs de Température"
-          },
-          "humidity_sensors": {
-            "title": "Capteurs d'Humidité"
-          },
-          "devices": {
-            "title": "Entités Climatiques et Ventilateurs"
-          },
-          "hvac": {
-            "title": "Préférences HVAC"
-          },
-          "advanced": {
-            "title": "Avancé"
-          }
-        },
+
         "data": {
           "climate_entity": "Entité Climatique",
           "indoor_temp_sensor": "Capteur de Température Intérieure",

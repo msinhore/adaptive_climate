@@ -49,29 +49,7 @@
       "options": {
         "title": "Erweiterte Einstellungen",
         "description": "Konfigurieren Sie detaillierte Einstellungen für Ihre adaptive Klimasteuerung basierend auf Ihrem Geräteauswahlmodus.",
-        "sections": {
-          "comfort": {
-            "title": "ASHRAE55-Parameter"
-          },
-          "temperature": {
-            "title": "Benutzer-Temperaturpräferenzen"
-          },
-          "temperature_sensors": {
-            "title": "Temperatursensoren"
-          },
-          "humidity_sensors": {
-            "title": "Feuchtigkeitssensoren"
-          },
-          "devices": {
-            "title": "Klima- und Ventilatorentitäten"
-          },
-          "hvac": {
-            "title": "HVAC-Präferenzen"
-          },
-          "advanced": {
-            "title": "Erweitert"
-          }
-        },
+
         "data": {
           "climate_entity": "Klima-Entität",
           "indoor_temp_sensor": "Innen-Temperatursensor",
