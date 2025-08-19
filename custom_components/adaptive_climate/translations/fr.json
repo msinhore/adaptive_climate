@@ -70,7 +70,8 @@
           "hvac_mode_for_fan_only": "Mode HVAC pour l'intention Ventilateur seul",
           "primary_climates": "Entités Climat primaires (orchestration par zone)",
           "secondary_climates": "Entités Climat secondaires (orchestration par zone)",
-          "secondary_fans": "Ventilateurs secondaires (ventilation auxiliaire)"
+          "secondary_fans": "Ventilateurs secondaires (ventilation auxiliaire)",
+          "auto_device_selection": "Sélection Automatique d'Appareils"
         }
       }
     }
@@ -90,7 +91,24 @@
     "hvac_mode_for_fan_only": "Choisissez le mode HVAC exact de l'appareil pour l'intention Ventilateur seul. Sélectionnez Désactiver pour ne jamais l'utiliser.",
     "max_fan_speed": "Limite supérieure de vitesse du ventilateur que l'intégration peut définir.",
     "min_fan_speed": "Limite inférieure de vitesse du ventilateur que l'intégration peut définir.",
-    "comfort_category": "Catégorie de Confort ASHRAE 55 : I = bande de confort plus étroite (≈ ±2,5°C, ~90% de satisfaction). II = bande plus large (≈ ±3,5°C, ~80% de satisfaction). Choisissez I pour plus de confort, II pour plus de flexibilité énergétique."
+    "comfort_category": "Catégorie de Confort ASHRAE 55 : I = bande de confort plus étroite (≈ ±2,5°C, ~90% de satisfaction). II = bande plus large (≈ ±3,5°C, ~80% de satisfaction). Choisissez I pour plus de confort, II pour plus de flexibilité énergétique.",
+    "auto_device_selection": "Lorsqu'activé, le système sélectionne automatiquement les meilleurs appareils climatiques basés sur leur type (uniquement_chauffage, uniquement_refroidissement, dual) et saison actuelle. La sélection manuelle d'appareils est ignorée lorsque cette option est activée."
+  },
+  "options_extra": {
+    "data_labels": {
+      "hvac_mode_for_cooling": "Mode HVAC pour l'Intention de Refroidir",
+      "hvac_mode_for_heating": "Mode HVAC pour l'Intention de Chauffer",
+      "hvac_mode_for_drying": "Mode HVAC pour l'Intention de Séchage",
+      "hvac_mode_for_fan_only": "Mode HVAC pour l'Intention Ventilateur Seul",
+      "primary_climates": "Entités Climatiques Primaires (orchestration par zone)",
+      "secondary_climates": "Entités Climatiques Secondaires (orchestration par zone)",
+      "secondary_fans": "Entités Ventilateurs Secondaires (ventilation auxiliaire)"
+    },
+    "descriptions": {
+      "primary_climates": "Sélectionnez les climats qui doivent agir comme contrôleurs primaires dans cette zone.",
+      "secondary_climates": "Sélectionnez les climats qui doivent agir comme contrôleurs secondaires dans cette zone.",
+      "secondary_fans": "Sélectionnez les ventilateurs auxiliaires qui peuvent être utilisés lors du refroidissement ou de la ventilation."
+    }
   },
   "entity": {
     "sensor": {
@@ -98,10 +116,10 @@
         "name": "Température de Confort"
       },
       "comfort_range_min": {
-        "name": "Minimum de la Zone de Confort"
+        "name": "Plage de Confort Minimale"
       },
       "comfort_range_max": {
-        "name": "Maximum de la Zone de Confort"
+        "name": "Plage de Confort Maximale"
       },
       "running_mean_outdoor_temp": {
         "name": "Température Extérieure Moyenne Mobile"
@@ -154,10 +172,10 @@
       "comfort_category": {
         "name": "Catégorie de Confort",
         "state": {
-          "cat_i": "Catégorie I (90% de satisfaction)",
-          "cat_ii": "Catégorie II (80% de satisfaction)",
-          "i": "Catégorie I (90% de satisfaction)",
-          "ii": "Catégorie II (80% de satisfaction)"
+          "cat_i": "Catégorie I (90% satisfaction)",
+          "cat_ii": "Catégorie II (80% satisfaction)",
+          "i": "Catégorie I (90% satisfaction)",
+          "ii": "Catégorie II (80% satisfaction)"
         }
       }
     }

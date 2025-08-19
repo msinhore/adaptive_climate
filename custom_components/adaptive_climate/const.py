@@ -10,9 +10,9 @@ MANIFEST_PATH = os.path.join(os.path.dirname(__file__), "manifest.json")
 try:
     with open(MANIFEST_PATH, "r") as manifest_file:
         _MANIFEST = json.load(manifest_file)
-        VERSION = _MANIFEST.get("version", "1.3.0")
+        VERSION = _MANIFEST.get("version", "1.4.0")
 except (FileNotFoundError, json.JSONDecodeError):
-    VERSION = "1.3.0"
+    VERSION = "1.4.0"
 
 # Default configurable parameters (stored in config_entry.options)
 DEFAULT_COMFORT_CATEGORY = "I"
@@ -37,6 +37,9 @@ DEFAULT_MANUAL_PAUSE_DURATION = (
     30  # minutes - pause duration for manual changes (not power-off)
 )
 # Deprecated: area orchestration is implicit in area-based setup
+
+# Automatic device selection
+DEFAULT_AUTO_DEVICE_SELECTION = True  # Automatically select best devices based on type and season
 
 # Available HVAC modes for selection
 HVAC_MODE_OPTIONS = {

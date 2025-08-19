@@ -301,6 +301,7 @@ class ComfortCalculator:
             return ("off" if enable_off_mode else "fan_only", "auto", clamp_temp(comfort_temp))
 
         def summer_mode() -> Tuple[str, str, float]:
+            # REGRA: NUNCA usar heat no verão - apenas cool, fan_only, dry ou off
             # Warm side tends to cooling
             if ranges.get("above_max") or ranges.get("slightly_warm") or ranges.get("comfortably_warm"):
                 if enable_cool_mode:
@@ -313,19 +314,14 @@ class ComfortCalculator:
                         return ("cool", fan, clamp_temp(comfort_temp - delta))
                     return ("cool", fan, clamp_temp(comfort_temp))
                 return fallback_when_disabled("cool", "mid")
-            # Cool/near range → equilibrium or heating if clearly below
+            # Cool/near range → NUNCA heat no verão, sempre equilibrium
             if ranges.get("below_min") or ranges.get("slightly_cool") or ranges.get("comfortably_cool"):
-                if enable_heat_mode:
-                    # Only nudge towards comfort; never overshoot
-                    delta = 2 if (ranges.get("below_min") and indoor_temp <= (min_comfort_temp - aggressive_heating_threshold)) else 1
-                    fan = self._limit_fan_speed("mid" if ranges.get("slightly_cool") else "low", max_fan_speed, min_fan_speed)
-                    if self._should_take_action(indoor_temp, comfort_temp, temperature_change_threshold, "heating"):
-                        return ("heat", fan, clamp_temp(comfort_temp + delta))
-                    return ("heat", fan, clamp_temp(comfort_temp))
+                # No verão, mesmo se estiver frio, NUNCA usar heat - apenas equilibrium
                 return equilibrium_choice()
             return equilibrium_choice()
 
         def winter_mode() -> Tuple[str, str, float]:
+            # REGRA: NUNCA usar cool no inverno - apenas heat, fan_only ou off
             # Cool side tends to heating
             if ranges.get("below_min") or ranges.get("slightly_cool") or ranges.get("comfortably_cool"):
                 if enable_heat_mode:
@@ -335,15 +331,9 @@ class ComfortCalculator:
                         return ("heat", fan, clamp_temp(comfort_temp + delta))
                     return ("heat", fan, clamp_temp(comfort_temp))
                 return fallback_when_disabled("heat", "mid")
-            # Warm side → prefer off when saving energy, otherwise allow cool lightly
+            # Warm side → NUNCA cool no inverno, sempre equilibrium
             if ranges.get("above_max") or ranges.get("slightly_warm") or ranges.get("comfortably_warm"):
-                if energy_save_mode and enable_off_mode:
-                    return ("off", "off", clamp_temp(comfort_temp))
-                if enable_cool_mode:
-                    fan = self._limit_fan_speed("low", max_fan_speed, min_fan_speed)
-                    if self._should_take_action(indoor_temp, comfort_temp, temperature_change_threshold, "cooling"):
-                        return ("cool", fan, clamp_temp(comfort_temp - 1))
-                    return ("cool", fan, clamp_temp(comfort_temp))
+                # No inverno, mesmo se estiver quente, NUNCA usar cool - apenas equilibrium
                 return equilibrium_choice()
             return equilibrium_choice()
 

@@ -70,7 +70,8 @@
           "hvac_mode_for_fan_only": "Modo HVAC para intención Solo Ventilador",
           "primary_climates": "Climas Primarios (orquestación por área)",
           "secondary_climates": "Climas Secundarios (orquestación por área)",
-          "secondary_fans": "Ventiladores Secundarios (ventilación auxiliar)"
+          "secondary_fans": "Ventiladores Secundarios (ventilación auxiliar)",
+          "auto_device_selection": "Selección Automática de Dispositivos"
         }
       }
     }
@@ -90,7 +91,24 @@
     "hvac_mode_for_fan_only": "Elija el modo HVAC exacto del dispositivo para solo ventilador. Seleccione Deshabilitar para no usarlo nunca.",
     "max_fan_speed": "Límite superior de la velocidad del ventilador que puede establecer la integración.",
     "min_fan_speed": "Límite inferior de la velocidad del ventilador que puede establecer la integración.",
-    "comfort_category": "Categoría de Confort ASHRAE 55: I = banda más estrecha (≈ ±2,5°C, ~90% satisfacción). II = banda más amplia (≈ ±3,5°C, ~80% satisfacción). Elija I para confort estricto, II para mayor eficiencia energética."
+    "comfort_category": "Categoría de Confort ASHRAE 55: I = banda más estrecha (≈ ±2,5°C, ~90% satisfacción). II = banda más amplia (≈ ±3,5°C, ~80% satisfacción). Elija I para confort estricto, II para mayor eficiencia energética.",
+    "auto_device_selection": "Cuando está habilitado, el sistema selecciona automáticamente los mejores dispositivos climáticos basándose en su tipo (solo_calefacción, solo_refrigeración, dual) y temporada actual. La selección manual de dispositivos se ignora cuando esta opción está habilitada."
+  },
+  "options_extra": {
+    "data_labels": {
+      "hvac_mode_for_cooling": "Modo HVAC para Intención de Enfriar",
+      "hvac_mode_for_heating": "Modo HVAC para Intención de Calentar",
+      "hvac_mode_for_drying": "Modo HVAC para Intención de Secado",
+      "hvac_mode_for_fan_only": "Modo HVAC para Intención Solo Ventilador",
+      "primary_climates": "Entidades Climáticas Primarias (orquestación por área)",
+      "secondary_climates": "Entidades Climáticas Secundarias (orquestación por área)",
+      "secondary_fans": "Entidades Ventiladores Secundarios (ventilación auxiliar)"
+    },
+    "descriptions": {
+      "primary_climates": "Seleccione climas que deben actuar como controladores primarios en esta área.",
+      "secondary_climates": "Seleccione climas que deben actuar como controladores secundarios en esta área.",
+      "secondary_fans": "Seleccione ventiladores auxiliares que pueden ser utilizados durante el enfriamiento o ventilación."
+    }
   },
   "entity": {
     "sensor": {
@@ -98,10 +116,10 @@
         "name": "Temperatura de Confort"
       },
       "comfort_range_min": {
-        "name": "Mínimo del Rango de Confort"
+        "name": "Rango de Confort Mínimo"
       },
       "comfort_range_max": {
-        "name": "Máximo del Rango de Confort"
+        "name": "Rango de Confort Máximo"
       },
       "running_mean_outdoor_temp": {
         "name": "Temperatura Exterior Media Móvil"

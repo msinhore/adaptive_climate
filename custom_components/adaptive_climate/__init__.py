@@ -94,12 +94,14 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
         try:
             coordinator = AdaptiveClimateCoordinator(hass, config_entry)
-            coordinator.primary_entity_id = config_entry["entity"]
             hass.data[DOMAIN]["coordinators"][entity_id] = coordinator
 
             _LOGGER.debug(
-                f"[{coordinator.device_name}] YAML coordinator created successfully"
+                f"Created coordinator for entity: {entity_id}"
             )
+
+            # Set up services for this coordinator
+            await _async_setup_services(hass, coordinator)
 
             # Perform initial data fetch
             await coordinator.async_config_entry_first_refresh()
@@ -108,102 +110,65 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             _LOGGER.error(
                 f"Failed to create coordinator for entity {entity_id}: {e}"
             )
-            continue
 
-    # Register services
-    hass.services.async_register(
-        DOMAIN, "reset_override", handle_reset_override_service
-    )
-
-    _LOGGER.info(
-        f"Adaptive Climate YAML setup completed - {len(hass.data[DOMAIN]['coordinators'])} coordinators created"
-    )
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Adaptive Climate from a Config Entry (UI-based)."""
+    """Set up Adaptive Climate from a config entry."""
     _LOGGER.debug(
-        f"Setting up Adaptive Climate from Config Entry: {entry.title}"
+        f"Setting up Adaptive Climate from config entry: {entry.title}"
     )
 
-    # Validate required fields
-    if not entry.data.get("entity") and not entry.data.get("climate_entity"):
-        _LOGGER.warning(
-            f"Config Entry '{entry.title}' lacks 'entity' or 'climate_entity'. Skipping Adaptive Climate setup."
-        )
-        return False
-
-    entity_id = entry.data.get("entity") or entry.data.get("climate_entity")
-    yaml_configs = hass.data.get(DOMAIN, {}).get("configs", {})
-
-    # Check if entity is already configured via YAML
-    if entity_id in yaml_configs:
-        _LOGGER.info(
-            f"Config Entry '{entry.title}' ignored: '{entity_id}' configured via YAML. YAML takes precedence."
-        )
-        return False
+    # Initialize data structure if not exists
+    if DOMAIN not in hass.data:
+        hass.data[DOMAIN] = {"configs": {}, "coordinators": {}}
 
     try:
-        # Create coordinator
-        coordinator = AdaptiveClimateCoordinator(
-            hass, entry.data, entry.options
-        )
-        _LOGGER.debug(
-            f"[{coordinator.device_name}] Config Entry coordinator created successfully"
-        )
-
-        # Store coordinator
+        # Create coordinator for this entry
+        coordinator = AdaptiveClimateCoordinator(hass, entry.data, entry.options)
         hass.data[DOMAIN]["coordinators"][entry.entry_id] = coordinator
 
-        # Perform initial data fetch with retry logic
-        try:
-            await coordinator.async_config_entry_first_refresh()
-            _LOGGER.debug(
-                f"[{coordinator.device_name}] Initial data fetch completed"
-            )
-        except Exception as err:
-            _LOGGER.warning(
-                f"[{coordinator.device_name}] Initial data fetch failed, will retry on next update: {err}"
-            )
-            # Don't fail setup, just log and continue - sensors will show as unavailable until data is available
+        _LOGGER.debug(
+            f"Created coordinator for config entry: {entry.title}"
+        )
+
+        # Set up services for this coordinator
+        await _async_setup_services(hass, coordinator)
+
+        # Perform initial data fetch
+        await coordinator.async_config_entry_first_refresh()
 
         # Set up platforms
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-        _LOGGER.debug(f"[{coordinator.device_name}] Platforms setup completed")
-
-        # Set up services
-        await _async_setup_services(hass, coordinator)
-        _LOGGER.debug(f"[{coordinator.device_name}] Services setup completed")
-
-        # Add update listener for options flow
-        entry.async_on_unload(
-            entry.add_update_listener(_async_update_listener)
-        )
 
         _LOGGER.info(
-            f"[{coordinator.device_name}] Config Entry setup completed successfully"
+            f"Adaptive Climate setup completed for entry: {entry.title}"
         )
         return True
 
     except Exception as e:
-        _LOGGER.error(f"Failed to setup Config Entry '{entry.title}': {e}")
+        _LOGGER.error(
+            f"Failed to set up Adaptive Climate for entry {entry.title}: {e}"
+        )
         return False
 
 
-async def _async_update_listener(
-    hass: HomeAssistant, entry: ConfigEntry
-) -> None:
-    """Update listener for options flow."""
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry."""
     _LOGGER.debug(
-        f"Updating Adaptive Climate coordinator with new options for entry: {entry.title}"
+        f"Reloading Adaptive Climate coordinator for entry: {entry.title}"
     )
 
     try:
-        coordinator = hass.data[DOMAIN]["coordinators"][entry.entry_id]
-        _LOGGER.debug(
-            f"[{coordinator.device_name}] Updating configuration from options flow"
-        )
+        # Unload platforms first
+        await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+        # Get the coordinator
+        coordinator = hass.data[DOMAIN]["coordinators"].get(entry.entry_id)
+        if not coordinator:
+            _LOGGER.error(f"Could not find coordinator for entry {entry.entry_id}")
+            return
 
         # Update coordinator configuration
         await coordinator.update_config({**entry.data, **entry.options})

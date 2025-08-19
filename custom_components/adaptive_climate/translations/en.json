@@ -16,24 +16,7 @@
           "climate_entity": "Select the climate device to control.",
           "indoor_temp_sensor": "Sensor used for indoor air temperature (°C).",
           "outdoor_temp_sensor": "Sensor used for outdoor air temperature (°C).",
-          "indoor_humidity_sensor": "Optional. Indoor relative humidity (%).",
-          "outdoor_humidity_sensor": "Optional. Outdoor relative humidity (%).",
-          "comfort_category": "ASHRAE 55 Comfort Category: I = narrower comfort band (≈ ±2.5°C, ~90% satisfaction). II = wider band (≈ ±3.5°C, ~80% satisfaction).",
-          "min_comfort_temp": "Lower bound for your preferred comfort range (°C).",
-          "max_comfort_temp": "Upper bound for your preferred comfort range (°C).",
-          "temperature_change_threshold": "Minimum delta (°C) required to change the set temperature.",
-          "override_temperature": "Offset (±°C) added to the computed target before bounds.",
-          "energy_save_mode": "If enabled and conditions are comfortable, prefer Off over Fan to save energy.",
-          "auto_mode_enable": "Run automatic adjustments on schedule. Disable to pause automation while keeping the entity available.",
-          "aggressive_cooling_threshold": "When well above comfort (≥ this value), use stronger cooling and higher fan.",
-          "aggressive_heating_threshold": "When well below comfort (≥ this value), use stronger heating and higher fan.",
-          "enable_fan_mode": "Allow the integration to use fan_only mode when appropriate.",
-          "enable_cool_mode": "Allow cooling actions when above comfort.",
-          "enable_heat_mode": "Allow heating actions when below comfort.",
-          "enable_dry_mode": "Allow drying (dehumidify) actions when supported.",
-          "enable_off_mode": "Allow turning HVAC fully off when stable and energy saving is enabled.",
-          "max_fan_speed": "Upper limit for fan speed the integration can set.",
-          "min_fan_speed": "Lower limit for fan speed the integration can set."
+          "comfort_category": "ASHRAE 55 Comfort Category: I = narrower comfort band (≈ ±2.5°C, ~90% satisfaction). II = wider band (≈ ±3.5°C, ~80% satisfaction)."
         }
       },
       "optional_sensors": {
@@ -42,8 +25,7 @@
         "data": {
           "indoor_humidity_sensor": "Indoor Humidity Sensor",
           "outdoor_humidity_sensor": "Outdoor Humidity Sensor",
-          "mean_radiant_temp_sensor": "Mean Radiant Temperature Sensor",
-          "occupancy_sensor": "Occupancy Sensor"
+          "mean_radiant_temp_sensor": "Mean Radiant Temperature Sensor"
         }
       }
     },
@@ -63,8 +45,27 @@
   "options": {
     "step": {
       "init": {
-        "title": "Adaptive Climate Options",
-        "description": "Configure advanced settings for your adaptive climate control. These options mirror the YAML fields and include helpful explanations.",
+        "title": "Device Selection Mode",
+        "description": "Choose how devices should be selected for area orchestration.",
+        "data": {
+          "auto_device_selection": "Automatic Device Selection"
+        },
+        "data_description": {
+          "auto_device_selection": "When enabled, the system automatically selects the best climate devices based on their type (heat_only, cool_only, dual) and current season. Manual device selection is ignored when this option is enabled."
+        }
+      },
+      "options": {
+        "title": "Advanced Settings",
+        "description": "Configure detailed settings for your adaptive climate control based on your device selection mode.",
+        "sections": {
+          "comfort": "ASHRAE55 Parameters",
+          "temperature": "User Temperature Preferences",
+          "temperature_sensors": "Temperature Sensors",
+          "humidity_sensors": "Humidity Sensors",
+          "devices": "Climates and Fan Entities",
+          "hvac": "HVAC Preferences",
+          "advanced": "Advanced"
+        },
         "data": {
           "climate_entity": "Climate Entity",
           "indoor_temp_sensor": "Indoor Temperature Sensor",
@@ -81,10 +82,11 @@
           "control_secondary_fans": "Control Secondary Fans",
           "manual_pause_duration": "Manual Pause Duration (minutes)",
           "participate_area_orchestration": "Participate in Area Orchestration",
+          "auto_device_selection": "Automatic Device Selection",
           "aggressive_cooling_threshold": "Aggressive Cooling Threshold (°C)",
           "aggressive_heating_threshold": "Aggressive Heating Threshold (°C)",
           "mean_radiant_temp_sensor": "Mean Radiant Temperature Sensor",
-          "occupancy_sensor": "Occupancy Sensor",
+          
           "command_ignore_interval": "Command Ignore Interval (seconds)",
           "enable_fan_mode": "Enable Fan Mode",
           "enable_cool_mode": "Enable Cool Intent",
@@ -99,23 +101,37 @@
           "hvac_mode_for_fan_only": "HVAC Mode for Fan-only Intent",
           "primary_climates": "Primary Climate Entities (area orchestration)",
           "secondary_climates": "Secondary Climate Entities (area orchestration)",
-          "secondary_fans": "Secondary Fan Entities (aux ventilation)"
+          "secondary_fans": "Secondary Fan Entities (aux ventilation)",
+          "primary_climates_display": "Primary Devices (Auto-Selected)",
+          "secondary_climates_display": "Secondary Devices (Auto-Selected)",
+          "secondary_fans_display": "Auxiliary Fans (Auto-Selected)",
+          "primary_devices_info": "Primary Devices (Auto-Selected)",
+          "secondary_devices_info": "Secondary Devices (Auto-Selected)",
+          "secondary_fans_info": "Auxiliary Fans (Auto-Selected)",
+          "auto_selection_header": "Automatically Selected Devices"
         },
         "data_description": {
+          "climate_entity": "Select the climate device to control.",
           "indoor_temp_sensor": "Sensor used for indoor air temperature (°C).",
           "outdoor_temp_sensor": "Sensor used for outdoor air temperature (°C).",
           "indoor_humidity_sensor": "Optional. Indoor relative humidity (%).",
           "outdoor_humidity_sensor": "Optional. Outdoor relative humidity (%).",
           "comfort_category": "ASHRAE 55 Comfort Category: I = narrower comfort band (≈ ±2.5°C, ~90% satisfaction). II = wider band (≈ ±3.5°C, ~80% satisfaction).",
-          "energy_save_mode": "If enabled and conditions are comfortable, prefer Off over Fan to save energy.",
-          "auto_mode_enable": "Run automatic adjustments on schedule. Disable to pause automation while keeping the entity available.",
-          "manual_pause_duration": "Minutes to ignore automatic changes after a manual user change.",
           "min_comfort_temp": "Lower bound for your preferred comfort range (°C).",
           "max_comfort_temp": "Upper bound for your preferred comfort range (°C).",
           "temperature_change_threshold": "Minimum delta (°C) required to change the set temperature.",
           "override_temperature": "Offset (±°C) added to the computed target before bounds.",
+          "energy_save_mode": "If enabled and conditions are comfortable, prefer Off over Fan to save energy.",
+          "auto_mode_enable": "Run automatic adjustments on schedule. Disable to pause automation while keeping the entity available.",
+          "control_secondary_fans": "When enabled, the integration may turn on/off selected secondary fans for auxiliary ventilation in cooling/ventilation scenarios.",
+          "manual_pause_duration": "Minutes to ignore automatic changes after a manual user change.",
+          "participate_area_orchestration": "Enable coordination with other climate devices in the same area.",
+          "auto_device_selection": "When enabled, the system automatically selects the best climate devices based on their type (heat_only, cool_only, dual) and current season. Manual device selection is ignored when this option is enabled.",
           "aggressive_cooling_threshold": "When well above comfort (≥ this value), use stronger cooling and higher fan.",
           "aggressive_heating_threshold": "When well below comfort (≥ this value), use stronger heating and higher fan.",
+          "mean_radiant_temp_sensor": "Sensor for mean radiant temperature calculations.",
+          
+          "command_ignore_interval": "Time interval to ignore commands after manual changes.",
           "enable_fan_mode": "Allow the integration to use fan_only mode when appropriate.",
           "enable_cool_mode": "Allow cooling actions when above comfort.",
           "enable_heat_mode": "Allow heating actions when below comfort.",
@@ -123,14 +139,20 @@
           "enable_off_mode": "Allow turning HVAC fully off when stable and energy saving is enabled.",
           "max_fan_speed": "Upper limit for fan speed the integration can set.",
           "min_fan_speed": "Lower limit for fan speed the integration can set.",
-          "control_secondary_fans": "When enabled, the integration may turn on/off selected secondary fans for auxiliary ventilation in cooling/ventilation scenarios.",
           "hvac_mode_for_cooling": "Exact device HVAC mode to use when the intent is cooling. Choose Disable to never cool.",
           "hvac_mode_for_heating": "Exact device HVAC mode to use when the intent is heating. Choose Disable to never heat.",
           "hvac_mode_for_drying": "Exact device HVAC mode to use when the intent is drying. Choose Disable to never dry.",
           "hvac_mode_for_fan_only": "Exact device HVAC mode to use when the intent is fan only. Choose Disable to never use fan only.",
           "primary_climates": "Climates that should act as primary controllers in this area.",
-          "secondary_climates": "Climates that should act as secondary controllers in this area.",
-          "secondary_fans": "Auxiliary fans that may be used during cooling/ventilation."
+          "secondary_climates": "Secondary climates that should act as secondary controllers in this area.",
+          "secondary_fans": "Auxiliary fans that may be used during cooling/ventilation.",
+          "primary_climates_display": "Devices automatically selected as primary based on their type and current season (read-only).",
+          "secondary_climates_display": "Devices automatically selected as secondary based on their type and current season (read-only).",
+          "secondary_fans_display": "Fans automatically selected for auxiliary ventilation based on area configuration (read-only).",
+          "primary_devices_info": "Shows the devices automatically selected as primary controllers for this area based on their capabilities and current season.",
+          "secondary_devices_info": "Shows the devices automatically selected as secondary controllers for this area based on their capabilities and current season.",
+          "secondary_fans_info": "Shows the fans automatically selected for auxiliary ventilation based on area configuration.",
+          "auto_selection_header": "The system has automatically selected the best devices based on their type and current season."
         }
       }
     }
@@ -160,12 +182,24 @@
       "hvac_mode_for_fan_only": "HVAC Mode for Fan-only Intent",
       "primary_climates": "Primary Climate Entities (area orchestration)",
       "secondary_climates": "Secondary Climate Entities (area orchestration)",
-      "secondary_fans": "Secondary Fan Entities (aux ventilation)"
+      "secondary_fans": "Secondary Fan Entities (aux ventilation)",
+      "primary_climates_display": "Primary Devices (Auto-Selected)",
+      "secondary_climates_display": "Secondary Devices (Auto-Selected)",
+      "secondary_fans_display": "Auxiliary Fans (Auto-Selected)",
+      "primary_devices_info": "Primary Devices (Auto-Selected)",
+      "secondary_devices_info": "Secondary Devices (Auto-Selected)",
+      "secondary_fans_info": "Auxiliary Fans (Auto-Selected)"
     },
     "descriptions": {
       "primary_climates": "Select climates that should act as primary controllers in this area.",
       "secondary_climates": "Select climates that should act as secondary controllers in this area.",
-      "secondary_fans": "Select auxiliary fans that may be used when cooling or ventilation is preferred."
+      "secondary_fans": "Select auxiliary fans that may be used when cooling or ventilation is preferred.",
+      "primary_climates_display": "Devices automatically selected as primary based on their type and current season (read-only).",
+      "secondary_climates_display": "Devices automatically selected as secondary based on their type and current season (read-only).",
+      "secondary_fans_display": "Fans automatically selected for auxiliary ventilation based on area configuration (read-only).",
+      "primary_devices_info": "Shows the devices automatically selected as primary controllers for this area based on their capabilities and current season.",
+      "secondary_devices_info": "Shows the devices automatically selected as secondary controllers for this area based on their capabilities and current season.",
+      "secondary_fans_info": "Shows the fans automatically selected for auxiliary ventilation based on area configuration."
     }
   },
   "entity": {
