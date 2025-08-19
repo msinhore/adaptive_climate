@@ -174,15 +174,15 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(
                     "indoor_temp_sensor",
                     default=get_value("indoor_temp_sensor"),
-                ): temp_humidity_entity_selector("temperature"),
+                ): temp_entity_selector(is_outdoor=False),
                 vol.Required(
                     "outdoor_temp_sensor",
                     default=get_value("outdoor_temp_sensor"),
-                ): temp_humidity_entity_selector("temperature"),
+                ): temp_entity_selector(is_outdoor=True),
                 vol.Optional(
                     "indoor_humidity_sensor",
                     default=get_value("indoor_humidity_sensor"),
-                ): temp_humidity_entity_selector("humidity"),
+                ): humidity_entity_selector(is_outdoor=False),
                 vol.Optional(
                     "outdoor_humidity_sensor",
                     default=get_value("outdoor_humidity_sensor"),

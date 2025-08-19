@@ -10,11 +10,11 @@
 
 [<img width="170" height="37" alt="Buy me a coffee" src="https://github.com/user-attachments/assets/0ce08a2b-1c6-4f16-91f0-70c273cf4d47" />](https://buymeacoffee.com/msinhore)
 
-A Home Assistant integration implementing ASHRAE 55 Adaptive Thermal Comfort for intelligent climate control with advanced HVAC and fan mode management.
+A Home Assistant integration implementing ASHRAE 55 Adaptive Thermal Comfort for intelligent climate control with advanced HVAC and fan mode management, featuring multi-device support and area-based automation.
 
 ---
 
-## 🚀 Features
+## 🌟 **Features**
 
 ### **Core Functionality**
 - 🔍 **ASHRAE 55 Adaptive Comfort**: Automatically adjusts comfort temperature using adaptive thermal comfort calculations, based on scientific standards.
@@ -82,16 +82,117 @@ A Home Assistant integration implementing ASHRAE 55 Adaptive Thermal Comfort for
 
 ## ⚙️ Configuration
 
+### **Configuration Methods**
+
+Adaptive Climate now offers three flexible setup methods to accommodate different user preferences and scenarios:
+
+#### **1. Area-Based Setup (Recommended)**
+**Best for**: Users with multiple climate devices in the same area (e.g., living room with AC and ceiling fan)
+- Select an area and the system automatically discovers all climate devices
+- Creates individual configurations for each device while sharing sensor data
+- Perfect for coordinated climate control within rooms
+
+#### **2. Bulk Multi-Device Setup**
+**Best for**: Users with multiple climate devices across different areas sharing the same sensors
+- Select multiple climate entities manually
+- Apply consistent settings across all devices
+- Ideal for whole-home climate management
+
+#### **3. Single Device Setup**
+**Best for**: Simple single-device configurations or fine-tuned individual control
+- Configure one climate device at a time
+- Full control over individual device settings
+- Perfect for testing or specific device requirements
+
+#### **UI Configuration (Recommended)**
+1. Go to **Settings** → **Devices & Services** → **Add Integration**
+2. Search for "Adaptive Climate"
+3. Choose your preferred setup method:
+   - **Area Setup**: Select an area and let the system discover devices
+   - **Bulk Setup**: Select multiple climate devices manually
+   - **Single Setup**: Configure one device at a time
+4. Follow the setup wizard to configure your integration
+
+#### **YAML Configuration**
+You can also configure Adaptive Climate via YAML in your `configuration.yaml`:
+
+```yaml
+# Example YAML configuration with multiple devices
+adaptive_climate:
+  # Primary living room configuration
+  - entity: climate.living_room_ac
+    name: "Living Room Adaptive Climate"
+    indoor_temp_sensor: sensor.living_room_temperature
+    outdoor_temp_sensor: sensor.outdoor_temperature
+    indoor_humidity_sensor: sensor.living_room_humidity
+    outdoor_humidity_sensor: sensor.outdoor_humidity
+    
+    # Comfort settings
+    comfort_category: "I"  # I or II
+    min_comfort_temp: 21.0
+    max_comfort_temp: 27.0
+    temperature_change_threshold: 0.5
+    override_temperature: 0.0
+    
+    # Control settings
+    energy_save_mode: true
+    auto_mode_enable: true
+    aggressive_cooling_threshold: 2.0
+    aggressive_heating_threshold: 2.0
+    
+    # HVAC mode control
+    enable_fan_mode: true
+    enable_cool_mode: true
+    enable_heat_mode: true
+    enable_dry_mode: true
+    enable_off_mode: true
+    
+    # Fan speed control
+    max_fan_speed: "high"
+    min_fan_speed: "low"
+    
+    # Area orchestration
+    participate_area_orchestration: true
+    # Automatic device selection
+    auto_device_selection: true
+
+  # Bedroom configuration
+  - entity: climate.bedroom_ac
+    name: "Bedroom Adaptive Climate"
+    indoor_temp_sensor: sensor.bedroom_temperature
+    outdoor_temp_sensor: sensor.outdoor_temperature
+    comfort_category: "II"
+    energy_save_mode: false
+    participate_area_orchestration: false
+    auto_device_selection: false
+
+  # Kitchen configuration with shared sensors
+  - entity: climate.kitchen_ac
+    name: "Kitchen Adaptive Climate"
+    indoor_temp_sensor: sensor.living_room_temperature  # Shared sensor
+    outdoor_temp_sensor: sensor.outdoor_temperature     # Shared sensor
+    comfort_category: "I"
+    temperature_change_threshold: 1.0
+    auto_device_selection: true
+```
+
 ### **Required Configuration**
 - **Climate Entity**: Your main HVAC/climate device
 - **Indoor Temperature Sensor**: Sensor or weather entity for indoor temperature monitoring
 - **Outdoor Temperature Sensor**: Sensor or weather entity for outdoor temperature monitoring
 
 ### **Optional Configuration**
-- **Indoor Humidity Sensor**: Sensor or weather entity for indoor humidity monitoring
-- **Outdoor Humidity Sensor**: Sensor or weather entity for outdoor humidity monitoring
+- **Indoor Humidity Sensor**: Sensor for indoor humidity monitoring
+- **Outdoor Humidity Sensor**: Sensor for outdoor humidity monitoring
+- **Area Orchestration**: Enable coordination between devices in the same area
 
-**Note**: Weather entities are fully supported for temperature and humidity monitoring. The system will automatically extract temperature and humidity values from weather entity attributes.
+### **Configuration Precedence**
+- **YAML takes precedence**: If a device is configured via YAML, UI configuration for the same entity will be ignored
+- **Multiple devices**: You can mix YAML and UI configurations for different devices
+- **Migration**: You can migrate from UI to YAML or vice versa by removing the old configuration first
+
+> 📖 **For detailed YAML configuration documentation, see [YAML_CONFIGURATION.md](YAML_CONFIGURATION.md)**
+> 📝 **See [example_configuration.yaml](example_configuration.yaml) for a complete configuration example**
 
 ### **Advanced Configuration Options**
 
@@ -117,6 +218,64 @@ A Home Assistant integration implementing ASHRAE 55 Adaptive Thermal Comfort for
 | **Enable Heat Mode** | Allow the system to use heating mode | ✅ Enabled |
 | **Enable Fan Mode** | Allow the system to use fan-only mode | ✅ Enabled |
 | **Enable Dry Mode** | Allow the system to use dehumidification mode | ✅ Enabled |
+| **Enable Off Mode** | Allow the system to turn off the AC when not needed | ✅ Enabled |
+
+#### **Area Orchestration**
+| Option | Description | Default |
+|--------|-------------|---------|
+| **Participate in Area Orchestration** | Enable coordination with other climate devices in the same area | ❌ Disabled |
+| **Automatic Device Selection** | Automatically select best devices based on type and season | ❌ Disabled |
+
+### **Automatic Device Selection Configuration**
+The `auto_device_selection` option enables intelligent device selection based on device capabilities and current conditions:
+
+**When Enabled (`auto_device_selection: true`)**:
+- **Automatic Optimization**: System automatically selects the best climate devices for each season
+- **Type-Based Selection**: Prioritizes devices based on their capabilities (heat_only, cool_only, dual, fan_dry_only)
+- **Seasonal Intelligence**: Adapts device selection based on winter, summer, or shoulder seasons
+- **Manual Override**: Ignores user-configured `primary_climates` and `secondary_climates` settings
+
+**When Disabled (`auto_device_selection: false`)**:
+- **Manual Control**: Uses user-configured device roles
+- **Predictable Behavior**: Maintains consistent device assignments
+- **Full Control**: User has complete control over which devices act as primary/secondary
+
+**Device Selection Logic**:
+- **Winter**: Prioritizes `heat_only` or `dual` devices with heating capabilities
+- **Summer**: Prioritizes `cool_only` or `dual` devices with cooling capabilities  
+- **Shoulder Seasons**: Uses `dual` devices or `fan_dry_only` based on comfort needs
+- **Capability Ranking**: Considers device features like temperature control and HVAC mode support
+
+**Configuration Examples**:
+```yaml
+# Automatic device selection (recommended for multi-device setups)
+auto_device_selection: true
+
+# Manual device selection (traditional approach)
+auto_device_selection: false
+primary_climates: ["climate.living_room_ac"]
+secondary_climates: ["climate.bedroom_ac"]
+```
+
+### **Enable Off Mode Configuration**
+The `enable_off_mode` option controls whether the system can turn off the air conditioning when it's not needed for comfort. This is particularly useful for:
+
+- **Preventing Short Cycling**: When disabled, the system will use fan-only mode instead of turning off completely, which can help prevent rapid on/off cycles
+- **Maintaining Air Circulation**: Some users prefer to keep the fan running for better air circulation even when heating/cooling isn't needed
+- **Equipment Protection**: For sensitive HVAC equipment that shouldn't be turned off frequently
+
+**Configuration Examples:**
+```yaml
+# Standard configuration (AC can turn off)
+enable_off_mode: true
+
+# Conservative configuration (AC stays on with fan)
+enable_off_mode: false
+```
+
+**Behavior:**
+- **`enable_off_mode: true`**: System can turn AC completely off when comfort conditions are met
+- **`enable_off_mode: false`**: System will use fan-only mode instead of turning off, maintaining air circulation
 
 #### **Fan Speed Control**
 | Option | Description | Default | Options |
@@ -161,20 +320,6 @@ Reset a parameter to its default value.
 - `parameter`: Configuration parameter to reset
 
 ### **Override Services**
-
-#### `adaptive_climate.set_manual_override`
-Set manual temperature override with optional duration.
-
-**Parameters:**
-- `entity_id`: Adaptive Climate binary sensor entity ID
-- `temperature`: Target temperature for override (10-40°C)
-- `duration_hours`: Override duration in hours (0 = permanent until cleared)
-
-#### `adaptive_climate.clear_manual_override`
-Clear manual override and restore automatic control.
-
-**Parameters:**
-- `entity_id`: Adaptive Climate binary sensor entity ID
 
 #### `adaptive_climate.set_temporary_override`
 Set temporary temperature override for a specific duration.
@@ -221,12 +366,19 @@ Force re-detection of device capabilities (cooling, heating, fan, dry modes).
 7. **Override Detection**: Monitors for manual user interventions
 8. **State Persistence**: Saves control history across restarts
 
+### **Multi-Device Coordination**
+- **Area-Based Discovery**: Automatically finds climate devices within Home Assistant areas
+- **Independent Control**: Each device operates independently with its own settings
+- **Shared Sensors**: Multiple devices can share temperature and humidity sensors
+- **Coordinated Operation**: Optional area orchestration for coordinated climate control
+
 ### **Key Features**
 - **Adaptive Comfort**: Uses ASHRAE 55 standard for scientific comfort calculations
 - **Device Compatibility**: Maps calculated modes to device-supported modes
 - **Energy Optimization**: Reduces energy usage when explicitly enabled
 - **User Respect**: Never overrides manual user control
 - **Fast Startup**: Immediate control cycle when auto mode is enabled
+- **Scalable Architecture**: Supports from single devices to whole-home climate management
 
 ---
 
@@ -245,22 +397,138 @@ Force re-detection of device capabilities (cooling, heating, fan, dry modes).
 
 ---
 
-## ℹ️ Notes
+## 🔧 Recent Fixes & Improvements
 
-- **Multi-Device Support**: Supports multiple climate entities with intelligent device management
-- **User Control Priority**: Never powers on devices after user shutdown
-- **Dynamic Adaptation**: Adapts to external and internal conditions, not fixed setpoints
-- **Backward Compatibility**: All existing configurations continue to work without changes
+### **Multi-Device & Area Detection (v1.4.0)**
+**New Features**:
+- **Area-Based Setup**: Automatically discover and configure climate devices within Home Assistant areas
+- **Bulk Multi-Device Setup**: Configure multiple climate devices simultaneously with shared settings
+- **Enhanced Single Device Setup**: Simplified configuration for individual devices
+- **Area Orchestration**: Optional coordination between devices in the same area
+- **Shared Sensor Support**: Multiple devices can share temperature and humidity sensors
+- **Automatic Device Selection**: Intelligent device selection based on type and season (NEW in v1.4.0)
+
+**Benefits**:
+- ✅ Faster setup for multi-device homes
+- ✅ Automatic device discovery within areas
+- ✅ Consistent configuration across multiple devices
+- ✅ Flexible sensor sharing options
+- ✅ Improved user experience for complex setups
+
+### **Automatic Device Selection (v1.4.0)**
+**New Feature**: Added `auto_device_selection` configuration option for intelligent device selection based on device capabilities and seasonal conditions.
+
+**Key Capabilities**:
+- **Seasonal Optimization**: Automatically selects the best devices for winter (heating), summer (cooling), and shoulder seasons
+- **Type-Based Intelligence**: Prioritizes devices based on their capabilities (heat_only, cool_only, dual, fan_dry_only)
+- **Dynamic Role Assignment**: Changes device roles automatically as seasons and conditions change
+- **Capability Ranking**: Considers device features like temperature control and HVAC mode support
+
+**Configuration Examples**:
+```yaml
+# Enable automatic device selection
+auto_device_selection: true
+
+# Disable for manual control
+auto_device_selection: false
+primary_climates: ["climate.living_room_ac"]
+secondary_climates: ["climate.bedroom_ac"]
+```
+
+**Benefits**:
+- ✅ Optimizes device usage for each season automatically
+- ✅ Reduces energy consumption by using the most appropriate devices
+- ✅ Improves comfort by leveraging device-specific capabilities
+- ✅ Simplifies multi-device setup and management
+- ✅ Adapts to changing conditions without manual intervention
+
+### **Temperature Change Threshold Fix (v1.3.1)**
+**Problem**: The `temperature_change_threshold` configuration was not being properly applied, causing frequent on/off cycles even when configured for higher thresholds.
+
+**Solution**: Fixed the application of `temperature_change_threshold` in three critical areas:
+1. **Equilibrium Detection**: Now uses configured threshold instead of hardcoded 0.5°C
+2. **Change Detection**: Uses configured threshold for determining when to execute actions
+3. **Override Detection**: Uses configured threshold for detecting manual temperature changes
+
+**Impact**: 
+- ✅ Prevents short cycling of AC compressors
+- ✅ Respects user configuration for sensitivity
+- ✅ Reduces wear on HVAC equipment
+- ✅ Improves energy efficiency
+
+**Recommended Configuration**:
+```yaml
+adaptive_climate:
+  - entity: climate.your_ac_entity
+    # ... other settings ...
+    temperature_change_threshold: 1.0  # Increase from default 0.5°C
+    enable_off_mode: false  # Use fan-only instead of turning off completely
+    # ... other settings ...
+```
+
+**Threshold Guidelines**:
+- **0.5°C**: Very sensitive (default, may cause frequent cycles)
+- **1.0°C**: Balanced approach (recommended)
+- **1.5°C**: Conservative (good for equipment longevity)
+- **2.0°C**: Very conservative (minimal changes)
+
+### **Enable Off Mode Feature (v1.3.2)**
+**New Feature**: Added `enable_off_mode` configuration option to control whether the system can turn off HVAC equipment completely.
+
+**Configuration Examples**:
+```yaml
+# Standard configuration (AC can turn off)
+enable_off_mode: true
+
+# Conservative configuration (AC stays on with fan)
+enable_off_mode: false
+```
+
+**Benefits**:
+- ✅ Prevents short cycling of AC compressors
+- ✅ Maintains air circulation when disabled
+- ✅ Protects sensitive HVAC equipment
+- ✅ Improves energy efficiency when enabled
 
 ---
 
-## 🏛️ Standards & References
+## 🚀 Getting Started
 
-- **ASHRAE Standard 55-2020** - Thermal Environmental Conditions for Human Occupancy
-- **pythermalcomfort** library for scientific adaptive comfort calculations
+### **Quick Setup Guide**
+
+1. **Install via HACS** (recommended)
+2. **Choose Setup Method**:
+   - **Area Setup**: Select an area and let the system discover devices automatically
+   - **Bulk Setup**: Select multiple climate devices manually
+   - **Single Setup**: Configure one device at a time
+3. **Configure Sensors**: Select indoor and outdoor temperature sensors
+4. **Customize Settings**: Adjust comfort categories and thresholds as needed
+5. **Enable Automation**: Turn on auto mode to start adaptive control
+
+### **Multi-Device Setup Tips**
+
+- **Start with Area Setup**: Use area-based discovery for the easiest multi-device configuration
+- **Share Sensors**: Multiple devices in the same area can share temperature sensors
+- **Consistent Settings**: Use bulk setup for devices that should have similar behavior
+- **Individual Control**: Use single setup for devices that need specific configurations
+
+---
+
+## 📚 Additional Resources
+
+- **Documentation**: [GitHub Repository](https://github.com/msinhore/adaptive-climate)
+- **Issues**: [GitHub Issues](https://github.com/msinhore/adaptive-climate/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/msinhore/adaptive-climate/discussions)
+- **Examples**: [Example Configurations](https://github.com/msinhore/adaptive-climate/tree/main/examples)
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
 ---
 
 ## 📄 License
 
-MIT License – see [LICENSE](LICENSE).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
