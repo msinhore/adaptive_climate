@@ -37,8 +37,41 @@
   "options": {
     "step": {
       "init": {
-        "title": "Optionen für Adaptives Klima",
-        "description": "Konfigurieren Sie erweiterte Einstellungen für Ihre adaptive Klimasteuerung. Diese Optionen entsprechen den YAML-Feldern und enthalten hilfreiche Erklärungen.",
+        "title": "Geräteauswahl-Modus",
+        "description": "Wählen Sie, wie Geräte für die Bereichsorchestrierung ausgewählt werden sollen.",
+        "data": {
+          "auto_device_selection": "Automatische Geräteauswahl"
+        },
+        "data_description": {
+          "auto_device_selection": "Wenn aktiviert, wählt das System automatisch die besten Klimageräte basierend auf ihrem Typ (nur_heizung, nur_kühlung, dual) und aktueller Jahreszeit aus. Die manuelle Geräteauswahl wird ignoriert, wenn diese Option aktiviert ist."
+        }
+      },
+      "options": {
+        "title": "Erweiterte Einstellungen",
+        "description": "Konfigurieren Sie detaillierte Einstellungen für Ihre adaptive Klimasteuerung basierend auf Ihrem Geräteauswahlmodus.",
+        "sections": {
+          "comfort": {
+            "title": "ASHRAE55-Parameter"
+          },
+          "temperature": {
+            "title": "Benutzer-Temperaturpräferenzen"
+          },
+          "temperature_sensors": {
+            "title": "Temperatursensoren"
+          },
+          "humidity_sensors": {
+            "title": "Feuchtigkeitssensoren"
+          },
+          "devices": {
+            "title": "Klima- und Ventilatorentitäten"
+          },
+          "hvac": {
+            "title": "HVAC-Präferenzen"
+          },
+          "advanced": {
+            "title": "Erweitert"
+          }
+        },
         "data": {
           "climate_entity": "Klima-Entität",
           "indoor_temp_sensor": "Innen-Temperatursensor",
@@ -52,26 +85,70 @@
           "override_temperature": "Temperatur-Überschreibung (°C)",
           "energy_save_mode": "Energiesparmodus aktivieren",
           "auto_mode_enable": "Automatikmodus aktivieren",
+          "control_secondary_fans": "Sekundäre Ventilatoren steuern",
+          "manual_pause_duration": "Manuelle Pausen-Dauer (Minuten)",
           "aggressive_cooling_threshold": "Schwelle für aggressives Kühlen (°C)",
           "aggressive_heating_threshold": "Schwelle für aggressives Heizen (°C)",
-          "mean_radiant_temp_sensor": "Sensor für mittlere Strahlungstemperatur",
-          "occupancy_sensor": "Belegungssensor",
-          "command_ignore_interval": "Befehl-Ignorierintervall (Sekunden)",
-          "enable_fan_mode": "Ventilator aktivieren: erlaubt fan_only-Aktionen, wenn passend.",
-          "enable_cool_mode": "Kühl-Intention aktivieren: erlaubt Kühlen oberhalb des Komfortbereichs.",
-          "enable_heat_mode": "Heiz-Intention aktivieren: erlaubt Heizen unterhalb des Komfortbereichs.",
-          "enable_dry_mode": "Trocken-Intention aktivieren: erlaubt Entfeuchten, wenn unterstützt.",
-          "enable_off_mode": "Ausschalten erlauben: HVAC kann bei stabilen Bedingungen mit Energiesparen deaktiviert werden.",
-          "max_fan_speed": "Maximale Lüftergeschwindigkeit",
-          "min_fan_speed": "Minimale Ventilatorgeschwindigkeit",
+          "enable_fan_mode": "Ventilator-Modus aktivieren",
+          "enable_cool_mode": "Kühl-Intention aktivieren",
+          "enable_heat_mode": "Heiz-Intention aktivieren",
+          "enable_dry_mode": "Trocken-Intention aktivieren",
+          "enable_off_mode": "Ausschalten aktivieren",
+          "max_fan_speed": "Maximale Ventilator-Geschwindigkeit",
+          "min_fan_speed": "Minimale Ventilator-Geschwindigkeit",
           "hvac_mode_for_cooling": "HVAC-Modus für Kühl-Intention",
           "hvac_mode_for_heating": "HVAC-Modus für Heiz-Intention",
           "hvac_mode_for_drying": "HVAC-Modus für Trocken-Intention",
           "hvac_mode_for_fan_only": "HVAC-Modus für nur-Ventilator-Intention",
           "primary_climates": "Primäre Klima-Entitäten (Bereichsorchestrierung)",
           "secondary_climates": "Sekundäre Klima-Entitäten (Bereichsorchestrierung)",
-          "secondary_fans": "Sekundäre Ventilatoren (zusätzliche Belüftung)",
-          "auto_device_selection": "Automatische Geräteauswahl"
+          "secondary_fans": "Sekundäre Ventilator-Entitäten (zusätzliche Belüftung)",
+          "primary_climates_display": "Primäre Geräte (Automatisch ausgewählt)",
+          "secondary_climates_display": "Sekundäre Geräte (Automatisch ausgewählt)",
+          "secondary_fans_display": "Hilfsventilatoren (Automatisch ausgewählt)",
+          "primary_devices_info": "Primäre Geräte (Automatisch ausgewählt)",
+          "secondary_devices_info": "Sekundäre Geräte (Automatisch ausgewählt)",
+          "secondary_fans_info": "Hilfsventilatoren (Automatisch ausgewählt)",
+          "auto_selection_header": "Automatisch ausgewählte Geräte"
+        },
+        "data_description": {
+          "climate_entity": "Wählen Sie das zu steuernde Klimagerät aus.",
+          "indoor_temp_sensor": "Sensor für Innenlufttemperatur (°C).",
+          "outdoor_temp_sensor": "Sensor für Außenlufttemperatur (°C).",
+          "indoor_humidity_sensor": "Optional. Innenluftfeuchtigkeit (%).",
+          "outdoor_humidity_sensor": "Optional. Außenluftfeuchtigkeit (%).",
+          "comfort_category": "ASHRAE 55 Komfort-Kategorie: I = engerer Komfortbereich (≈ ±2,5°C, ~90% Zufriedenheit). II = breiterer Bereich (≈ ±3,5°C, ~80% Zufriedenheit).",
+          "min_comfort_temp": "Untere Grenze Ihres bevorzugten Komfortbereichs (°C).",
+          "max_comfort_temp": "Obere Grenze Ihres bevorzugten Komfortbereichs (°C).",
+          "temperature_change_threshold": "Minimale Delta (°C) erforderlich, um die eingestellte Temperatur zu ändern.",
+          "override_temperature": "Versatz (±°C) zum berechneten Ziel vor Begrenzung hinzugefügt.",
+          "energy_save_mode": "Wenn aktiviert und bereits komfortabel, wird 'Aus' gegenüber 'Ventilator' bevorzugt, um Energie zu sparen.",
+          "auto_mode_enable": "Führt automatische Anpassungen nach Zeitplan aus. Deaktivieren, um zu pausieren, während die Entität verfügbar bleibt.",
+          "control_secondary_fans": "Wenn aktiviert, kann die Integration ausgewählte sekundäre Ventilatoren für zusätzliche Belüftung in Kühl-/Belüftungsszenarien ein-/ausschalten.",
+          "manual_pause_duration": "Minuten, um automatische Änderungen nach einer manuellen Benutzeränderung zu ignorieren.",
+          "aggressive_cooling_threshold": "Wenn weit über dem Komfort (≥ dieser Wert), stärkeres Kühlen und höheren Ventilator verwenden.",
+          "aggressive_heating_threshold": "Wenn weit unter dem Komfort (≥ dieser Wert), stärkeres Heizen und höheren Ventilator verwenden.",
+          "enable_fan_mode": "Erlauben Sie der Integration, den nur-Ventilator-Modus zu verwenden, wenn es angemessen ist.",
+          "enable_cool_mode": "Kühlaktionen erlauben, wenn über dem Komfort.",
+          "enable_heat_mode": "Heizaktionen erlauben, wenn unter dem Komfort.",
+          "enable_dry_mode": "Trocknungsaktionen (Entfeuchtung) erlauben, wenn unterstützt.",
+          "enable_off_mode": "Erlauben Sie, den HVAC vollständig auszuschalten, wenn stabil und Energiesparen aktiviert ist.",
+          "max_fan_speed": "Oberes Limit für die Ventilator-Geschwindigkeit, die die Integration einstellen kann.",
+          "min_fan_speed": "Unteres Limit für die Ventilator-Geschwindigkeit, die die Integration einstellen kann.",
+          "hvac_mode_for_cooling": "Exakter Geräte-HVAC-Modus für Kühl-Intention. Wählen Sie 'Deaktivieren', um nie zu kühlen.",
+          "hvac_mode_for_heating": "Exakter Geräte-HVAC-Modus für Heiz-Intention. Wählen Sie 'Deaktivieren', um nie zu heizen.",
+          "hvac_mode_for_drying": "Exakter Geräte-HVAC-Modus für Trocken-Intention. Wählen Sie 'Deaktivieren', um nie zu trocknen.",
+          "hvac_mode_for_fan_only": "Exakter Geräte-HVAC-Modus für nur-Ventilator-Intention. Wählen Sie 'Deaktivieren', um nie nur den Ventilator zu verwenden.",
+          "primary_climates": "Klimageräte, die als primäre Steuerungen in diesem Bereich fungieren sollen.",
+          "secondary_climates": "Sekundäre Klimageräte, die als sekundäre Steuerungen in diesem Bereich fungieren sollen.",
+          "secondary_fans": "Zusätzliche Ventilatoren, die bei Kühlung oder Belüftung verwendet werden können.",
+          "primary_climates_display": "Geräte, die automatisch als primär basierend auf ihrem Typ und aktueller Jahreszeit ausgewählt wurden (nur lesen).",
+          "secondary_climates_display": "Geräte, die automatisch als sekundär basierend auf ihrem Typ und aktueller Jahreszeit ausgewählt wurden (nur lesen).",
+          "secondary_fans_display": "Ventilatoren, die automatisch für zusätzliche Belüftung basierend auf der Bereichskonfiguration ausgewählt wurden (nur lesen).",
+          "primary_devices_info": "Zeigt die Geräte, die automatisch als primäre Steuerungen für diesen Bereich basierend auf ihren Fähigkeiten und aktueller Jahreszeit ausgewählt wurden.",
+          "secondary_devices_info": "Zeigt die Geräte, die automatisch als sekundäre Steuerungen für diesen Bereich basierend auf ihren Fähigkeiten und aktueller Jahreszeit ausgewählt wurden.",
+          "secondary_fans_info": "Zeigt die Ventilatoren, die automatisch für zusätzliche Belüftung basierend auf der Bereichskonfiguration ausgewählt wurden.",
+          "auto_selection_header": "Das System hat automatisch die besten Geräte basierend auf ihrem Typ und aktueller Jahreszeit ausgewählt."
         }
       }
     }

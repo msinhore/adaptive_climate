@@ -37,8 +37,41 @@
   "options": {
     "step": {
       "init": {
-        "title": "Opciones de Clima Adaptativo",
-        "description": "Configure ajustes avanzados para su control climático adaptativo. Estas opciones reflejan los campos YAML e incluyen explicaciones útiles.",
+        "title": "Modo de Selección de Dispositivos",
+        "description": "Elija cómo se deben seleccionar los dispositivos para la orquestación por área.",
+        "data": {
+          "auto_device_selection": "Selección Automática de Dispositivos"
+        },
+        "data_description": {
+          "auto_device_selection": "Cuando está habilitado, el sistema selecciona automáticamente los mejores dispositivos climáticos basándose en su tipo (solo_calefacción, solo_refrigeración, dual) y temporada actual. La selección manual de dispositivos se ignora cuando esta opción está habilitada."
+        }
+      },
+      "options": {
+        "title": "Configuración Avanzada",
+        "description": "Configure la configuración detallada para su control climático adaptativo basado en su modo de selección de dispositivos.",
+        "sections": {
+          "comfort": {
+            "title": "Parámetros ASHRAE55"
+          },
+          "temperature": {
+            "title": "Preferencias de Temperatura del Usuario"
+          },
+          "temperature_sensors": {
+            "title": "Sensores de Temperatura"
+          },
+          "humidity_sensors": {
+            "title": "Sensores de Humedad"
+          },
+          "devices": {
+            "title": "Entidades Climáticas y Ventiladores"
+          },
+          "hvac": {
+            "title": "Preferencias de HVAC"
+          },
+          "advanced": {
+            "title": "Avanzado"
+          }
+        },
         "data": {
           "climate_entity": "Entidad Climática",
           "indoor_temp_sensor": "Sensor de Temperatura Interior",
@@ -52,26 +85,70 @@
           "override_temperature": "Temperatura de Anulación (°C)",
           "energy_save_mode": "Activar Modo de Ahorro de Energía",
           "auto_mode_enable": "Activar Modo Automático",
+          "control_secondary_fans": "Controlar Ventiladores Secundarios",
+          "manual_pause_duration": "Duración de Pausa Manual (minutos)",
           "aggressive_cooling_threshold": "Umbral de Enfriamiento Agresivo (°C)",
           "aggressive_heating_threshold": "Umbral de Calefacción Agresiva (°C)",
-          "mean_radiant_temp_sensor": "Sensor de Temperatura Radiante Media",
-          "occupancy_sensor": "Sensor de Ocupación",
-          "command_ignore_interval": "Intervalo de Ignorar Comandos (segundos)",
-          "enable_fan_mode": "Activar Ventilador: permite enviar acciones fan_only cuando corresponda.",
-          "enable_cool_mode": "Activar Intención de Enfriar: permite enfriar cuando está por encima del rango de confort.",
-          "enable_heat_mode": "Activar Intención de Calentar: permite calentar cuando está por debajo del rango de confort.",
-          "enable_dry_mode": "Activar Intención de Secado: permite deshumidificación cuando esté soportado.",
-          "enable_off_mode": "Permitir Apagar: autoriza apagar el HVAC cuando está estable y el ahorro de energía está habilitado.",
+          "enable_fan_mode": "Activar Modo Ventilador",
+          "enable_cool_mode": "Activar Intención de Enfriamiento",
+          "enable_heat_mode": "Activar Intención de Calefacción",
+          "enable_dry_mode": "Activar Intención de Secado",
+          "enable_off_mode": "Activar Apagado",
           "max_fan_speed": "Velocidad Máxima del Ventilador",
           "min_fan_speed": "Velocidad Mínima del Ventilador",
-          "hvac_mode_for_cooling": "Modo HVAC para intención de Enfriar",
-          "hvac_mode_for_heating": "Modo HVAC para intención de Calentar",
-          "hvac_mode_for_drying": "Modo HVAC para intención de Secado",
-          "hvac_mode_for_fan_only": "Modo HVAC para intención Solo Ventilador",
-          "primary_climates": "Climas Primarios (orquestación por área)",
-          "secondary_climates": "Climas Secundarios (orquestación por área)",
-          "secondary_fans": "Ventiladores Secundarios (ventilación auxiliar)",
-          "auto_device_selection": "Selección Automática de Dispositivos"
+          "hvac_mode_for_cooling": "Modo HVAC para Intención de Enfriamiento",
+          "hvac_mode_for_heating": "Modo HVAC para Intención de Calefacción",
+          "hvac_mode_for_drying": "Modo HVAC para Intención de Secado",
+          "hvac_mode_for_fan_only": "Modo HVAC para Intención Solo Ventilador",
+          "primary_climates": "Entidades Climáticas Primarias (orquestación por área)",
+          "secondary_climates": "Entidades Climáticas Secundarias (orquestación por área)",
+          "secondary_fans": "Entidades Ventiladores Secundarios (ventilación auxiliar)",
+          "primary_climates_display": "Dispositivos Primarios (Seleccionados Automáticamente)",
+          "secondary_climates_display": "Dispositivos Secundarios (Seleccionados Automáticamente)",
+          "secondary_fans_display": "Ventiladores Auxiliares (Seleccionados Automáticamente)",
+          "primary_devices_info": "Dispositivos Primarios (Seleccionados Automáticamente)",
+          "secondary_devices_info": "Dispositivos Secundarios (Seleccionados Automáticamente)",
+          "secondary_fans_info": "Ventiladores Auxiliares (Seleccionados Automáticamente)",
+          "auto_selection_header": "Dispositivos Seleccionados Automáticamente"
+        },
+        "data_description": {
+          "climate_entity": "Seleccione el dispositivo climático para controlar.",
+          "indoor_temp_sensor": "Sensor usado para temperatura del aire interior (°C).",
+          "outdoor_temp_sensor": "Sensor usado para temperatura del aire exterior (°C).",
+          "indoor_humidity_sensor": "Opcional. Humedad relativa interior (%).",
+          "outdoor_humidity_sensor": "Opcional. Humedad relativa exterior (%).",
+          "comfort_category": "Categoría de Confort ASHRAE 55: I = banda más estrecha (≈ ±2,5°C, ~90% satisfacción). II = banda más amplia (≈ ±3,5°C, ~80% satisfacción).",
+          "min_comfort_temp": "Límite inferior de su rango de confort preferido (°C).",
+          "max_comfort_temp": "Límite superior de su rango de confort preferido (°C).",
+          "temperature_change_threshold": "Delta mínimo (°C) requerido para cambiar la temperatura establecida.",
+          "override_temperature": "Desplazamiento (±°C) sumado al objetivo calculado antes de los límites.",
+          "energy_save_mode": "Si está habilitado y ya está cómodo, se prefiere Apagado sobre Ventilador para ahorrar energía.",
+          "auto_mode_enable": "Ejecuta ajustes automáticos en horario. Desactive para pausar la automatización manteniendo la entidad disponible.",
+          "control_secondary_fans": "Cuando está habilitado, la integración puede encender/apagar ventiladores secundarios seleccionados para ventilación auxiliar en escenarios de enfriamiento/ventilación.",
+          "manual_pause_duration": "Minutos para ignorar cambios automáticos después de un cambio manual del usuario.",
+          "aggressive_cooling_threshold": "Cuando muy por encima del confort (≥ este valor), usar enfriamiento y ventilador más fuertes.",
+          "aggressive_heating_threshold": "Cuando muy por debajo del confort (≥ este valor), usar calefacción y ventilador más fuertes.",
+          "enable_fan_mode": "Permitir que la integración use el modo solo ventilador cuando sea apropiado.",
+          "enable_cool_mode": "Permitir acciones de enfriamiento cuando esté por encima del confort.",
+          "enable_heat_mode": "Permitir acciones de calefacción cuando esté por debajo del confort.",
+          "enable_dry_mode": "Permitir acciones de secado (deshumidificación) cuando esté soportado.",
+          "enable_off_mode": "Permitir apagar completamente el HVAC cuando esté estable y el ahorro de energía esté habilitado.",
+          "max_fan_speed": "Límite superior para la velocidad del ventilador que la integración puede establecer.",
+          "min_fan_speed": "Límite inferior para la velocidad del ventilador que la integración puede establecer.",
+          "hvac_mode_for_cooling": "Modo HVAC exacto del dispositivo para usar cuando la intención es enfriar. Elija Deshabilitar para nunca enfriar.",
+          "hvac_mode_for_heating": "Modo HVAC exacto del dispositivo para usar cuando la intención es calentar. Elija Deshabilitar para nunca calentar.",
+          "hvac_mode_for_drying": "Modo HVAC exacto del dispositivo para usar cuando la intención es secar. Elija Deshabilitar para nunca secar.",
+          "hvac_mode_for_fan_only": "Modo HVAC exacto del dispositivo para usar cuando la intención es solo ventilador. Elija Deshabilitar para nunca usar solo ventilador.",
+          "primary_climates": "Climas que deben actuar como controladores primarios en esta área.",
+          "secondary_climates": "Climas secundarios que deben actuar como controladores secundarios en esta área.",
+          "secondary_fans": "Ventiladores auxiliares que pueden ser utilizados durante enfriamiento/ventilación.",
+          "primary_climates_display": "Dispositivos automáticamente seleccionados como primarios basados en su tipo y temporada actual (solo lectura).",
+          "secondary_climates_display": "Dispositivos automáticamente seleccionados como secundarios basados en su tipo y temporada actual (solo lectura).",
+          "secondary_fans_display": "Ventiladores automáticamente seleccionados para ventilación auxiliar basado en la configuración del área (solo lectura).",
+          "primary_devices_info": "Muestra los dispositivos automáticamente seleccionados como controladores primarios para esta área basado en sus capacidades y temporada actual.",
+          "secondary_devices_info": "Muestra los dispositivos automáticamente seleccionados como controladores secundarios para esta área basado en sus capacidades y temporada actual.",
+          "secondary_fans_info": "Muestra los ventiladores automáticamente seleccionados para ventilación auxiliar basado en la configuración del área.",
+          "auto_selection_header": "El sistema ha seleccionado automáticamente los mejores dispositivos basado en su tipo y temporada actual."
         }
       }
     }
