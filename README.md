@@ -18,7 +18,7 @@ A Home Assistant integration implementing ASHRAE 55 Adaptive Thermal Comfort for
 
 ### **Core Functionality**
 - 🔍 **ASHRAE 55 Adaptive Comfort**: Automatically adjusts comfort temperature using adaptive thermal comfort calculations, based on scientific standards.
-- 🌡️ **Temperature and Humidity Monitoring**: Uses indoor/outdoor temperature sensors, and optionally humidity sensors, for precision climate control.
+- 🌡️ **Temperature and Humidity Monitoring**: Uses indoor/outdoor temperature sensors or weather entities, and optionally humidity sensors, for precision climate control.
 - 📊 **Running Mean Outdoor Temperature**: Tracks and computes historical outdoor temperatures to apply adaptive comfort adjustments.
 - 🏖️ **Automatic Season Detection**: Dynamically detects seasons (summer, winter, spring, autumn) for contextual HVAC decisions.
 
@@ -84,12 +84,14 @@ A Home Assistant integration implementing ASHRAE 55 Adaptive Thermal Comfort for
 
 ### **Required Configuration**
 - **Climate Entity**: Your main HVAC/climate device
-- **Indoor Temperature Sensor**: Sensor for indoor temperature monitoring
-- **Outdoor Temperature Sensor**: Sensor for outdoor temperature monitoring
+- **Indoor Temperature Sensor**: Sensor or weather entity for indoor temperature monitoring
+- **Outdoor Temperature Sensor**: Sensor or weather entity for outdoor temperature monitoring
 
 ### **Optional Configuration**
-- **Indoor Humidity Sensor**: Sensor for indoor humidity monitoring
-- **Outdoor Humidity Sensor**: Sensor for outdoor humidity monitoring
+- **Indoor Humidity Sensor**: Sensor or weather entity for indoor humidity monitoring
+- **Outdoor Humidity Sensor**: Sensor or weather entity for outdoor humidity monitoring
+
+**Note**: Weather entities are fully supported for temperature and humidity monitoring. The system will automatically extract temperature and humidity values from weather entity attributes.
 
 ### **Advanced Configuration Options**
 

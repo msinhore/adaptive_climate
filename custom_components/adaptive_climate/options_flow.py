@@ -125,6 +125,25 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 cfg["multiple"] = True
             return selector.selector({"entity": cfg})
 
+        # Helpers to support weather entities in selectors, mirroring config_flow
+        def temp_entity_selector(is_outdoor: bool, multiple: bool = False):
+            cfg: dict[str, Any] = {
+                "domain": ["sensor", "input_number", "weather"],
+                "device_class": ["temperature"] if not is_outdoor else ["temperature", "weather"],
+            }
+            if multiple:
+                cfg["multiple"] = True
+            return selector.selector({"entity": cfg})
+
+        def humidity_entity_selector(is_outdoor: bool, multiple: bool = False):
+            cfg: dict[str, Any] = {
+                "domain": ["sensor", "input_number"] + (["weather"] if is_outdoor else []),
+                "device_class": ["humidity"],
+            }
+            if multiple:
+                cfg["multiple"] = True
+            return selector.selector({"entity": cfg})
+
         # Discover supported hvac modes to build override selects
         climate_entity_id = (
             options.get("climate_entity") or data.get("climate_entity") or data.get("entity")
@@ -155,19 +174,19 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(
                     "indoor_temp_sensor",
                     default=get_value("indoor_temp_sensor"),
-                ): entity_selector("sensor", device_class="temperature"),
+                ): temp_humidity_entity_selector("temperature"),
                 vol.Required(
                     "outdoor_temp_sensor",
                     default=get_value("outdoor_temp_sensor"),
-                ): entity_selector("sensor", device_class="temperature"),
+                ): temp_humidity_entity_selector("temperature"),
                 vol.Optional(
                     "indoor_humidity_sensor",
                     default=get_value("indoor_humidity_sensor"),
-                ): entity_selector("sensor", device_class="humidity"),
+                ): temp_humidity_entity_selector("humidity"),
                 vol.Optional(
                     "outdoor_humidity_sensor",
                     default=get_value("outdoor_humidity_sensor"),
-                ): entity_selector("sensor", device_class="humidity"),
+                ): humidity_entity_selector(is_outdoor=True),
 
                 # Comfort
                 vol.Optional(
