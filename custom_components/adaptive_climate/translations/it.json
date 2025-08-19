@@ -76,40 +76,6 @@
       }
     }
   },
-  "options_descriptions": {
-    "min_comfort_temp": "Limite inferiore del tuo intervallo di comfort. Regolazioni e decisioni lo rispetteranno.",
-    "max_comfort_temp": "Limite superiore del tuo intervallo di comfort. Regolazioni e decisioni lo rispetteranno.",
-    "temperature_change_threshold": "Differenza minima tra temperatura attuale e obiettivo per attivare un cambiamento.",
-    "override_temperature": "Offset (±°C) aggiunto al target calcolato prima dei limiti.",
-    "energy_save_mode": "Se abilitato e già confortevole, preferisce Spento invece di Ventilatore per risparmiare energia.",
-    "auto_mode_enable": "Esegue regolazioni automatiche a intervalli programmati. Disabilita per mettere in pausa mantenendo l'entità disponibile.",
-    "aggressive_cooling_threshold": "Ben sopra il comfort (≥ questo valore), usare raffreddamento/ventilazione più forti.",
-    "aggressive_heating_threshold": "Ben sotto il comfort (≥ questo valore), usare riscaldamento/ventilazione più forti.",
-    "hvac_mode_for_cooling": "Scegli la modalità HVAC esatta del dispositivo per raffreddare. Seleziona Disabilita per non raffreddare mai.",
-    "hvac_mode_for_heating": "Scegli la modalità HVAC esatta del dispositivo per riscaldare. Seleziona Disabilita per non riscaldare mai.",
-    "hvac_mode_for_drying": "Scegli la modalità HVAC esatta del dispositivo per asciugatura. Seleziona Disabilita per non asciugare mai.",
-    "hvac_mode_for_fan_only": "Scegli la modalità HVAC esatta del dispositivo per solo ventilatore. Seleziona Disabilita per non usarla mai.",
-    "max_fan_speed": "Limite superiore della velocità del ventilatore impostabile dall'integrazione.",
-    "min_fan_speed": "Limite inferiore della velocità del ventilatore impostabile dall'integrazione.",
-    "comfort_category": "Categoria di Comfort ASHRAE 55: I = banda di comfort più stretta (≈ ±2,5°C, ~90% soddisfazione). II = banda più ampia (≈ ±3,5°C, ~80% soddisfazione). Scegli I per più comfort, II per più flessibilità energetica.",
-    "auto_device_selection": "Quando abilitato, il sistema seleziona automaticamente i migliori dispositivi climatici basandosi sul loro tipo (solo_riscaldamento, solo_raffreddamento, dual) e stagione corrente. La selezione manuale dei dispositivi è ignorata quando questa opzione è abilitata."
-  },
-  "options_extra": {
-    "data_labels": {
-      "hvac_mode_for_cooling": "Modalità HVAC per Intenzione di Raffreddare",
-      "hvac_mode_for_heating": "Modalità HVAC per Intenzione di Riscaldare",
-      "hvac_mode_for_drying": "Modalità HVAC per Intenzione di Asciugatura",
-      "hvac_mode_for_fan_only": "Modalità HVAC per Intenzione Solo Ventilatore",
-      "primary_climates": "Entità Climatiche Primarie (orchestrazione per area)",
-      "secondary_climates": "Entità Climatiche Secondarie (orchestrazione per area)",
-      "secondary_fans": "Entità Ventilatori Secondari (ventilazione ausiliaria)"
-    },
-    "descriptions": {
-      "primary_climates": "Seleziona i climi che devono agire come controllori primari in questa area.",
-      "secondary_climates": "Seleziona i climi che devono agire come controllori secondari in questa area.",
-      "secondary_fans": "Seleziona i ventilatori ausiliari che possono essere utilizzati durante il raffreddamento o la ventilazione."
-    }
-  },
   "entity": {
     "sensor": {
       "comfort_temperature": {

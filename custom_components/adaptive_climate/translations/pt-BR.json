@@ -83,49 +83,29 @@
         "title": "Configurações Avançadas",
         "description": "Configure as opções detalhadas de acordo com o modo de seleção de dispositivos.",
         "sections": {
-          "comfort": "Parâmetros ASHRAE55",
-          "temperature": "Preferências de Temperatura do Usuário",
-          "temperature_sensors": "Sensores de Temperatura",
-          "humidity_sensors": "Sensores de Umidade",
-          "devices": "Entidades de Clima e Ventiladores",
-          "hvac": "Preferências de HVAC",
-          "advanced": "Avançado"
+          "comfort": {
+            "title": "Parâmetros ASHRAE55"
+          },
+          "temperature": {
+            "title": "Preferências de Temperatura do Usuário"
+          },
+          "temperature_sensors": {
+            "title": "Sensores de Temperatura"
+          },
+          "humidity_sensors": {
+            "title": "Sensores de Umidade"
+          },
+          "devices": {
+            "title": "Entidades de Clima e Ventiladores"
+          },
+          "hvac": {
+            "title": "Preferências de HVAC"
+          },
+          "advanced": {
+            "title": "Avançado"
+          }
         }
       }
-    }
-  },
-  "options_descriptions": {
-    "min_comfort_temp": "Limite inferior da sua faixa de conforto. Ajustes e decisões respeitarão este limite.",
-    "max_comfort_temp": "Limite superior da sua faixa de conforto. Ajustes e decisões respeitarão este limite.",
-    "temperature_change_threshold": "Diferença mínima entre a temperatura atual e o alvo para acionar mudanças.",
-    "override_temperature": "Offset (±°C) somado ao alvo calculado antes do ajuste aos limites.",
-    "energy_save_mode": "Quando ativado, se o ambiente já está confortável, prefere Desligado em vez de Ventilação para economizar energia.",
-    "auto_mode_enable": "Executa ajustes automáticos conforme o agendamento. Desative para pausar a automação mantendo a entidade disponível.",
-    "aggressive_cooling_threshold": "Quando muito acima do conforto (≥ este valor), usar resfriamento/ventilação mais fortes.",
-    "aggressive_heating_threshold": "Quando muito abaixo do conforto (≥ este valor), usar aquecimento/ventilação mais fortes.",
-    "hvac_mode_for_cooling": "Escolha o modo HVAC do aparelho para intenções de resfriar. Selecione Desativar para nunca resfriar.",
-    "hvac_mode_for_heating": "Escolha o modo HVAC do aparelho para intenções de aquecer. Selecione Desativar para nunca aquecer.",
-    "hvac_mode_for_drying": "Escolha o modo HVAC do aparelho para intenções de secagem. Selecione Desativar para nunca secar.",
-    "hvac_mode_for_fan_only": "Escolha o modo HVAC do aparelho para intenções de ventilação. Selecione Desativar para nunca usar apenas ventilação.",
-    "max_fan_speed": "Limite superior da velocidade do ventilador que a integração pode definir.",
-    "min_fan_speed": "Limite inferior da velocidade do ventilador que a integração pode definir.",
-    "comfort_category": "Categoria de Conforto ASHRAE 55: I = faixa mais estreita (≈ ±2,5°C, ~90% de satisfação). II = faixa mais ampla (≈ ±3,5°C, ~80% de satisfação). Escolha I para maior conforto, II para mais flexibilidade energética.",
-    "auto_device_selection": "Quando habilitado, o sistema seleciona automaticamente os melhores dispositivos climáticos baseado em seu tipo (apenas_aquecimento, apenas_resfriamento, dual) e estação atual. A seleção manual de dispositivos é ignorada quando esta opção está habilitada."
-  },
-  "options_extra": {
-    "data_labels": {
-      "hvac_mode_for_cooling": "Modo HVAC para Intenção de Resfriar",
-      "hvac_mode_for_heating": "Modo HVAC para Intenção de Aquecer",
-      "hvac_mode_for_drying": "Modo HVAC para Intenção de Secagem",
-      "hvac_mode_for_fan_only": "Modo HVAC para Intenção Apenas Ventilação",
-      "primary_climates": "Entidades Climáticas Primárias (orquestração por área)",
-      "secondary_climates": "Entidades Climáticas Secundárias (orquestração por área)",
-      "secondary_fans": "Entidades Ventiladores Secundários (ventilação auxiliar)"
-    },
-    "descriptions": {
-      "primary_climates": "Selecione climas que devem atuar como controladores primários nesta área.",
-      "secondary_climates": "Selecione climas que devem atuar como controladores secundários nesta área.",
-      "secondary_fans": "Selecione ventiladores auxiliares que podem ser utilizados durante o resfriamento ou ventilação."
     }
   },
   "entity": {

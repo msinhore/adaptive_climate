@@ -155,19 +155,39 @@ class AdaptiveClimateOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(
                     "indoor_temp_sensor",
                     default=get_value("indoor_temp_sensor"),
-                ): entity_selector("sensor", device_class="temperature"),
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["sensor", "input_number", "weather"],
+                        device_class=["temperature"],
+                    )
+                ),
                 vol.Required(
                     "outdoor_temp_sensor",
                     default=get_value("outdoor_temp_sensor"),
-                ): entity_selector("sensor", device_class="temperature"),
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["sensor", "input_number", "weather"],
+                        device_class=["temperature", "weather"],
+                    )
+                ),
                 vol.Optional(
                     "indoor_humidity_sensor",
                     default=get_value("indoor_humidity_sensor"),
-                ): entity_selector("sensor", device_class="humidity"),
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["sensor", "input_number"],
+                        device_class=["humidity"],
+                    )
+                ),
                 vol.Optional(
                     "outdoor_humidity_sensor",
                     default=get_value("outdoor_humidity_sensor"),
-                ): entity_selector("sensor", device_class="humidity"),
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["sensor", "input_number", "weather"],
+                        device_class=["humidity"],
+                    )
+                ),
 
                 # Comfort
                 vol.Optional(
