@@ -57,6 +57,7 @@
           "auto_mode_enable": "Ativar Modo Automático",
           "manual_pause_duration": "Duração da Pausa Manual (minutos)",
           "participate_area_orchestration": "Participar da Orquestração por Área",
+          "auto_device_selection": "Seleção Automática de Dispositivos",
           "aggressive_cooling_threshold": "Limiar de Resfriamento Agressivo (°C)",
           "aggressive_heating_threshold": "Limiar de Aquecimento Agressivo (°C)",
           "mean_radiant_temp_sensor": "Sensor de Temperatura Radiante Média",
@@ -77,6 +78,19 @@
           "secondary_climates": "Climas Secundários (orquestração por área)",
           "secondary_fans": "Ventiladores Secundários (ventilação auxiliar)"
         }
+      },
+      "options": {
+        "title": "Configurações Avançadas",
+        "description": "Configure as opções detalhadas de acordo com o modo de seleção de dispositivos.",
+        "sections": {
+          "comfort": "Parâmetros ASHRAE55",
+          "temperature": "Preferências de Temperatura do Usuário",
+          "temperature_sensors": "Sensores de Temperatura",
+          "humidity_sensors": "Sensores de Umidade",
+          "devices": "Entidades de Clima e Ventiladores",
+          "hvac": "Preferências de HVAC",
+          "advanced": "Avançado"
+        }
       }
     }
   },
@@ -95,7 +109,24 @@
     "hvac_mode_for_fan_only": "Escolha o modo HVAC do aparelho para intenções de ventilação. Selecione Desativar para nunca usar apenas ventilação.",
     "max_fan_speed": "Limite superior da velocidade do ventilador que a integração pode definir.",
     "min_fan_speed": "Limite inferior da velocidade do ventilador que a integração pode definir.",
-    "comfort_category": "Categoria de Conforto ASHRAE 55: I = faixa mais estreita (≈ ±2,5°C, ~90% de satisfação). II = faixa mais ampla (≈ ±3,5°C, ~80% de satisfação). Escolha I para maior conforto, II para mais flexibilidade energética."
+    "comfort_category": "Categoria de Conforto ASHRAE 55: I = faixa mais estreita (≈ ±2,5°C, ~90% de satisfação). II = faixa mais ampla (≈ ±3,5°C, ~80% de satisfação). Escolha I para maior conforto, II para mais flexibilidade energética.",
+    "auto_device_selection": "Quando habilitado, o sistema seleciona automaticamente os melhores dispositivos climáticos baseado em seu tipo (apenas_aquecimento, apenas_resfriamento, dual) e estação atual. A seleção manual de dispositivos é ignorada quando esta opção está habilitada."
+  },
+  "options_extra": {
+    "data_labels": {
+      "hvac_mode_for_cooling": "Modo HVAC para Intenção de Resfriar",
+      "hvac_mode_for_heating": "Modo HVAC para Intenção de Aquecer",
+      "hvac_mode_for_drying": "Modo HVAC para Intenção de Secagem",
+      "hvac_mode_for_fan_only": "Modo HVAC para Intenção Apenas Ventilação",
+      "primary_climates": "Entidades Climáticas Primárias (orquestração por área)",
+      "secondary_climates": "Entidades Climáticas Secundárias (orquestração por área)",
+      "secondary_fans": "Entidades Ventiladores Secundários (ventilação auxiliar)"
+    },
+    "descriptions": {
+      "primary_climates": "Selecione climas que devem atuar como controladores primários nesta área.",
+      "secondary_climates": "Selecione climas que devem atuar como controladores secundários nesta área.",
+      "secondary_fans": "Selecione ventiladores auxiliares que podem ser utilizados durante o resfriamento ou ventilação."
+    }
   },
   "entity": {
     "sensor": {
@@ -103,13 +134,13 @@
         "name": "Temperatura de Conforto"
       },
       "comfort_range_min": {
-        "name": "Mínimo da Faixa de Conforto"
+        "name": "Faixa de Conforto Mínima"
       },
       "comfort_range_max": {
-        "name": "Máximo da Faixa de Conforto"
+        "name": "Faixa de Conforto Máxima"
       },
       "running_mean_outdoor_temp": {
-        "name": "Média Móvel da Temperatura Externa"
+        "name": "Temperatura Externa Média Móvel"
       },
       "outdoor_running_mean": {
         "name": "Média Móvel Externa"
@@ -159,10 +190,10 @@
       "comfort_category": {
         "name": "Categoria de Conforto",
         "state": {
-          "cat_i": "Categoria I (90% de satisfação)",
-          "cat_ii": "Categoria II (80% de satisfação)",
-          "i": "Categoria I (90% de satisfação)",
-          "ii": "Categoria II (80% de satisfação)"
+          "cat_i": "Categoria I (90% satisfação)",
+          "cat_ii": "Categoria II (80% satisfação)",
+          "i": "Categoria I (90% satisfação)",
+          "ii": "Categoria II (80% satisfação)"
         }
       }
     }

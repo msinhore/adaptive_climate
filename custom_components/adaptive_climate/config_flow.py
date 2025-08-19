@@ -19,6 +19,7 @@ from homeassistant.helpers.entity_registry import (
 
 from custom_components.adaptive_climate.const import (
     COMFORT_CATEGORIES,
+    DEFAULT_AUTO_DEVICE_SELECTION,
     DEFAULT_COMFORT_CATEGORY,
     DEFAULT_ENABLE_COOL_MODE,
     DEFAULT_ENABLE_DRY_MODE,
@@ -145,6 +146,8 @@ CONFIG_SCHEMA = vol.Schema(
         ),
         # Participation in area orchestration (optional, can also be toggled in options)
         vol.Optional("participate_area_orchestration", default=False): bool,
+        # Automatic device selection based on type and season
+        vol.Optional("auto_device_selection", default=DEFAULT_AUTO_DEVICE_SELECTION): bool,
     }
 )
 
@@ -232,6 +235,8 @@ BULK_SCHEMA = vol.Schema(
             list(FAN_SPEED_OPTIONS.keys())
         ),
         vol.Optional("participate_area_orchestration", default=False): bool,
+        # Automatic device selection based on type and season
+        vol.Optional("auto_device_selection", default=DEFAULT_AUTO_DEVICE_SELECTION): bool,
     }
 )
 
@@ -257,6 +262,7 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Adaptive Climate."""
 
     VERSION = 1
+    MINOR_VERSION = 0
 
     @staticmethod
     def async_get_options_flow(
@@ -264,8 +270,6 @@ class AdaptiveClimateConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> config_entries.OptionsFlow:
         """Return the options flow."""
         return async_get_options_flow(config_entry)
-
-    MINOR_VERSION = 0
 
     def __init__(self):
         """Initialize config flow."""

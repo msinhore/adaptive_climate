@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import logging
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 
 from custom_components.adaptive_climate.const import DOMAIN
 
@@ -13,6 +14,7 @@ from custom_components.adaptive_climate.utils.services import check_service_supp
 
 
 def get_area_id(hass: HomeAssistant, climate_entity_id: str) -> Optional[str]:
+    """Resolve area for an entity, falling back to device's area if needed."""
     try:
         ent_reg = hass.helpers.entity_registry.async_get(hass)
     except Exception:
@@ -20,7 +22,22 @@ def get_area_id(hass: HomeAssistant, climate_entity_id: str) -> Optional[str]:
 
         ent_reg = async_get_entity_registry(hass)
     entry = ent_reg.async_get(climate_entity_id) if ent_reg else None
-    return entry.area_id if entry else None
+    if not entry:
+        return None
+    if entry.area_id:
+        return entry.area_id
+    # Fallback to device's area
+    if entry.device_id:
+        try:
+            dev_reg = dr.async_get(hass)
+        except Exception:
+            from homeassistant.helpers.device_registry import async_get as async_get_device_registry
+
+            dev_reg = async_get_device_registry(hass)
+        device = dev_reg.async_get(entry.device_id) if dev_reg else None
+        if device and device.area_id:
+            return device.area_id
+    return None
 
 
 def collect_area_devices(hass: HomeAssistant, climate_entity_id: str) -> List[ClimateInfo]:

@@ -33,6 +33,7 @@ from custom_components.adaptive_climate.utils import (
     create_command_context,
     is_system_event_context,
     has_meaningful_user_change,
+    collect_area_fans,
 )
 
 # --- Constants ---
@@ -94,9 +95,10 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
             self.config.update(config_entry_options)
 
         entity = self.config.get("entity")
-        name_slug = slugify(
-            entity.split(".")[-1] if entity else self.device_name
-        ).replace("-", "_")
+        if entity and "." in entity:
+            name_slug = slugify(entity.split(".")[-1]).replace("-", "_")
+        else:
+            name_slug = slugify(self.device_name).replace("-", "_")
         self.primary_entity_id = (
             f"{entity}_ashrae_compliance"
             if entity
@@ -299,7 +301,7 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
         )
 
         # Wait a moment for entities to be available
-        await asyncio.sleep(10)
+        await asyncio.sleep(2)
 
         # Detect capabilities
         capabilities = self._detect_device_capabilities()
@@ -1058,27 +1060,100 @@ class AdaptiveClimateCoordinator(DataUpdateCoordinator):
 
 
 
+    def _should_use_auto_device_selection(self) -> bool:
+        """Determine if automatic device selection should be used."""
+        return self.config.get("auto_device_selection", False)
+
+    def _get_area_devices_auto(self, comfort_params: Dict[str, Any]) -> Tuple[bool, Optional[str], Optional[str], str]:
+        """Get area devices using automatic selection based on device type and season."""
+        from custom_components.adaptive_climate.utils import (
+            area_orchestration_gate as utils_area_gate,
+            collect_area_fans,
+        )
+
+        # Use automatic device selection based on device type and season
+        allowed, primary_id, secondary_id, side = utils_area_gate(
+            self.hass, self.climate_entity_id, comfort_params
+        )
+        
+        _LOGGER.debug(
+            f"[{self.device_name}] Auto device selection -> allowed={allowed} | primary={primary_id} | secondary={secondary_id} | side={side}"
+        )
+        
+        return allowed, primary_id, secondary_id, side
+
+    def _get_area_devices_manual(self, comfort_params: Dict[str, Any]) -> Tuple[bool, Optional[str], Optional[str], str]:
+        """Get area devices using manual configuration."""
+        from custom_components.adaptive_climate.utils import (
+            collect_area_fans,
+        )
+
+        # Use manual device configuration
+        primary_climates = self.config.get("primary_climates", [])
+        secondary_climates = self.config.get("secondary_climates", [])
+        
+        # Check if this device is configured as primary
+        is_primary = self.climate_entity_id in primary_climates
+        is_secondary = self.climate_entity_id in secondary_climates
+        
+        # Determine side based on season and comfort parameters
+        season_str: str = comfort_params.get("season") or "summer"
+        indoor_temp = comfort_params.get("indoor_temperature")
+        comfort_min = comfort_params.get("comfort_min_ashrae")
+        comfort_max = comfort_params.get("comfort_max_ashrae")
+        
+        if season_str == "winter":
+            side = "heat"
+        elif season_str == "summer":
+            if indoor_temp is not None and comfort_min is not None and comfort_max is not None:
+                if indoor_temp > comfort_max:
+                    side = "cool"
+                else:
+                    side = "fan"
+            else:
+                side = "cool"
+        else:  # shoulder season
+            if indoor_temp is not None and comfort_min is not None and comfort_max is not None:
+                if indoor_temp > comfort_max:
+                    side = "cool"
+                elif indoor_temp < comfort_min:
+                    side = "heat"
+                else:
+                    side = "fan"
+            else:
+                side = "fan"
+        
+        # Determine primary and secondary IDs
+        primary_id = primary_climates[0] if primary_climates else None
+        secondary_id = secondary_climates[0] if secondary_climates else None
+        
+        # Allow action if this device is primary or if no primary is configured
+        allowed = is_primary or (not primary_climates and is_secondary) or (not primary_climates and not secondary_climates)
+        
+        _LOGGER.debug(
+            f"[{self.device_name}] Manual device selection -> allowed={allowed} | primary={primary_id} | secondary={secondary_id} | side={side} | is_primary={is_primary} | is_secondary={is_secondary}"
+        )
+        
+        return allowed, primary_id, secondary_id, side
+
     def _area_orchestration_gate(self, comfort_params: Dict[str, Any]) -> bool:
         """Decide if this coordinator is allowed to act now given area roles.
 
         Returns True if allowed to act as primary (normal) or as secondary only
         when a hard breach exists; otherwise False to block actions.
         """
-        from custom_components.adaptive_climate.utils import (
-            area_orchestration_gate as utils_area_gate,
-            collect_area_fans,
-        )
-
-        # Let utils decide if we are primary; also capture roles for logging
-        allowed, primary_id, secondary_id, side = utils_area_gate(
-            self.hass, self.climate_entity_id, comfort_params
-        )
-        try:
+        # Choose between automatic and manual device selection
+        if self._should_use_auto_device_selection():
+            allowed, primary_id, secondary_id, side = self._get_area_devices_auto(comfort_params)
             _LOGGER.debug(
-                f"[{self.device_name}] Area roles -> primary={primary_id} | secondary={secondary_id} | side={side}"
+                f"[{self.device_name}] Using AUTOMATIC device selection"
             )
-        except Exception:
-            pass
+        else:
+            allowed, primary_id, secondary_id, side = self._get_area_devices_manual(comfort_params)
+            _LOGGER.debug(
+                f"[{self.device_name}] Using MANUAL device selection"
+            )
+
         if not allowed:
             return False
 
